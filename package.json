@@ -1,0 +1,39 @@
+{
+  "name": "3dflatter",
+  "version": "1.0.0",
+  "description": "This project is a web-based utility designed to transform 3D polygonal meshes into 2D flat patterns. Inspired by Pepakura, the goal is to allow users to define \"seams\" on a 3D model and generate a corresponding 2D layout that can be printed and reassembled into the original 3D shape.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NitayBrandriss/3DFlatter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NitayBrandriss/3DFlatter/issues"
+  },
+  "homepage": "https://github.com/NitayBrandriss/3DFlatter#readme",
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.4",
+    "typescript": "^6.0.3"
+  }
+}

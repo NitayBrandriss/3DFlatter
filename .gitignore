@@ -1,0 +1,45 @@
+## Dependencies
+node_modules/
+
+## Build outputs
+.next/
+out/
+dist/
+build/
+coverage/
+
+## Environment files
+.env
+.env.*
+!.env.example
+
+## Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+## Caches / tooling
+.turbo/
+.vercel/
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+## IDE / OS
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+Thumbs.db
+Desktop.ini
+.DS_Store
