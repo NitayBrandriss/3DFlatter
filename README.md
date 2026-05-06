@@ -44,4 +44,7 @@ In this Proof of Concept (PoC) stage, the material is treated as having zero thi
 ## 6. Future Considerations (Post-PoC)
 - Accounting for material thickness (Foam Beveling).
 - Adding "Flaps" or "Tabs" for gluing/joining.
-- Real-time "Strain" heatmaps to show where the material might deform.# Project: 3D-to-2D Mesh Unfolder (PoC)
+- Real-time "Strain" heatmaps to show where the material might deform.
+
+## Project decisions (ADRs)
+- See `docs/decisions/0001-mesh-model-and-topology.md`
