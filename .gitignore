@@ -43,3 +43,7 @@ pnpm-debug.log*
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+##local testing files
+thoghts.txt
+3d_models/
