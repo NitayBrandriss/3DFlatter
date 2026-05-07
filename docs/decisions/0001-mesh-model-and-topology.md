@@ -25,11 +25,6 @@ This PoC needs a mesh representation that supports:
 - **Triangulate on load**: convert any polygon face into triangles.
 - **Normalize indices to 0-based** immediately after parsing OBJ.
 
-#### ADR 04: Triangulation Strategy
-*   **Decision:** For v1, we will use "Fan Triangulation" to convert n-gons to triangles during OBJ parsing.
-*   **Reasoning:** It is fast, simple to implement, and perfectly sufficient for models made of triangles, quads, or convex polygons (which cover the vast majority of papercraft/foam base meshes).
-*   **Risk & Future Change:** Fan triangulation will produce overlapping, invalid geometry (breaking the topology) if the incoming face is a **concave polygon**. If we later decide to support arbitrary complex n-gons, we must replace the fan method with a robust polygon triangulation algorithm (e.g., Ear Clipping / Earcut).
-
 #### Canonical in-memory mesh
 - Store mesh geometry as:
   - `vertices`: packed xyz float array (length = `3 * vertexCount`)
