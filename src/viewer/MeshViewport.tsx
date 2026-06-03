@@ -6,7 +6,13 @@ import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { MeshModel } from "../logic/mesh/types";
+import { centerAndNormalizeGeometry } from "./centerAndNormalizeGeometry";
 import { meshModelToGeometry } from "./meshModelToGeometry";
+import {
+  SCENE_AXES_LENGTH,
+  SCENE_GRID_DIVISIONS,
+  SCENE_GRID_SIZE,
+} from "./sceneScale";
 
 function FitCameraToMesh({
   geometry,
@@ -62,26 +68,20 @@ export function MeshViewport({
   wireframe,
   showGrid,
   showAxes,
+  modelScale,
 }: {
   meshRef: React.RefObject<MeshModel | null>;
   meshVersion: number;
   wireframe: boolean;
   showGrid: boolean;
   showAxes: boolean;
+  modelScale: number;
 }) {
   const geometry = useMemo(() => {
     const mesh = meshRef.current;
     if (!mesh) return null;
     const g = meshModelToGeometry(mesh);
-
-    // Center the geometry at origin for stable orbiting.
-    const box = g.boundingBox;
-    if (box) {
-      const center = box.getCenter(new THREE.Vector3());
-      g.translate(-center.x, -center.y, -center.z);
-    }
-
-    g.computeBoundingSphere();
+    centerAndNormalizeGeometry(g);
     return g;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meshVersion]);
@@ -92,12 +92,21 @@ export function MeshViewport({
       <ambientLight intensity={0.55} />
       <directionalLight position={[3, 5, 4]} intensity={1.05} />
 
-      {showGrid ? <gridHelper args={[10, 20, "#2a2f3a", "#151925"]} /> : null}
-      {showAxes ? <axesHelper args={[2]} /> : null}
+      {showGrid ? (
+        <gridHelper
+          args={[
+            SCENE_GRID_SIZE,
+            SCENE_GRID_DIVISIONS,
+            "#2a2f3a",
+            "#151925",
+          ]}
+        />
+      ) : null}
+      {showAxes ? <axesHelper args={[SCENE_AXES_LENGTH]} /> : null}
 
       {geometry ? (
         <>
-          <mesh geometry={geometry}>
+          <mesh geometry={geometry} scale={modelScale}>
             <meshStandardMaterial
               color="#cbd5e1"
               metalness={0.05}

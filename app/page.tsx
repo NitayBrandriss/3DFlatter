@@ -20,6 +20,7 @@ export default function HomePage() {
   const [wireframe, setWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
+  const [modelScale, setModelScale] = useState(1);
 
   const stats = useMemo(() => {
     const m = meshRef.current;
@@ -43,6 +44,7 @@ export default function HomePage() {
         const text = await file.text();
         const mesh = parseObj(text);
         meshRef.current = mesh;
+        setModelScale(1);
         setMeshVersion((v) => v + 1);
       } catch (e) {
         meshRef.current = null;
@@ -123,6 +125,26 @@ export default function HomePage() {
                 onChange={(e) => setWireframe(e.currentTarget.checked)}
               />
             </label>
+
+            {stats ? (
+              <label className="col" style={{ marginTop: 4, gap: 6 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">Model scale</span>
+                  <span className="muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {modelScale.toFixed(2)}×
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={3}
+                  step={0.05}
+                  value={modelScale}
+                  onChange={(e) => setModelScale(Number(e.currentTarget.value))}
+                  style={{ width: "100%" }}
+                />
+              </label>
+            ) : null}
           </div>
 
           {error ? (
@@ -152,6 +174,7 @@ export default function HomePage() {
           wireframe={wireframe}
           showGrid={showGrid}
           showAxes={showAxes}
+          modelScale={modelScale}
         />
 
         {isLoading ? (
