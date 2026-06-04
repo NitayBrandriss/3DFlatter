@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { MeshModel } from "../src/logic/mesh/types";
+import type { MeshModel, Topology } from "../src/logic/mesh/types";
+import { buildTopology } from "../src/logic/mesh/buildTopology";
+import { summarizeTopology } from "../src/logic/mesh/topologyStats";
 import { parseObj, ObjParseError } from "../src/logic/io/obj/parseObj";
 import { MeshViewport } from "../src/viewer/MeshViewport";
 
@@ -11,6 +13,7 @@ function nextPaint(): Promise<void> {
 
 export default function HomePage() {
   const meshRef = useRef<MeshModel | null>(null);
+  const topologyRef = useRef<Topology | null>(null);
   const [meshVersion, setMeshVersion] = useState(0);
 
   const [fileName, setFileName] = useState<string | null>(null);
@@ -24,8 +27,15 @@ export default function HomePage() {
 
   const stats = useMemo(() => {
     const m = meshRef.current;
-    if (!m) return null;
-    return { vertexCount: m.vertexCount, faceCount: m.faceCount };
+    const t = topologyRef.current;
+    if (!m || !t) return null;
+    const edgeSummary = summarizeTopology(t);
+    return {
+      vertexCount: m.vertexCount,
+      faceCount: m.faceCount,
+      ...edgeSummary,
+      skippedDegenerateFaceCount: t.skippedDegenerateFaceCount,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meshVersion]);
 
@@ -44,10 +54,12 @@ export default function HomePage() {
         const text = await file.text();
         const mesh = parseObj(text);
         meshRef.current = mesh;
+        topologyRef.current = buildTopology(mesh);
         setModelScale(1);
         setMeshVersion((v) => v + 1);
       } catch (e) {
         meshRef.current = null;
+        topologyRef.current = null;
         setMeshVersion((v) => v + 1);
         if (e instanceof ObjParseError) setError(e.message);
         else if (e instanceof Error) setError(e.message);
@@ -85,11 +97,22 @@ export default function HomePage() {
                     <span style={{ opacity: 0.8 }}>Loaded:</span> {fileName}
                   </div>
                   {stats ? (
-                    <div>
-                      <span style={{ opacity: 0.8 }}>Stats:</span>{" "}
-                      {stats.vertexCount.toLocaleString()} verts,{" "}
-                      {stats.faceCount.toLocaleString()} tris
-                    </div>
+                    <>
+                      <div>
+                        <span style={{ opacity: 0.8 }}>Stats:</span>{" "}
+                        {stats.vertexCount.toLocaleString()} verts,{" "}
+                        {stats.faceCount.toLocaleString()} tris
+                      </div>
+                      <div>
+                        <span style={{ opacity: 0.8 }}>Edges:</span>{" "}
+                        {stats.manifoldEdgesCount.toLocaleString()} manifold,{" "}
+                        {stats.boundaryEdgesCount.toLocaleString()} boundary,{" "}
+                        {stats.nonManifoldEdgesCount.toLocaleString()} non-manifold
+                        {stats.skippedDegenerateFaceCount > 0
+                          ? ` (${stats.skippedDegenerateFaceCount} degenerate faces skipped)`
+                          : null}
+                      </div>
+                    </>
                   ) : null}
                 </>
               ) : (

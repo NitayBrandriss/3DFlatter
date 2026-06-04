@@ -19,6 +19,12 @@ export type VertexIndex = number;
  */
 export type EdgeKey = `${number},${number}`;
 
+/** Local edge slot on a triangle: 0=(v0,v1), 1=(v1,v2), 2=(v2,v0). */
+export type EdgeSlot = 0 | 1 | 2;
+
+/** Sentinel in neighborFaceAcrossEdge: no neighbor (boundary, non-manifold, or seam cut). */
+export const NO_NEIGHBOR = -1;
+
 /**
  * A triangulated face represented by three vertex indices.
  * This is the "logical" view of a face; the canonical storage is packed `MeshModel.faces`.
@@ -53,37 +59,37 @@ export interface MeshModel {
   faceCount: number;
 }
 
-/**
- * Edge -> list of incident faces.
- *
- * Interpretation:
- * - 1 face: boundary edge
- * - 2 faces: manifold interior edge
- * - >2 faces: non-manifold (unsupported/ambiguous for unfolding PoC)
- */
-export type EdgeToFacesMap = Map<EdgeKey, FaceIndex[]>;
+/** One face incident on an undirected edge, with its local slot index. */
+export type EdgeIncident = {
+  faceId: FaceIndex;
+  slot: EdgeSlot;
+};
 
 /**
- * For each face, store the neighbor face across each of its 3 directed triangle edges:
- *   edge0 = (v0,v1)
- *   edge1 = (v1,v2)
- *   edge2 = (v2,v0)
+ * Edge -> list of incident faces (with local slot).
  *
- * `null` means boundary or ambiguous (and later, will also represent "cut" seams).
+ * Interpretation by incidents.length:
+ * - 1: boundary edge
+ * - 2: manifold interior edge
+ * - >2: non-manifold (unsupported/ambiguous for unfolding PoC)
  */
-export type FaceNeighborTriplet = readonly [
-  FaceIndex | null,
-  FaceIndex | null,
-  FaceIndex | null,
-];
+export type EdgeToFacesMap = Map<EdgeKey, EdgeIncident[]>;
 
-/** Indexed by faceId. */
-export type NeighborFaceAcrossEdge = FaceNeighborTriplet[];
+/**
+ * Flat neighbor buffer: length = 3 * faceCount.
+ * Index via neighborIndex(faceId, slot). Value is faceId or NO_NEIGHBOR (-1).
+ *
+ * Edge order per face (v0,v1,v2 from packed faces):
+ *   slot 0 = (v0,v1), slot 1 = (v1,v2), slot 2 = (v2,v0)
+ */
+export type NeighborFaceAcrossEdge = Int32Array;
 
 /** Derived topology (adjacency) from `MeshModel.faces`. */
 export interface Topology {
   edgeToFaces: EdgeToFacesMap;
   neighborFaceAcrossEdge: NeighborFaceAcrossEdge;
+  /** Faces skipped in Pass 1 due to degeneracy (for UI/debug). */
+  skippedDegenerateFaceCount: number;
 }
 
 /**
@@ -94,6 +100,17 @@ export interface SeamRegistry {
   seams: Set<EdgeKey>;
 }
 
-/** Utility: build a stable undirected edge key from two vertex indices. */
-export type MakeEdgeKey = (i: VertexIndex, j: VertexIndex) => EdgeKey;
+/** Index into neighborFaceAcrossEdge for face `faceId` at local edge `slot`. */
+export function neighborIndex(faceId: FaceIndex, slot: EdgeSlot): number {
+  return 3 * faceId + slot;
+}
 
+/** Read neighbor face across edge, or null if none. */
+export function getNeighborAcrossEdge(
+  topo: Topology,
+  faceId: FaceIndex,
+  slot: EdgeSlot,
+): FaceIndex | null {
+  const n = topo.neighborFaceAcrossEdge[neighborIndex(faceId, slot)];
+  return n === NO_NEIGHBOR ? null : n;
+}
