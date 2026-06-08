@@ -5,25 +5,21 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { MeshModel } from "../logic/mesh/types";
-import { centerAndNormalizeGeometry } from "./centerAndNormalizeGeometry";
-import { meshModelToGeometry } from "./meshModelToGeometry";
+import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
+import { buildDisplayMeshAssets } from "./meshModelToGeometry";
+import { PickableMesh } from "./PickableMesh";
+import { SeamOverlay } from "./SeamOverlay";
 import {
   SCENE_AXES_LENGTH,
   SCENE_GRID_DIVISIONS,
   SCENE_GRID_SIZE,
 } from "./sceneScale";
 
-function FitCameraToMesh({
-  geometry,
-  version,
-}: {
-  geometry: THREE.BufferGeometry;
-  version: number;
-}) {
+function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
   const { camera } = useThree();
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
+  // Refit only when geometry identity changes (new file load), not on seam edits.
   useEffect(() => {
     geometry.computeBoundingSphere();
     const sphere = geometry.boundingSphere;
@@ -42,12 +38,12 @@ function FitCameraToMesh({
     camera.far = distance * 100;
     camera.updateProjectionMatrix();
 
-    const controls = controlsRef.current as any;
+    const controls = controlsRef.current as OrbitControlsImpl | null;
     if (controls) {
       controls.target.copy(center);
       controls.update();
     }
-  }, [camera, geometry, version]);
+  }, [camera, geometry]);
 
   return (
     <OrbitControls
@@ -63,31 +59,43 @@ function FitCameraToMesh({
 }
 
 export function MeshViewport({
-  meshRef,
-  meshVersion,
+  mesh,
+  seams,
+  meshLoadVersion,
   wireframe,
   showGrid,
   showAxes,
   modelScale,
+  seamMode,
+  onEdgePick,
 }: {
-  meshRef: React.RefObject<MeshModel | null>;
-  meshVersion: number;
+  mesh: MeshModel | null;
+  seams: SeamRegistry | null;
+  /** Passed so React re-mounts the canvas scene on a new load if mesh ref is reused. */
+  meshLoadVersion: number;
   wireframe: boolean;
   showGrid: boolean;
   showAxes: boolean;
   modelScale: number;
+  seamMode: boolean;
+  onEdgePick: (edgeKey: EdgeKey) => void;
 }) {
-  const geometry = useMemo(() => {
-    const mesh = meshRef.current;
+  // Rebuild display assets only when canonical mesh identity changes (file load).
+  const displayAssets = useMemo(() => {
     if (!mesh) return null;
-    const g = meshModelToGeometry(mesh);
-    centerAndNormalizeGeometry(g);
-    return g;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meshVersion]);
+    return buildDisplayMeshAssets(mesh);
+  }, [mesh]);
+
+  // Release GPU buffers when the mesh is replaced or the viewport unmounts.
+  useEffect(() => {
+    const geometry = displayAssets?.geometry;
+    return () => geometry?.dispose();
+  }, [displayAssets?.geometry]);
+
+  const sceneKey = mesh ? `mesh-${meshLoadVersion}` : "empty";
 
   return (
-    <Canvas camera={{ fov: 50, position: [2, 2, 2] }}>
+    <Canvas key={sceneKey} camera={{ fov: 50, position: [2, 2, 2] }}>
       <color attach="background" args={["#070912"]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[3, 5, 4]} intensity={1.05} />
@@ -104,17 +112,22 @@ export function MeshViewport({
       ) : null}
       {showAxes ? <axesHelper args={[SCENE_AXES_LENGTH]} /> : null}
 
-      {geometry ? (
+      {displayAssets && mesh && seams ? (
         <>
-          <mesh geometry={geometry} scale={modelScale}>
-            <meshStandardMaterial
-              color="#cbd5e1"
-              metalness={0.05}
-              roughness={0.9}
-              wireframe={wireframe}
-            />
-          </mesh>
-          <FitCameraToMesh geometry={geometry} version={meshVersion} />
+          <PickableMesh
+            geometry={displayAssets.geometry}
+            displayMesh={displayAssets.displayMesh}
+            wireframe={wireframe}
+            modelScale={modelScale}
+            seamMode={seamMode}
+            onEdgePick={onEdgePick}
+          />
+          <SeamOverlay
+            displayVertices={displayAssets.displayMesh.vertices}
+            seams={seams}
+            modelScale={modelScale}
+          />
+          <FitCameraToMesh geometry={displayAssets.geometry} />
         </>
       ) : (
         <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
@@ -122,4 +135,3 @@ export function MeshViewport({
     </Canvas>
   );
 }
-

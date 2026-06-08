@@ -91,3 +91,50 @@ body {
   color: rgba(238, 241, 247, 0.7);
 }
 
+.toast-stack {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100% - 32px));
+  z-index: 20;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 24, 34, 0.92);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+
+.toast-warning {
+  border-color: rgba(255, 170, 70, 0.45);
+  background: rgba(48, 30, 16, 0.95);
+}
+
+.toast-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.toast-dismiss:hover {
+  opacity: 1;
+}
+

@@ -1,82 +1,74 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { MeshModel, Topology } from "../src/logic/mesh/types";
-import { buildTopology } from "../src/logic/mesh/buildTopology";
-import { summarizeTopology } from "../src/logic/mesh/topologyStats";
-import { parseObj, ObjParseError } from "../src/logic/io/obj/parseObj";
+import { useCallback, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import {
+  computeSessionStats,
+  useMeshSessionStore,
+} from "../src/state/meshSessionStore";
 import { MeshViewport } from "../src/viewer/MeshViewport";
-
-function nextPaint(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
+import { ToastStack } from "../src/ui/ToastStack";
 
 export default function HomePage() {
-  const meshRef = useRef<MeshModel | null>(null);
-  const topologyRef = useRef<Topology | null>(null);
-  const [meshVersion, setMeshVersion] = useState(0);
+  const {
+    session,
+    meshLoadVersion,
+    isLoading,
+    error,
+    seamMode,
+    toasts,
+    loadObjFile,
+    toggleSeamAt,
+    clearAllSeams,
+    setSeamMode,
+    dismissToast,
+  } = useMeshSessionStore(
+    useShallow((s) => ({
+      session: s.session,
+      meshLoadVersion: s.meshLoadVersion,
+      isLoading: s.isLoading,
+      error: s.error,
+      seamMode: s.seamMode,
+      toasts: s.toasts,
+      loadObjFile: s.loadObjFile,
+      toggleSeamAt: s.toggleSeamAt,
+      clearAllSeams: s.clearAllSeams,
+      setSeamMode: s.setSeamMode,
+      dismissToast: s.dismissToast,
+    })),
+  );
 
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Derived in useMemo — a Zustand selector that returns a new object each call
+  // triggers React 19's "getSnapshot must be cached" infinite-loop guard.
+  const stats = useMemo(() => computeSessionStats(session), [session]);
 
   const [wireframe, setWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
 
-  const stats = useMemo(() => {
-    const m = meshRef.current;
-    const t = topologyRef.current;
-    if (!m || !t) return null;
-    const edgeSummary = summarizeTopology(t);
-    return {
-      vertexCount: m.vertexCount,
-      faceCount: m.faceCount,
-      ...edgeSummary,
-      skippedDegenerateFaceCount: t.skippedDegenerateFaceCount,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meshVersion]);
-
   const onPickFile = useCallback(
     async (file: File | null) => {
-      setError(null);
       if (!file) return;
-      setFileName(file.name);
-
-      // Ensure the UI visibly enters a Loading state before parsing blocks the thread.
-      setIsLoading(true);
-      await nextPaint();
-      await nextPaint();
-
-      try {
-        const text = await file.text();
-        const mesh = parseObj(text);
-        meshRef.current = mesh;
-        topologyRef.current = buildTopology(mesh);
-        setModelScale(1);
-        setMeshVersion((v) => v + 1);
-      } catch (e) {
-        meshRef.current = null;
-        topologyRef.current = null;
-        setMeshVersion((v) => v + 1);
-        if (e instanceof ObjParseError) setError(e.message);
-        else if (e instanceof Error) setError(e.message);
-        else setError(String(e));
-      } finally {
-        setIsLoading(false);
-      }
+      setModelScale(1);
+      await loadObjFile(file);
     },
-    [setMeshVersion],
+    [loadObjFile],
+  );
+
+  const onEdgePick = useCallback(
+    (edgeKey: Parameters<typeof toggleSeamAt>[0]) => {
+      toggleSeamAt(edgeKey);
+    },
+    [toggleSeamAt],
   );
 
   return (
     <div className="page">
       <aside className="sidebar">
-        <h2 style={{ marginTop: 0, marginBottom: 8 }}>OBJ Viewer</h2>
+        <h2 style={{ marginTop: 0, marginBottom: 8 }}>3D Flatter</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Upload an <code>.obj</code> (v/f only in v1).
+          Upload an <code>.obj</code> and click edges to mark seams.
         </p>
 
         <div className="col">
@@ -91,10 +83,10 @@ export default function HomePage() {
               />
             </div>
             <div className="muted" style={{ marginTop: 10 }}>
-              {fileName ? (
+              {session ? (
                 <>
                   <div>
-                    <span style={{ opacity: 0.8 }}>Loaded:</span> {fileName}
+                    <span style={{ opacity: 0.8 }}>Loaded:</span> {session.fileName}
                   </div>
                   {stats ? (
                     <>
@@ -119,6 +111,54 @@ export default function HomePage() {
                 "No file loaded."
               )}
             </div>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Seams</div>
+
+            <label className="toggle">
+              <span className="muted">Seam mode</span>
+              <input
+                type="checkbox"
+                checked={seamMode}
+                disabled={!session}
+                onChange={(e) => setSeamMode(e.currentTarget.checked)}
+              />
+            </label>
+
+            <div className="muted" style={{ marginTop: 6 }}>
+              {stats ? (
+                <>
+                  <div>
+                    <span style={{ opacity: 0.8 }}>Selected:</span>{" "}
+                    {stats.seamCount.toLocaleString()} seam
+                    {stats.seamCount === 1 ? "" : "s"}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.8 }}>Islands:</span>{" "}
+                    {stats.islandCount.toLocaleString()}
+                    {stats.islandFaceCounts.length > 1 ? (
+                      <span style={{ opacity: 0.75 }}>
+                        {" "}
+                        ({stats.islandFaceCounts.join(" / ")} faces)
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                "Load a mesh to select seams."
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              disabled={!session || !stats || stats.seamCount === 0}
+              onClick={clearAllSeams}
+            >
+              Clear seams
+            </button>
           </div>
 
           <div className="card">
@@ -192,13 +232,18 @@ export default function HomePage() {
 
       <main className="viewport">
         <MeshViewport
-          meshRef={meshRef}
-          meshVersion={meshVersion}
+          mesh={session?.mesh ?? null}
+          seams={session?.seams ?? null}
+          meshLoadVersion={meshLoadVersion}
           wireframe={wireframe}
           showGrid={showGrid}
           showAxes={showAxes}
           modelScale={modelScale}
+          seamMode={seamMode}
+          onEdgePick={onEdgePick}
         />
+
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
         {isLoading ? (
           <div className="overlay">
@@ -212,4 +257,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -1,4 +1,5 @@
 import type { MeshModel } from "../../mesh/types";
+import { weldVertices } from "../../mesh/weldVertices";
 
 export class ObjParseError extends Error {
   readonly line: number;
@@ -39,6 +40,7 @@ function toZeroBasedIndex(objIndex: number, vertexCount: number, line: number) {
  * - Supports only `v` and `f` lines
  * - Triangulates faces on load (fan triangulation)
  * - Normalizes to 0-based vertex indices
+ * - Welds coincident vertex positions (common in per-face OBJ exports)
  */
 export function parseObj(text: string): MeshModel {
   const vertices: number[] = [];
@@ -111,11 +113,6 @@ export function parseObj(text: string): MeshModel {
     throw new ObjParseError(`No faces found`, 1);
   }
 
-  return {
-    vertices: new Float32Array(vertices),
-    faces: new Uint32Array(faces),
-    vertexCount,
-    faceCount,
-  };
+  return weldVertices(new Float32Array(vertices), new Uint32Array(faces));
 }
 
