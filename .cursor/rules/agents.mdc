@@ -1,0 +1,11 @@
+---
+description: Project agent playbook — read AGENTS.md and ADRs first
+alwaysApply: true
+---
+
+# 3DFlatter agent pointer
+
+- Read [AGENTS.md](AGENTS.md) at session start for commands, boundaries, and architecture.
+- Follow [docs/decisions/0001-mesh-model-and-topology.md](docs/decisions/0001-mesh-model-and-topology.md) for mesh, seam, and topology contracts.
+- Prefer minimal diffs; extend existing code in `src/logic/`; ask before architectural changes or new dependencies.
+- Run `npm test` before marking work complete.
