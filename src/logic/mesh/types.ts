@@ -114,3 +114,20 @@ export function getNeighborAcrossEdge(
   const n = topo.neighborFaceAcrossEdge[neighborIndex(faceId, slot)];
   return n === NO_NEIGHBOR ? null : n;
 }
+
+/**
+ * Per-face 2D layout in the XY plane. Length = islandFaceCount * 6.
+ * For face i in `UnfoldIslandResult.faces` order:
+ *   [x0, y0, x1, y1, x2, y2] matching mesh.faces vertex order (v0, v1, v2).
+ * One 3D vertex index may appear at different 2D positions on different faces.
+ */
+export type FlattenedTriangleSoup = Float32Array;
+
+/** Result of unfolding one island into the XY plane (zero thickness). */
+export interface UnfoldIslandResult {
+  /** Face indices unfolded, in stable order (input island order). */
+  faces: FaceIndex[];
+  /** Packed 2D triangle soup aligned to `faces`. */
+  positions2d: FlattenedTriangleSoup;
+  error?: string;
+}
