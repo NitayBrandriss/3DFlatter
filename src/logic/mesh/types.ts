@@ -119,7 +119,9 @@ export function getNeighborAcrossEdge(
  * Per-face 2D layout in the XY plane. Length = islandFaceCount * 6.
  * For face i in `UnfoldIslandResult.faces` order:
  *   [x0, y0, x1, y1, x2, y2] matching mesh.faces vertex order (v0, v1, v2).
- * One 3D vertex index may appear at different 2D positions on different faces.
+ * 2D winding follows each face's `mesh.faces` order (CCW or CW as stored).
+ * One 3D vertex index may appear at different 2D positions on different faces
+ * (e.g. across a slit); BFS parent→child hinges copy matching coords on the tree edge only.
  */
 export type FlattenedTriangleSoup = Float32Array;
 
@@ -127,7 +129,11 @@ export type FlattenedTriangleSoup = Float32Array;
 export interface UnfoldIslandResult {
   /** Face indices unfolded, in stable order (input island order). */
   faces: FaceIndex[];
-  /** Packed 2D triangle soup aligned to `faces`. */
+  /**
+   * Packed 2D triangle soup aligned to `faces`.
+   * If `error` is set, discard this buffer — it may be partially filled.
+   */
   positions2d: FlattenedTriangleSoup;
+  /** When set, `positions2d` is invalid and must not be used. */
   error?: string;
 }

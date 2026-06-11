@@ -6,7 +6,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **PoC constraints:** zero material thickness, OBJ v1 only (`v` + `f`), flattened output in the **XY plane**.
 
-Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) (start with [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md)).
+Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1). Next: [flattening-algorithm-step-2.md](docs/plans/flattening-algorithm-step-2.md).
 
 ---
 
@@ -39,7 +39,7 @@ Pipeline: **load → topology → seams → islands → unfold → export**
 
 **Core contracts** live in [src/logic/mesh/types.ts](src/logic/mesh/types.ts): `MeshModel`, `Topology`, `EdgeKey`, `SeamRegistry`.
 
-Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`, `partitionIslands`, `canSelectAsSeam`, `parseObj`, `toggleSeam`, etc. Grep `src/logic/` before adding new utilities.
+Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`, `partitionIslands`, `unfoldIsland`, `canSelectAsSeam`, `parseObj`, `toggleSeam`, etc. Grep `src/logic/` before adding new utilities.
 
 ---
 
@@ -73,6 +73,7 @@ Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`
 ### Always
 
 - Follow [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md): triangulated mesh, 0-based indices, `EdgeKey` seam identity, XY flatten plane.
+- Follow [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md): triangle-soup 2D output, parent-soup-copy BFS — **never** reintroduce `Map<VertexIndex, Vec2>` for unfold placement.
 - Keep `src/logic/` free of React and Three.js imports.
 - Colocate Vitest tests for non-trivial logic changes.
 - Preserve existing public types in `types.ts` unless explicitly changing architecture.
@@ -109,7 +110,7 @@ Stop and get user approval before:
 ## Testing
 
 - Tests run in Node ([vitest.config.ts](vitest.config.ts)); keep logic tests Three.js-free.
-- Add or update tests when changing: OBJ parsing, topology, island partition, seam eligibility, pick resolution.
+- Add or update tests when changing: OBJ parsing, topology, island partition, seam eligibility, pick resolution, unfold (`unfoldIsland`, `unfoldMesh`, layout).
 - Prefer small fixtures in [src/logic/io/obj/testMeshes.ts](src/logic/io/obj/testMeshes.ts) over large OBJ files.
 
 ---

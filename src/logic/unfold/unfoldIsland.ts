@@ -147,8 +147,11 @@ function pickHingeCandidateForFace(
  * Unfold one connected island into the XY plane via BFS hinge placement.
  *
  * Seams are not read here — the caller must pass an island from `partitionIslands`.
- * Shared-edge 2D coords are copied from the parent face soup (triangle soup output),
- * not from a global per-vertex map.
+ * Shared-edge 2D coords are copied from the parent face soup slice, not a global map.
+ * Output winding matches each face's `mesh.faces` vertex order (CCW or CW as stored).
+ *
+ * On failure, returns `error` and a possibly partial `positions2d` — callers must
+ * discard the soup when `error` is set.
  */
 export function unfoldIsland(
   mesh: MeshModel,

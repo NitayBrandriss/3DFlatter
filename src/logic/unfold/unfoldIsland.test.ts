@@ -3,7 +3,15 @@ import { parseObj } from "../io/obj/parseObj";
 import { buildTopology } from "../mesh/buildTopology";
 import { makeEdgeKey } from "../mesh/edgeKey";
 import { partitionIslands } from "../mesh/partitionIslands";
-import type { EdgeSlot, FaceIndex, MeshModel, UnfoldIslandResult } from "../mesh/types";
+import type {
+  EdgeSlot,
+  FaceIndex,
+  MeshModel,
+  Topology,
+  UnfoldIslandResult,
+} from "../mesh/types";
+import { getNeighborAcrossEdge } from "../mesh/types";
+import { unweldedIcosahedronObj } from "../io/obj/testMeshes";
 import { createSeamRegistry, toggleSeam } from "../seams/seamRegistry";
 import { EPS, distance3d, signedArea2d } from "./placeTriangle2d";
 import { unfoldIsland } from "./unfoldIsland";
@@ -158,6 +166,57 @@ function assertSharedEdgeMatches(
   expect(matchDirect || matchSwap).toBe(true);
 }
 
+function slotTowardNeighbor(
+  topology: Topology,
+  faceId: FaceIndex,
+  targetNeighbor: FaceIndex,
+): EdgeSlot {
+  for (const slot of [0, 1, 2] as EdgeSlot[]) {
+    if (getNeighborAcrossEdge(topology, faceId, slot) === targetNeighbor) {
+      return slot;
+    }
+  }
+  throw new Error(`No edge from face ${faceId} to neighbor ${targetNeighbor}`);
+}
+
+/**
+ * Assert shared-edge soup coords match along the unfold BFS tree (parent → child).
+ * Only tree edges are guaranteed to align; sibling faces may duplicate the same
+ * 3D vertex at different 2D positions until a future global layout pass.
+ */
+function assertUnfoldTreeHingesMatch(
+  mesh: MeshModel,
+  topo: Topology,
+  islandFaces: FaceIndex[],
+  result: UnfoldIslandResult,
+): void {
+  const islandSet = new Set(islandFaces);
+  const rootFaceId = islandFaces[0]!;
+  const unfolded = new Set<FaceIndex>([rootFaceId]);
+  const queue: FaceIndex[] = [rootFaceId];
+  let treeEdgeCount = 0;
+
+  while (queue.length > 0) {
+    const faceId = queue.shift()!;
+
+    for (const slot of [0, 1, 2] as EdgeSlot[]) {
+      const neighbor = getNeighborAcrossEdge(topo, faceId, slot);
+      if (neighbor === null || !islandSet.has(neighbor) || unfolded.has(neighbor)) {
+        continue;
+      }
+
+      const slotB = slotTowardNeighbor(topo, neighbor, faceId);
+      assertSharedEdgeMatches(mesh, result, faceId, slot, neighbor, slotB);
+      treeEdgeCount++;
+
+      unfolded.add(neighbor);
+      queue.push(neighbor);
+    }
+  }
+
+  expect(treeEdgeCount).toBe(islandFaces.length - 1);
+}
+
 /** Seam the four boundary edges of the top face (z = +1) to detach it from the shell. */
 function seamTopFaceFromCube(mesh: MeshModel, topo: ReturnType<typeof buildTopology>) {
   let seams = createSeamRegistry();
@@ -254,6 +313,29 @@ describe("unfoldIsland", () => {
     for (let i = 0; i < result.faces.length; i++) {
       assertTriangleEdgeLengthsPreserved(mesh, result.faces[i]!, getFace2d(result, i));
     }
+
+    assertUnfoldTreeHingesMatch(mesh, topo, openBoxIsland!, result);
+  });
+
+  it("unfolds a welded icosahedron as one island without errors", () => {
+    const mesh = parseObj(unweldedIcosahedronObj());
+    const topo = buildTopology(mesh);
+    const islands = partitionIslands(mesh, topo, createSeamRegistry());
+
+    expect(islands).toHaveLength(1);
+    expect(islands[0]).toHaveLength(20);
+
+    const result = unfoldIsland(mesh, topo, islands[0]!);
+    expect(result.error).toBeUndefined();
+    expect(result.faces).toHaveLength(20);
+    expect(result.positions2d).toHaveLength(120);
+    expect(result.positions2d.every((v) => Number.isFinite(v))).toBe(true);
+
+    for (let i = 0; i < result.faces.length; i++) {
+      assertTriangleEdgeLengthsPreserved(mesh, result.faces[i]!, getFace2d(result, i));
+    }
+
+    assertUnfoldTreeHingesMatch(mesh, topo, islands[0]!, result);
   });
 
   it("completes on a closed cube with no seams (overlap not checked)", () => {

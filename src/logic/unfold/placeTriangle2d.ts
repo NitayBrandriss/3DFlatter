@@ -45,11 +45,6 @@ export function signedArea2d(
   return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 }
 
-/** Clamp a value into [-1, 1] before passing to acos. */
-export function clampUnit(x: number): number {
-  return Math.max(-1, Math.min(1, x));
-}
-
 /**
  * Intersect two circles in 2D: center A radius rA, center B radius rB.
  * Returns both candidate points (symmetric across line AB) or an error.
@@ -122,11 +117,11 @@ export function pickCCWCandidate(
 }
 
 /**
- * Place a root triangle in the XY plane with CCW winding.
+ * Place a root triangle in the XY plane.
  *
  * Hinge math: anchor v0 at origin, place v1 on +X at the 3D edge length |v0v1|,
  * then locate v2 by circle intersection (radii |v0v2| and |v1v2| from 3D).
- * The CCW candidate is chosen so the sheet lies in the +Y half-plane.
+ * Branch selection matches `mesh.faces` winding (CCW or CW), not a forced global CCW.
  */
 export function placeRootTriangleCCW(
   mesh: MeshModel,
@@ -160,25 +155,4 @@ export function placeRootTriangleCCW(
   if (!picked.ok) return { ok: false, reason: picked.reason };
 
   return { ok: true, v0: origin, v1: onX, v2: picked.point };
-}
-
-/**
- * Hinge a neighbor's third vertex onto the XY plane across a shared edge a→b.
- *
- * The edge endpoints are already in 2D. Radii lenA and lenB are the 3D distances
- * from a and b to the third vertex. Circle intersection yields two candidates;
- * the CCW branch (positive signed area for a→b→c) is the exterior unfold.
- */
-export function placeThirdVertexCCW(
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-  lenA: number,
-  lenB: number,
-): PlacementResult {
-  const hit = circleIntersection2d(ax, ay, bx, by, lenA, lenB);
-  if (!hit.ok) return { ok: false, reason: hit.reason };
-
-  return pickCCWCandidate(ax, ay, bx, by, hit.p1, hit.p2);
 }
