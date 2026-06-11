@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import type { UnfoldMeshResult } from "../src/logic/mesh/types";
+import { unfoldMesh } from "../src/logic/unfold/unfoldMesh";
 import {
   computeSessionStats,
   useMeshSessionStore,
 } from "../src/state/meshSessionStore";
+import { UnfoldViewer2D } from "../src/ui/UnfoldViewer2D";
 import { MeshViewport } from "../src/viewer/MeshViewport";
 import { ToastStack } from "../src/ui/ToastStack";
 
@@ -22,6 +25,7 @@ export default function HomePage() {
     clearAllSeams,
     setSeamMode,
     dismissToast,
+    notifyToast,
   } = useMeshSessionStore(
     useShallow((s) => ({
       session: s.session,
@@ -35,6 +39,7 @@ export default function HomePage() {
       clearAllSeams: s.clearAllSeams,
       setSeamMode: s.setSeamMode,
       dismissToast: s.dismissToast,
+      notifyToast: s.notifyToast,
     })),
   );
 
@@ -46,6 +51,12 @@ export default function HomePage() {
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
+  const [flattenResult, setFlattenResult] = useState<UnfoldMeshResult | null>(null);
+  const [flattening, setFlattening] = useState(false);
+
+  useEffect(() => {
+    setFlattenResult(null);
+  }, [session]);
 
   const onPickFile = useCallback(
     async (file: File | null) => {
@@ -62,6 +73,22 @@ export default function HomePage() {
     },
     [toggleSeamAt],
   );
+
+  const onFlatten = useCallback(() => {
+    if (!session) return;
+    setFlattening(true);
+    try {
+      const result = unfoldMesh(session.mesh, session.topology, session.seams);
+      if (result.error) {
+        notifyToast(result.error, "warning");
+        setFlattenResult(null);
+        return;
+      }
+      setFlattenResult(result);
+    } finally {
+      setFlattening(false);
+    }
+  }, [session, notifyToast]);
 
   return (
     <div className="page">
@@ -162,6 +189,22 @@ export default function HomePage() {
           </div>
 
           <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Flatten</div>
+            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
+              Unfold all islands into a 2D blueprint pattern.
+            </p>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: "100%" }}
+              disabled={!session || flattening}
+              onClick={onFlatten}
+            >
+              {flattening ? "Flattening…" : "Flatten"}
+            </button>
+          </div>
+
+          <div className="card">
             <div style={{ fontWeight: 600, marginBottom: 10 }}>View</div>
 
             <label className="toggle">
@@ -230,29 +273,33 @@ export default function HomePage() {
         </div>
       </aside>
 
-      <main className="viewport">
-        <MeshViewport
-          mesh={session?.mesh ?? null}
-          seams={session?.seams ?? null}
-          meshLoadVersion={meshLoadVersion}
-          wireframe={wireframe}
-          showGrid={showGrid}
-          showAxes={showAxes}
-          modelScale={modelScale}
-          seamMode={seamMode}
-          onEdgePick={onEdgePick}
-        />
+      <main className="viewport viewport-split">
+        <div className="viewport-3d">
+          <MeshViewport
+            mesh={session?.mesh ?? null}
+            seams={session?.seams ?? null}
+            meshLoadVersion={meshLoadVersion}
+            wireframe={wireframe}
+            showGrid={showGrid}
+            showAxes={showAxes}
+            modelScale={modelScale}
+            seamMode={seamMode}
+            onEdgePick={onEdgePick}
+          />
 
-        <ToastStack toasts={toasts} onDismiss={dismissToast} />
+          <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-        {isLoading ? (
-          <div className="overlay">
-            <div className="card">
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
-              <div className="muted">Parsing OBJ (UI thread)</div>
+          {isLoading ? (
+            <div className="overlay">
+              <div className="card">
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
+                <div className="muted">Parsing OBJ (UI thread)</div>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+
+        <UnfoldViewer2D result={flattenResult} />
       </main>
     </div>
   );

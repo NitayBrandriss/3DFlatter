@@ -125,6 +125,31 @@ export function getNeighborAcrossEdge(
  */
 export type FlattenedTriangleSoup = Float32Array;
 
+/** Axis-aligned bounds in the unfold XY plane (math Y-up). */
+export type Bbox2d = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+/** One island after global layout offsets have been applied. */
+export type LayoutedIsland = {
+  islandIndex: number;
+  faces: FaceIndex[];
+  /** Soup in global XY (math Y-up); layout offset already baked in. */
+  positions2d: FlattenedTriangleSoup;
+  offset: { x: number; y: number };
+  bounds: Bbox2d;
+};
+
+/** Full mesh unfold: all islands laid out without mutual overlap. */
+export type UnfoldMeshResult = {
+  islands: LayoutedIsland[];
+  bounds: Bbox2d;
+  error?: string;
+};
+
 /** Result of unfolding one island into the XY plane (zero thickness). */
 export interface UnfoldIslandResult {
   /** Face indices unfolded, in stable order (input island order). */

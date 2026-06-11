@@ -100,7 +100,7 @@ export type UnfoldMeshResult = {
 
 - Input: array of `UnfoldIslandResult` (successful, no error)
 - Per island: compute axis-aligned bbox from soup
-- Row layout: place islands left-to-right with `ISLAND_GAP` (e.g. 0.5 units)
+- **Wrapped row** layout (not infinite horizontal strip): `maxRowWidth ≈ sqrt(sum of island bbox areas)`; greedy wrap with `ISLAND_GAP` (e.g. 0.5 units). Soup stays **math Y-up**; SVG flip only in viewer.
 - Output: copy soup with offset added to every `x,y` pair
 - Pure function, unit tested
 
@@ -129,13 +129,11 @@ Keep React out of `src/logic/`.
 ### 5. Viewer — `src/ui/UnfoldViewer2D.tsx`
 
 - Props: `UnfoldMeshResult | null`, optional `className`
-- `<svg viewBox={...}>` from combined bounds + padding
-- Blueprint aesthetic:
-  - Background `#0a1628` or similar (match app dark theme)
-  - Fill `rgba(200,220,240,0.15)`, stroke `#7dd3fc` or `#94a3b8`, `stroke-width` ~0.5–1
-  - One `<polygon>` per face per island (or `<g>` per island)
-- `preserveAspectRatio="xMidYMid meet"`
-- Empty state: "No flatten result"
+- **Y-axis:** unfold/layout soup is math Y-up; SVG is Y-down. Wrap islands in `<g transform={`translate(0, ${minY + maxY}) scale(1, -1)`}>` — **not** bare `scale(1,-1)` (clips/mirrors through origin).
+- **viewBox:** `${minX - pad} ${-maxY - pad} ${width} ${height}` so flipped content is centered and visible.
+- **Strokes:** `vector-effect="non-scaling-stroke"` + `strokeWidth={1}` on each `<polygon>` (crisp 1px at any zoom).
+- Blueprint aesthetic: dark background, light fill, `#7dd3fc` stroke; one `<polygon>` per face.
+- `preserveAspectRatio="xMidYMid meet"`; empty state: "Click Flatten to generate pattern"
 
 ### 6. Store + UI wiring
 
@@ -148,7 +146,7 @@ Keep React out of `src/logic/`.
   if (result.error) { toast; return; }
   setFlattenResult(result);
   ```
-- Clear `flattenResult` on new file load
+- `useEffect(() => setFlattenResult(null), [session])` — clears on file load **and** seam toggle/clear (stale 2D prevention)
 
 **Option B:** add `flattenPattern` to `meshSessionStore` — only if reuse across components needed.
 

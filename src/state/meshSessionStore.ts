@@ -40,6 +40,7 @@ type MeshSessionState = {
   clearAllSeams: () => void;
   setSeamMode: (enabled: boolean) => void;
   dismissToast: (id: number) => void;
+  notifyToast: (text: string, tone?: ToastMessage["tone"]) => void;
 };
 
 function pushToast(
@@ -133,6 +134,9 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
 
   dismissToast: (id: number) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
+  notifyToast: (text: string, tone: ToastMessage["tone"] = "info") =>
+    set((s) => pushToast(s, text, tone)),
 }));
 
 export type SessionStats = {
