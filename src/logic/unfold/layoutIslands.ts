@@ -20,6 +20,11 @@ export type LayoutIslandsOptions = {
  * Pack unfolded islands into global XY (math Y-up) with wrapped rows.
  * Islands do not overlap; each soup is translated so its local bbox min corner
  * sits at the pack cursor.
+ *
+ * Row wrap: when a row is full, the next island starts below the packed envelope
+ * (`packed.minY - gap - height`), not merely `cursorY -= previousRowHeight + gap`.
+ * The latter allowed a taller next island to intrude into the row above when each
+ * island wrapped alone (common with wide icosahedron strips).
  */
 export function layoutIslands(
   unfolded: UnfoldIslandResult[],
@@ -35,9 +40,9 @@ export function layoutIslands(
   const maxRowWidth = options.maxRowWidth ?? Math.max(widest, Math.sqrt(totalArea));
 
   const layouted: LayoutedIsland[] = [];
+  let packed: Bbox2d | null = null;
   let cursorX = 0;
   let cursorY = 0;
-  let rowHeight = 0;
 
   for (let i = 0; i < unfolded.length; i++) {
     const item = unfolded[i]!;
@@ -47,8 +52,9 @@ export function layoutIslands(
 
     if (cursorX > 0 && cursorX + width + gap > maxRowWidth) {
       cursorX = 0;
-      cursorY -= rowHeight + gap;
-      rowHeight = 0;
+      if (packed) {
+        cursorY = packed.minY - gap - height;
+      }
     }
 
     const dx = cursorX - local.minX;
@@ -64,8 +70,8 @@ export function layoutIslands(
       bounds,
     });
 
+    packed = packed ? mergeBounds(packed, bounds) : bounds;
     cursorX += width + gap;
-    rowHeight = Math.max(rowHeight, height);
   }
 
   return layouted;

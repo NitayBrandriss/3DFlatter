@@ -74,4 +74,22 @@ describe("layoutIslands", () => {
     expect(out[1]!.bounds.minX).toBeGreaterThan(out[0]!.bounds.maxX);
     expect(bboxWidth(out[0]!.bounds)).toBeCloseTo(2, 5);
   });
+
+  it("does not overlap when a wrapped island is taller than the row above", () => {
+    // Regression: old cursorY -= rowHeight + gap placed a tall island too high.
+    const input = [
+      islandFromBounds(0, 0, 8, 2),
+      islandFromBounds(0, 0, 8, 5),
+      islandFromBounds(0, 0, 8, 5),
+    ];
+    const out = layoutIslands(input, { maxRowWidth: 9 });
+
+    expect(out).toHaveLength(3);
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        expect(bboxesOverlap(out[i]!.bounds, out[j]!.bounds)).toBe(false);
+      }
+    }
+    expect(out[1]!.bounds.maxY).toBeLessThanOrEqual(out[0]!.bounds.minY - ISLAND_GAP + 1e-6);
+  });
 });

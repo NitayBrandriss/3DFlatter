@@ -101,6 +101,7 @@ export type UnfoldMeshResult = {
 - Input: array of `UnfoldIslandResult` (successful, no error)
 - Per island: compute axis-aligned bbox from soup
 - **Wrapped row** layout (not infinite horizontal strip): `maxRowWidth ≈ sqrt(sum of island bbox areas)`; greedy wrap with `ISLAND_GAP` (e.g. 0.5 units). Soup stays **math Y-up**; SVG flip only in viewer.
+- **Row wrap rule:** when a row is full, place the next island at `packed.minY - gap - height` (below the global packed envelope), not `cursorY -= previousRowHeight + gap`. The old rule let a taller wrapped island intrude into the row above when each island wrapped alone (e.g. wide icosahedron strips → 9/5/5/1 face counts stacked in the 2D viewer).
 - Output: copy soup with offset added to every `x,y` pair
 - Pure function, unit tested
 
@@ -205,6 +206,7 @@ sequenceDiagram
 |------|------------|
 | Large mesh slow unfold | Accept for PoC; show loading state on button |
 | Closed shell intra-island overlap | Document in UI hint; collision deferred |
+| Inter-island bbox overlap on row wrap | Fixed: new row uses `packed.minY - gap - height` (see layout section) |
 | SVG viewBox tiny/huge | Normalize from layout bounds + padding |
 | React 19 unstable selectors | Keep unfold result in `useState`, not selector returning new object |
 
