@@ -66,6 +66,6 @@ This PoC needs a mesh representation that supports:
 ### Future options / revisit
 - Add optional support for `vn` / `vt` for better viewport rendering and potential UV-based heuristics.
 - Vertex welding on OBJ load is implemented in `src/logic/mesh/weldVertices.ts` (called from `parseObj`); not yet a separate ADR.
-- Unfold Step 1 (hinge island + triangle soup) is documented in [ADR 0002](0002-unfold-step-1-hinge-island.md). Step 2 orchestration + 2D viewer: [flattening-algorithm-step-2.md](../plans/flattening-algorithm-step-2.md).
+- Unfold Step 1 (hinge island + triangle soup) is documented in [ADR 0002](0002-unfold-step-1-hinge-island.md). Step 2 orchestration + 2D viewer: [plans/README.md](../plans/README.md) (archive: [step-2-flattening.md](../plans/archive/step-2-flattening.md)).
 - Introduce a half-edge structure if algorithms become complex, but keep `EdgeKey` compatibility so seam selections remain stable.
 

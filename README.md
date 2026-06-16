@@ -31,7 +31,7 @@ load OBJ → topology → seams → islands → unfold → export SVG
 ## Documentation
 
 - **Contributors / agents:** [AGENTS.md](AGENTS.md)
-- **ADRs and plans:** [docs/README.md](docs/README.md)
+- **ADRs and plans:** [docs/README.md](docs/README.md) — roadmap at [docs/plans/README.md](docs/plans/README.md)
 
 ## PoC status
 

@@ -38,7 +38,7 @@ Documented in [ADR 0002](../decisions/0002-unfold-step-1-hinge-island.md). Do no
 | `UnfoldViewer2D` + split viewport | `src/ui/UnfoldViewer2D.tsx`, `app/page.tsx` |
 | Tests | `unfoldMesh.test.ts`, `layoutIslands.test.ts` |
 
-**Step 2 stretch (complete):** 2D seam overlay — see [2d-seam-overlay plan](2d-seam-overlay.md).
+**Step 2 stretch (complete):** 2D seam overlay — see [step-2-seam-overlay.md](step-2-seam-overlay.md).
 
 ---
 

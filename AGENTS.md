@@ -6,7 +6,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **PoC constraints:** zero material thickness, OBJ v1 only (`v` + `f`), flattened output in the **XY plane**.
 
-Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1). Next: [flattening-algorithm-step-2.md](docs/plans/flattening-algorithm-step-2.md).
+Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1). Plans & backlog: [docs/plans/README.md](docs/plans/README.md).
 
 ---
 
@@ -35,7 +35,7 @@ Pipeline: **load → topology → seams → islands → unfold → export**
 | [src/state/](src/state/) | Zustand session orchestration | Wires I/O → topology → UI side effects |
 | [src/ui/](src/ui/) | Non-3D UI components | Keep thin |
 | [app/](app/) | Next.js routes | Orchestration, not heavy geometry |
-| [docs/](docs/) | ADRs and plans | **Must follow** ADRs in `decisions/`; see [docs/README.md](docs/README.md) |
+| [docs/](docs/) | ADRs and plans | **Must follow** ADRs in `decisions/`; roadmap in [docs/plans/README.md](docs/plans/README.md) |
 
 **Core contracts** live in [src/logic/mesh/types.ts](src/logic/mesh/types.ts): `MeshModel`, `Topology`, `EdgeKey`, `SeamRegistry`.
 
@@ -118,6 +118,7 @@ Stop and get user approval before:
 
 ## Planning workflow
 
+- **Plans hub:** [docs/plans/README.md](docs/plans/README.md) — status, backlog, links to archived specs.
 - **Plan / Ask mode:** next phase step, tradeoffs, ADR impact — don't implement yet.
 - **Agent mode:** one incremental step from an approved plan.
 - **Review pass:** separate prompt to scan for bugs and ADR violations after a slice lands.

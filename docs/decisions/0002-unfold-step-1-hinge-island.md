@@ -125,4 +125,4 @@ flowchart TD
 ### References
 
 - [ADR 0001](0001-mesh-model-and-topology.md) — mesh, topology, XY plane
-- [Flattening Step 2 plan](../plans/flattening-algorithm-step-2.md) — orchestration + 2D viewer
+- [Plans & roadmap](../plans/README.md) — Step 2 orchestration + 2D viewer (archive: [step-2-flattening.md](../plans/archive/step-2-flattening.md))

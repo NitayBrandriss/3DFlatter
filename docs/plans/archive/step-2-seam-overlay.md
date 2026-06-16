@@ -3,7 +3,7 @@ name: 2D seam overlay
 overview: Update Step 2 plan and thoghts.txt to reflect current project state, then implement read-only red seam strokes on the 2D flatten viewer using a pure logic helper (ADR 0002 overlay concern, no unfold contract changes).
 todos:
   - id: update-step2-plan
-    content: "Refresh flattening-algorithm-step-2.md: mark core complete, add stretch section + MT-6 for seam overlay"
+    content: "Refresh step-2-flattening plan: mark core complete, add stretch section + MT-6 for seam overlay"
     status: completed
   - id: update-thoghts
     content: "Update thoghts.txt: Step 2 resolved notes + FUTURE BACKLOG section for later features"
@@ -40,7 +40,7 @@ flowchart LR
 
 ## Part 1 — Documentation updates
 
-### [`docs/plans/flattening-algorithm-step-2.md`](docs/plans/flattening-algorithm-step-2.md)
+### [`docs/plans/archive/step-2-flattening.md`](../archive/step-2-flattening.md)
 
 - Change frontmatter `status: planned` → `status: complete` with an active stretch subsection.
 - Replace stale line 29 (`Not done yet: multi-island orchestration…`) with a **Delivered (core)** table listing shipped files.
