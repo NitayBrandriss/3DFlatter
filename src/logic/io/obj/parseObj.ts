@@ -1,4 +1,6 @@
 import type { MeshModel } from "../../mesh/types";
+import { weldVertices } from "../../mesh/weldVertices";
+import { isConcaveNgons } from "./polygonConvexity";
 
 export class ObjParseError extends Error {
   readonly line: number;
@@ -9,6 +11,17 @@ export class ObjParseError extends Error {
     this.line = line;
   }
 }
+
+export type ObjLoadWarning = {
+  kind: "concave_ngon";
+  line: number;
+  vertexCount: number;
+};
+
+export type ParseObjResult = {
+  mesh: MeshModel;
+  warnings: ObjLoadWarning[];
+};
 
 function parseVertexIndexToken(token: string, line: number): number {
   // OBJ face tokens can be: v, v/vt, v//vn, v/vt/vn
@@ -39,10 +52,13 @@ function toZeroBasedIndex(objIndex: number, vertexCount: number, line: number) {
  * - Supports only `v` and `f` lines
  * - Triangulates faces on load (fan triangulation)
  * - Normalizes to 0-based vertex indices
+ * - Welds coincident vertex positions (common in per-face OBJ exports)
+ * - Warns on concave n-gons (load continues; fan triangulation unchanged)
  */
-export function parseObj(text: string): MeshModel {
+export function parseObj(text: string): ParseObjResult {
   const vertices: number[] = [];
   const faces: number[] = [];
+  const warnings: ObjLoadWarning[] = [];
 
   const lines = text.split(/\r?\n/);
 
@@ -88,6 +104,14 @@ export function parseObj(text: string): MeshModel {
         toZeroBasedIndex(parseVertexIndexToken(t, lineNumber), vertexCount, lineNumber),
       );
 
+      if (polygon.length > 3 && isConcaveNgons(vertices, polygon)) {
+        warnings.push({
+          kind: "concave_ngon",
+          line: lineNumber,
+          vertexCount: polygon.length,
+        });
+      }
+
       // Fan triangulation: (0,1,2), (0,2,3), ...
       for (let k = 1; k + 1 < polygon.length; k++) {
         const i0 = polygon[0]!;
@@ -112,10 +136,7 @@ export function parseObj(text: string): MeshModel {
   }
 
   return {
-    vertices: new Float32Array(vertices),
-    faces: new Uint32Array(faces),
-    vertexCount,
-    faceCount,
+    mesh: weldVertices(new Float32Array(vertices), new Uint32Array(faces)),
+    warnings,
   };
 }
-

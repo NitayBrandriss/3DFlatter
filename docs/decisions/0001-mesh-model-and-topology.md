@@ -61,9 +61,11 @@ This PoC needs a mesh representation that supports:
 ### Consequences
 - Some OBJ files may not display “nicely” in v1 (no materials, no smoothing, no normals unless computed).
 - Non-manifold edges (adjacent to >2 faces) are detected and treated as unsupported/ambiguous for unfolding in the PoC.
+- **Concave n-gons:** fan triangulation on load is unchanged, but concave polygon faces (`f` with >3 vertices) emit a non-blocking warning during parse; the UI shows an aggregate toast. Earcut or robust triangulation remains a future option if arbitrary n-gons are supported.
 
 ### Future options / revisit
 - Add optional support for `vn` / `vt` for better viewport rendering and potential UV-based heuristics.
-- Add mesh cleaning/repair (welding, manifold enforcement) if real-world models require it.
+- Vertex welding on OBJ load is implemented in `src/logic/mesh/weldVertices.ts` (called from `parseObj`); not yet a separate ADR.
+- Unfold Step 1 (hinge island + triangle soup) is documented in [ADR 0002](0002-unfold-step-1-hinge-island.md). Step 2 orchestration + 2D viewer: [plans/README.md](../plans/README.md) (archive: [step-2-flattening.md](../plans/archive/step-2-flattening.md)).
 - Introduce a half-edge structure if algorithms become complex, but keep `EdgeKey` compatibility so seam selections remain stable.
 

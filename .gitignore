@@ -3,6 +3,7 @@ node_modules/
 
 ## Build outputs
 .next/
+next-env.d.ts
 out/
 dist/
 build/
@@ -47,3 +48,4 @@ Desktop.ini
 ##local testing files
 thoghts.txt
 3d_models/
+tests/

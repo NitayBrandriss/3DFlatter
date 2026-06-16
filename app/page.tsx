@@ -1,68 +1,85 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { MeshModel } from "../src/logic/mesh/types";
-import { parseObj, ObjParseError } from "../src/logic/io/obj/parseObj";
-import { MeshViewport } from "../src/viewer/MeshViewport";
-
-function nextPaint(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
+import { useCallback, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import {
+  computeSessionStats,
+  useMeshSessionStore,
+} from "@/state/meshSessionStore";
+import { ToastStack } from "@/ui/ToastStack";
+import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
+import { useFlattenExport } from "@/ui/useFlattenExport";
+import { MeshViewport } from "@/viewer/MeshViewport";
 
 export default function HomePage() {
-  const meshRef = useRef<MeshModel | null>(null);
-  const [meshVersion, setMeshVersion] = useState(0);
+  const {
+    session,
+    meshLoadVersion,
+    isLoading,
+    error,
+    seamMode,
+    toasts,
+    loadObjFile,
+    toggleSeamAt,
+    clearAllSeams,
+    setSeamMode,
+    dismissToast,
+    notifyToast,
+  } = useMeshSessionStore(
+    useShallow((s) => ({
+      session: s.session,
+      meshLoadVersion: s.meshLoadVersion,
+      isLoading: s.isLoading,
+      error: s.error,
+      seamMode: s.seamMode,
+      toasts: s.toasts,
+      loadObjFile: s.loadObjFile,
+      toggleSeamAt: s.toggleSeamAt,
+      clearAllSeams: s.clearAllSeams,
+      setSeamMode: s.setSeamMode,
+      dismissToast: s.dismissToast,
+      notifyToast: s.notifyToast,
+    })),
+  );
 
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const stats = useMemo(() => computeSessionStats(session), [session]);
+
+  const {
+    flattenResult,
+    flattening,
+    includeSeamsInExport,
+    setIncludeSeamsInExport,
+    onFlatten,
+    onExportSvg,
+  } = useFlattenExport(session, notifyToast);
 
   const [wireframe, setWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
-
-  const stats = useMemo(() => {
-    const m = meshRef.current;
-    if (!m) return null;
-    return { vertexCount: m.vertexCount, faceCount: m.faceCount };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meshVersion]);
+  const [modelScale, setModelScale] = useState(1);
 
   const onPickFile = useCallback(
     async (file: File | null) => {
-      setError(null);
       if (!file) return;
-      setFileName(file.name);
-
-      // Ensure the UI visibly enters a Loading state before parsing blocks the thread.
-      setIsLoading(true);
-      await nextPaint();
-      await nextPaint();
-
-      try {
-        const text = await file.text();
-        const mesh = parseObj(text);
-        meshRef.current = mesh;
-        setMeshVersion((v) => v + 1);
-      } catch (e) {
-        meshRef.current = null;
-        setMeshVersion((v) => v + 1);
-        if (e instanceof ObjParseError) setError(e.message);
-        else if (e instanceof Error) setError(e.message);
-        else setError(String(e));
-      } finally {
-        setIsLoading(false);
-      }
+      setModelScale(1);
+      await loadObjFile(file);
     },
-    [setMeshVersion],
+    [loadObjFile],
+  );
+
+  const onEdgePick = useCallback(
+    (edgeKey: Parameters<typeof toggleSeamAt>[0]) => {
+      toggleSeamAt(edgeKey);
+    },
+    [toggleSeamAt],
   );
 
   return (
     <div className="page">
       <aside className="sidebar">
-        <h2 style={{ marginTop: 0, marginBottom: 8 }}>OBJ Viewer</h2>
+        <h2 style={{ marginTop: 0, marginBottom: 8 }}>3D Flatter</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Upload an <code>.obj</code> (v/f only in v1).
+          Upload an <code>.obj</code> and click edges to mark seams.
         </p>
 
         <div className="col">
@@ -77,23 +94,123 @@ export default function HomePage() {
               />
             </div>
             <div className="muted" style={{ marginTop: 10 }}>
-              {fileName ? (
+              {session ? (
                 <>
                   <div>
-                    <span style={{ opacity: 0.8 }}>Loaded:</span> {fileName}
+                    <span style={{ opacity: 0.8 }}>Loaded:</span> {session.fileName}
                   </div>
                   {stats ? (
-                    <div>
-                      <span style={{ opacity: 0.8 }}>Stats:</span>{" "}
-                      {stats.vertexCount.toLocaleString()} verts,{" "}
-                      {stats.faceCount.toLocaleString()} tris
-                    </div>
+                    <>
+                      <div>
+                        <span style={{ opacity: 0.8 }}>Stats:</span>{" "}
+                        {stats.vertexCount.toLocaleString()} verts,{" "}
+                        {stats.faceCount.toLocaleString()} tris
+                      </div>
+                      <div>
+                        <span style={{ opacity: 0.8 }}>Edges:</span>{" "}
+                        {stats.manifoldEdgesCount.toLocaleString()} manifold,{" "}
+                        {stats.boundaryEdgesCount.toLocaleString()} boundary,{" "}
+                        {stats.nonManifoldEdgesCount.toLocaleString()} non-manifold
+                        {stats.skippedDegenerateFaceCount > 0
+                          ? ` (${stats.skippedDegenerateFaceCount} degenerate faces skipped)`
+                          : null}
+                      </div>
+                    </>
                   ) : null}
                 </>
               ) : (
                 "No file loaded."
               )}
             </div>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Seams</div>
+
+            <label className="toggle">
+              <span className="muted">Seam mode</span>
+              <input
+                type="checkbox"
+                checked={seamMode}
+                disabled={!session}
+                onChange={(e) => setSeamMode(e.currentTarget.checked)}
+              />
+            </label>
+
+            <div className="muted" style={{ marginTop: 6 }}>
+              {stats ? (
+                <>
+                  <div>
+                    <span style={{ opacity: 0.8 }}>Selected:</span>{" "}
+                    {stats.seamCount.toLocaleString()} seam
+                    {stats.seamCount === 1 ? "" : "s"}
+                  </div>
+                  <div>
+                    <span style={{ opacity: 0.8 }}>Islands:</span>{" "}
+                    {stats.islandCount.toLocaleString()}
+                    {stats.islandFaceCounts.length > 1 ? (
+                      <span style={{ opacity: 0.75 }}>
+                        {" "}
+                        ({stats.islandFaceCounts.join(" / ")} faces)
+                      </span>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                "Load a mesh to select seams."
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              disabled={!session || !stats || stats.seamCount === 0}
+              onClick={clearAllSeams}
+            >
+              Clear seams
+            </button>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Flatten</div>
+            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
+              Unfold all islands into a 2D blueprint pattern.
+            </p>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: "100%" }}
+              disabled={!session || flattening}
+              onClick={onFlatten}
+            >
+              {flattening ? "Flattening…" : "Flatten"}
+            </button>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Export</div>
+            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
+              Download the flattened pattern as SVG (preview).
+            </p>
+            <label className="toggle">
+              <span className="muted">Include seam overlay</span>
+              <input
+                type="checkbox"
+                checked={includeSeamsInExport}
+                disabled={!flattenResult}
+                onChange={(e) => setIncludeSeamsInExport(e.currentTarget.checked)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              disabled={!flattenResult || !!flattenResult.error}
+              onClick={onExportSvg}
+            >
+              Export SVG
+            </button>
           </div>
 
           <div className="card">
@@ -123,6 +240,26 @@ export default function HomePage() {
                 onChange={(e) => setWireframe(e.currentTarget.checked)}
               />
             </label>
+
+            {stats ? (
+              <label className="col" style={{ marginTop: 4, gap: 6 }}>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">Model scale</span>
+                  <span className="muted" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {modelScale.toFixed(2)}×
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={3}
+                  step={0.05}
+                  value={modelScale}
+                  onChange={(e) => setModelScale(Number(e.currentTarget.value))}
+                  style={{ width: "100%" }}
+                />
+              </label>
+            ) : null}
           </div>
 
           {error ? (
@@ -145,25 +282,34 @@ export default function HomePage() {
         </div>
       </aside>
 
-      <main className="viewport">
-        <MeshViewport
-          meshRef={meshRef}
-          meshVersion={meshVersion}
-          wireframe={wireframe}
-          showGrid={showGrid}
-          showAxes={showAxes}
-        />
+      <main className="viewport viewport-split">
+        <div className="viewport-3d">
+          <MeshViewport
+            mesh={session?.mesh ?? null}
+            seams={session?.seams ?? null}
+            meshLoadVersion={meshLoadVersion}
+            wireframe={wireframe}
+            showGrid={showGrid}
+            showAxes={showAxes}
+            modelScale={modelScale}
+            seamMode={seamMode}
+            onEdgePick={onEdgePick}
+          />
 
-        {isLoading ? (
-          <div className="overlay">
-            <div className="card">
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
-              <div className="muted">Parsing OBJ (UI thread)</div>
+          <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
+          {isLoading ? (
+            <div className="overlay">
+              <div className="card">
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
+                <div className="muted">Parsing OBJ (UI thread)</div>
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+
+        <UnfoldViewer2D result={flattenResult} />
       </main>
     </div>
   );
 }
-

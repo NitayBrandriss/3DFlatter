@@ -19,6 +19,12 @@ export type VertexIndex = number;
  */
 export type EdgeKey = `${number},${number}`;
 
+/** Local edge slot on a triangle: 0=(v0,v1), 1=(v1,v2), 2=(v2,v0). */
+export type EdgeSlot = 0 | 1 | 2;
+
+/** Sentinel in neighborFaceAcrossEdge: no neighbor (boundary, non-manifold, or seam cut). */
+export const NO_NEIGHBOR = -1;
+
 /**
  * A triangulated face represented by three vertex indices.
  * This is the "logical" view of a face; the canonical storage is packed `MeshModel.faces`.
@@ -53,37 +59,37 @@ export interface MeshModel {
   faceCount: number;
 }
 
-/**
- * Edge -> list of incident faces.
- *
- * Interpretation:
- * - 1 face: boundary edge
- * - 2 faces: manifold interior edge
- * - >2 faces: non-manifold (unsupported/ambiguous for unfolding PoC)
- */
-export type EdgeToFacesMap = Map<EdgeKey, FaceIndex[]>;
+/** One face incident on an undirected edge, with its local slot index. */
+export type EdgeIncident = {
+  faceId: FaceIndex;
+  slot: EdgeSlot;
+};
 
 /**
- * For each face, store the neighbor face across each of its 3 directed triangle edges:
- *   edge0 = (v0,v1)
- *   edge1 = (v1,v2)
- *   edge2 = (v2,v0)
+ * Edge -> list of incident faces (with local slot).
  *
- * `null` means boundary or ambiguous (and later, will also represent "cut" seams).
+ * Interpretation by incidents.length:
+ * - 1: boundary edge
+ * - 2: manifold interior edge
+ * - >2: non-manifold (unsupported/ambiguous for unfolding PoC)
  */
-export type FaceNeighborTriplet = readonly [
-  FaceIndex | null,
-  FaceIndex | null,
-  FaceIndex | null,
-];
+export type EdgeToFacesMap = Map<EdgeKey, EdgeIncident[]>;
 
-/** Indexed by faceId. */
-export type NeighborFaceAcrossEdge = FaceNeighborTriplet[];
+/**
+ * Flat neighbor buffer: length = 3 * faceCount.
+ * Index via neighborIndex(faceId, slot). Value is faceId or NO_NEIGHBOR (-1).
+ *
+ * Edge order per face (v0,v1,v2 from packed faces):
+ *   slot 0 = (v0,v1), slot 1 = (v1,v2), slot 2 = (v2,v0)
+ */
+export type NeighborFaceAcrossEdge = Int32Array;
 
 /** Derived topology (adjacency) from `MeshModel.faces`. */
 export interface Topology {
   edgeToFaces: EdgeToFacesMap;
   neighborFaceAcrossEdge: NeighborFaceAcrossEdge;
+  /** Faces skipped in Pass 1 due to degeneracy (for UI/debug). */
+  skippedDegenerateFaceCount: number;
 }
 
 /**
@@ -94,6 +100,75 @@ export interface SeamRegistry {
   seams: Set<EdgeKey>;
 }
 
-/** Utility: build a stable undirected edge key from two vertex indices. */
-export type MakeEdgeKey = (i: VertexIndex, j: VertexIndex) => EdgeKey;
+/** Index into neighborFaceAcrossEdge for face `faceId` at local edge `slot`. */
+export function neighborIndex(faceId: FaceIndex, slot: EdgeSlot): number {
+  return 3 * faceId + slot;
+}
 
+/** Read neighbor face across edge, or null if none. */
+export function getNeighborAcrossEdge(
+  topo: Topology,
+  faceId: FaceIndex,
+  slot: EdgeSlot,
+): FaceIndex | null {
+  const n = topo.neighborFaceAcrossEdge[neighborIndex(faceId, slot)];
+  return n === NO_NEIGHBOR ? null : n;
+}
+
+/**
+ * Per-face 2D layout in the XY plane. Length = islandFaceCount * 6.
+ * For face i in `UnfoldIslandResult.faces` order:
+ *   [x0, y0, x1, y1, x2, y2] matching mesh.faces vertex order (v0, v1, v2).
+ * 2D winding follows each face's `mesh.faces` order (CCW or CW as stored).
+ * One 3D vertex index may appear at different 2D positions on different faces
+ * (e.g. across a slit); BFS parent→child hinges copy matching coords on the tree edge only.
+ */
+export type FlattenedTriangleSoup = Float32Array;
+
+/** Axis-aligned bounds in the unfold XY plane (math Y-up). */
+export type Bbox2d = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+/** One island after global layout offsets have been applied. */
+export type LayoutedIsland = {
+  islandIndex: number;
+  faces: FaceIndex[];
+  /** Soup in global XY (math Y-up); layout offset already baked in. */
+  positions2d: FlattenedTriangleSoup;
+  offset: { x: number; y: number };
+  bounds: Bbox2d;
+};
+
+/** One 2D line segment for a seam edge on a layouted island boundary. */
+export type SeamSegment2d = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+};
+
+/** Full mesh unfold: all islands laid out without mutual overlap. */
+export type UnfoldMeshResult = {
+  islands: LayoutedIsland[];
+  bounds: Bbox2d;
+  /** Cut lines in global layout XY; one segment per seam side per incident face. */
+  seamSegments: SeamSegment2d[];
+  error?: string;
+};
+
+/** Result of unfolding one island into the XY plane (zero thickness). */
+export interface UnfoldIslandResult {
+  /** Face indices unfolded, in stable order (input island order). */
+  faces: FaceIndex[];
+  /**
+   * Packed 2D triangle soup aligned to `faces`.
+   * If `error` is set, discard this buffer — it may be partially filled.
+   */
+  positions2d: FlattenedTriangleSoup;
+  /** When set, `positions2d` is invalid and must not be used. */
+  error?: string;
+}
