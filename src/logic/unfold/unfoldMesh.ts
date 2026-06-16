@@ -22,6 +22,8 @@ export function unfoldMesh(
         islands: [],
         bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
         seamSegments: [],
+        collisions: [],
+        tears: [],
         error: result.error,
       };
     }
@@ -33,5 +35,7 @@ export function unfoldMesh(
     islands,
     bounds: combinedBounds(islands),
     seamSegments: listSeamSegments2d(mesh, topology, seams, islands),
+    collisions: [],
+    tears: [],
   };
 }
