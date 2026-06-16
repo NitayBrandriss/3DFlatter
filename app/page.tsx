@@ -1,16 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
-import type { UnfoldMeshResult } from "../src/logic/mesh/types";
-import { unfoldMesh } from "../src/logic/unfold/unfoldMesh";
 import {
   computeSessionStats,
   useMeshSessionStore,
-} from "../src/state/meshSessionStore";
-import { UnfoldViewer2D } from "../src/ui/UnfoldViewer2D";
-import { MeshViewport } from "../src/viewer/MeshViewport";
-import { ToastStack } from "../src/ui/ToastStack";
+} from "@/state/meshSessionStore";
+import { ToastStack } from "@/ui/ToastStack";
+import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
+import { useFlattenExport } from "@/ui/useFlattenExport";
+import { MeshViewport } from "@/viewer/MeshViewport";
 
 export default function HomePage() {
   const {
@@ -43,20 +42,21 @@ export default function HomePage() {
     })),
   );
 
-  // Derived in useMemo — a Zustand selector that returns a new object each call
-  // triggers React 19's "getSnapshot must be cached" infinite-loop guard.
   const stats = useMemo(() => computeSessionStats(session), [session]);
+
+  const {
+    flattenResult,
+    flattening,
+    includeSeamsInExport,
+    setIncludeSeamsInExport,
+    onFlatten,
+    onExportSvg,
+  } = useFlattenExport(session, notifyToast);
 
   const [wireframe, setWireframe] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
-  const [flattenResult, setFlattenResult] = useState<UnfoldMeshResult | null>(null);
-  const [flattening, setFlattening] = useState(false);
-
-  useEffect(() => {
-    setFlattenResult(null);
-  }, [session]);
 
   const onPickFile = useCallback(
     async (file: File | null) => {
@@ -73,22 +73,6 @@ export default function HomePage() {
     },
     [toggleSeamAt],
   );
-
-  const onFlatten = useCallback(() => {
-    if (!session) return;
-    setFlattening(true);
-    try {
-      const result = unfoldMesh(session.mesh, session.topology, session.seams);
-      if (result.error) {
-        notifyToast(result.error, "warning");
-        setFlattenResult(null);
-        return;
-      }
-      setFlattenResult(result);
-    } finally {
-      setFlattening(false);
-    }
-  }, [session, notifyToast]);
 
   return (
     <div className="page">
@@ -201,6 +185,31 @@ export default function HomePage() {
               onClick={onFlatten}
             >
               {flattening ? "Flattening…" : "Flatten"}
+            </button>
+          </div>
+
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 10 }}>Export</div>
+            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
+              Download the flattened pattern as SVG (preview).
+            </p>
+            <label className="toggle">
+              <span className="muted">Include seam overlay</span>
+              <input
+                type="checkbox"
+                checked={includeSeamsInExport}
+                disabled={!flattenResult}
+                onChange={(e) => setIncludeSeamsInExport(e.currentTarget.checked)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn"
+              style={{ marginTop: 10, width: "100%" }}
+              disabled={!flattenResult || !!flattenResult.error}
+              onClick={onExportSvg}
+            >
+              Export SVG
             </button>
           </div>
 

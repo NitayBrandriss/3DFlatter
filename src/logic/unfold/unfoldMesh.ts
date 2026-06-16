@@ -1,6 +1,7 @@
 import { partitionIslands } from "../mesh/partitionIslands";
 import type { MeshModel, SeamRegistry, Topology, UnfoldMeshResult } from "../mesh/types";
 import { combinedBounds, layoutIslands } from "./layoutIslands";
+import { listSeamSegments2d } from "./seamSegments2d";
 import { unfoldIsland } from "./unfoldIsland";
 
 /**
@@ -20,6 +21,7 @@ export function unfoldMesh(
       return {
         islands: [],
         bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+        seamSegments: [],
         error: result.error,
       };
     }
@@ -30,5 +32,6 @@ export function unfoldMesh(
   return {
     islands,
     bounds: combinedBounds(islands),
+    seamSegments: listSeamSegments2d(mesh, topology, seams, islands),
   };
 }

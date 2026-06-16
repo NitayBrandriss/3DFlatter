@@ -35,7 +35,7 @@ Pipeline: **load → topology → seams → islands → unfold → export**
 | [src/state/](src/state/) | Zustand session orchestration | Wires I/O → topology → UI side effects |
 | [src/ui/](src/ui/) | Non-3D UI components | Keep thin |
 | [app/](app/) | Next.js routes | Orchestration, not heavy geometry |
-| [docs/decisions/](docs/decisions/) | ADRs | **Must follow**; propose a new ADR before changing contracts |
+| [docs/](docs/) | ADRs and plans | **Must follow** ADRs in `decisions/`; see [docs/README.md](docs/README.md) |
 
 **Core contracts** live in [src/logic/mesh/types.ts](src/logic/mesh/types.ts): `MeshModel`, `Topology`, `EdgeKey`, `SeamRegistry`.
 
@@ -112,6 +112,7 @@ Stop and get user approval before:
 - Tests run in Node ([vitest.config.ts](vitest.config.ts)); keep logic tests Three.js-free.
 - Add or update tests when changing: OBJ parsing, topology, island partition, seam eligibility, pick resolution, unfold (`unfoldIsland`, `unfoldMesh`, layout).
 - Prefer small fixtures in [src/logic/io/obj/testMeshes.ts](src/logic/io/obj/testMeshes.ts) over large OBJ files.
+- **Local-only assets** (gitignored): `3d_models/` for manual QA meshes; `tests/` for optional local fixtures. Do not commit large mesh files — keep Vitest fixtures inline in `testMeshes.ts`.
 
 ---
 

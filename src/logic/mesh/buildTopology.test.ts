@@ -78,7 +78,7 @@ describe("buildTopology", () => {
   });
 
   it("builds a closed cube with no boundary or non-manifold edges", () => {
-    const mesh = parseObj(CUBE_OBJ);
+    const { mesh } = parseObj(CUBE_OBJ);
     const topo = buildTopology(mesh);
     const summary = summarizeTopology(topo);
 

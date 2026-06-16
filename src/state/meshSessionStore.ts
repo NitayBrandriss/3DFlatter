@@ -74,7 +74,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
 
     try {
       const text = await file.text();
-      const mesh = parseObj(text);
+      const { mesh, warnings } = parseObj(text);
       const topology = buildTopology(mesh);
       const session: MeshSession = {
         mesh,
@@ -82,11 +82,21 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         seams: createSeamRegistry(),
         fileName: file.name,
       };
+      const concaveWarnings = warnings.filter((w) => w.kind === "concave_ngon");
       set((s) => ({
         session,
         meshLoadVersion: s.meshLoadVersion + 1,
         isLoading: false,
         error: null,
+        ...(concaveWarnings.length > 0
+          ? pushToast(
+              s,
+              concaveWarnings.length === 1
+                ? "Warning: 1 concave face detected. Topology may be invalid."
+                : `Warning: ${concaveWarnings.length} concave faces detected. Topology may be invalid.`,
+              "warning",
+            )
+          : {}),
       }));
     } catch (e) {
       const message =

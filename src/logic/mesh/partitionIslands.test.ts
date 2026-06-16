@@ -30,7 +30,7 @@ f 1 6 5
 
 describe("partitionIslands", () => {
   it("returns one island with no seams on a closed cube", () => {
-    const mesh = parseObj(CUBE_OBJ);
+    const { mesh } = parseObj(CUBE_OBJ);
     const topo = buildTopology(mesh);
     const seams = createSeamRegistry();
     const islands = partitionIslands(mesh, topo, seams);
@@ -39,7 +39,7 @@ describe("partitionIslands", () => {
   });
 
   it("splits into multiple islands when a seam cuts the mesh", () => {
-    const mesh = parseObj(CUBE_OBJ);
+    const { mesh } = parseObj(CUBE_OBJ);
     const topo = buildTopology(mesh);
     let seams = createSeamRegistry();
 

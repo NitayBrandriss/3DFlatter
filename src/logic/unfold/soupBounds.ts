@@ -1,4 +1,10 @@
-import type { Bbox2d, FlattenedTriangleSoup } from "../mesh/types";
+import type {
+  Bbox2d,
+  FaceIndex,
+  FlattenedTriangleSoup,
+  MeshModel,
+  VertexIndex,
+} from "../mesh/types";
 
 const EMPTY_BBOX: Bbox2d = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
@@ -44,6 +50,25 @@ export function mergeBounds(a: Bbox2d, b: Bbox2d): Bbox2d {
     maxX: Math.max(a.maxX, b.maxX),
     maxY: Math.max(a.maxY, b.maxY),
   };
+}
+
+/** 2D corner for a vertex on one face slice in the soup (face-aware). */
+export function corner2dForVertexOnFaceSlice(
+  mesh: MeshModel,
+  faceId: FaceIndex,
+  soup: FlattenedTriangleSoup,
+  faceIdxInSoup: number,
+  vi: VertexIndex,
+): { x: number; y: number } | null {
+  const faceBase = 3 * faceId;
+  const soupOff = 6 * faceIdxInSoup;
+  for (let i = 0; i < 3; i++) {
+    if (mesh.faces[faceBase + i] === vi) {
+      const cornerOff = soupOff + 2 * i;
+      return { x: soup[cornerOff]!, y: soup[cornerOff + 1]! };
+    }
+  }
+  return null;
 }
 
 /** SVG `points` attribute for one face slice in the soup. */

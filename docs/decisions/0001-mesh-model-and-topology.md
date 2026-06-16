@@ -61,6 +61,7 @@ This PoC needs a mesh representation that supports:
 ### Consequences
 - Some OBJ files may not display “nicely” in v1 (no materials, no smoothing, no normals unless computed).
 - Non-manifold edges (adjacent to >2 faces) are detected and treated as unsupported/ambiguous for unfolding in the PoC.
+- **Concave n-gons:** fan triangulation on load is unchanged, but concave polygon faces (`f` with >3 vertices) emit a non-blocking warning during parse; the UI shows an aggregate toast. Earcut or robust triangulation remains a future option if arbitrary n-gons are supported.
 
 ### Future options / revisit
 - Add optional support for `vn` / `vt` for better viewport rendering and potential UV-based heuristics.

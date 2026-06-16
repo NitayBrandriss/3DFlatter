@@ -41,7 +41,7 @@ f 1 6 5
 `;
 
 function seamTopFaceFromCube() {
-  const mesh = parseObj(CUBE_OBJ);
+  const { mesh } = parseObj(CUBE_OBJ);
   const topo = buildTopology(mesh);
   let seams = createSeamRegistry();
   for (const key of [
@@ -62,18 +62,20 @@ describe("unfoldMesh", () => {
 
     expect(result.error).toBeUndefined();
     expect(result.islands).toHaveLength(2);
+    expect(result.seamSegments).toHaveLength(8);
     expect(bboxesOverlap(result.islands[0]!.bounds, result.islands[1]!.bounds)).toBe(
       false,
     );
   });
 
   it("unfolds a welded icosahedron as one layouted island", () => {
-    const mesh = parseObj(unweldedIcosahedronObj());
+    const { mesh } = parseObj(unweldedIcosahedronObj());
     const topo = buildTopology(mesh);
     const result = unfoldMesh(mesh, topo, createSeamRegistry());
 
     expect(result.error).toBeUndefined();
     expect(result.islands).toHaveLength(1);
+    expect(result.seamSegments).toHaveLength(0);
     expect(result.islands[0]!.positions2d).toHaveLength(120);
     expect(result.islands[0]!.positions2d.every((v) => Number.isFinite(v))).toBe(true);
     expect(result.bounds.maxX).toBeGreaterThan(result.bounds.minX);

@@ -1,6 +1,7 @@
 ---
 name: Flattening Algorithm Step 2
-status: planned
+status: complete
+stretch: complete
 depends_on: ADR 0002
 ---
 
@@ -26,7 +27,18 @@ Documented in [ADR 0002](../decisions/0002-unfold-step-1-hinge-island.md). Do no
 - `error` set → discard `positions2d`
 - `unfoldIsland` does not read `SeamRegistry`
 
-**Not done yet:** multi-island orchestration, layout offsets, SVG, UI.
+**Delivered (core):**
+
+| Delivered | Location |
+|-----------|----------|
+| `unfoldMesh(mesh, topology, seams)` | `src/logic/unfold/unfoldMesh.ts` |
+| `layoutIslands` + row-wrap fix | `src/logic/unfold/layoutIslands.ts` |
+| `UnfoldMeshResult`, `LayoutedIsland` | `src/logic/mesh/types.ts` |
+| SVG helpers | `src/logic/unfold/soupBounds.ts` |
+| `UnfoldViewer2D` + split viewport | `src/ui/UnfoldViewer2D.tsx`, `app/page.tsx` |
+| Tests | `unfoldMesh.test.ts`, `layoutIslands.test.ts` |
+
+**Step 2 stretch (complete):** 2D seam overlay — see [2d-seam-overlay plan](2d-seam-overlay.md).
 
 ---
 
@@ -68,8 +80,16 @@ flowchart LR
 | Collision detection within an island | Step 3 |
 | PDF export | Later |
 | Interactive 2D editor (drag faces) | Later |
-| Seam strokes overlaid on 2D edges | Optional stretch; not required v1 |
 | New npm dependencies | Use native SVG in React |
+
+### Step 2 stretch — 2D seam overlay (complete)
+
+| Item | Notes |
+|------|-------|
+| `listSeamSegments2d` | Pure logic in `src/logic/unfold/seamSegments2d.ts` |
+| Orchestrator | Final step in `unfoldMesh` → `UnfoldMeshResult.seamSegments` |
+| `UnfoldViewer2D` | Dumb render: red `#ff4444` `<line>` after `<polygon>`s |
+| Tests | Seamed cube → `2 × seamCount` segments; length ≈ 3D edge |
 
 ---
 
@@ -197,6 +217,7 @@ sequenceDiagram
 | MT-3 | Load mesh, Flatten with no seams on closed cube | Pattern shows (may self-overlap within island) |
 | MT-4 | Load new file after flatten | 2D view clears or updates |
 | MT-5 | Flatten with no file | Button disabled |
+| MT-6 | Seamed cube (top free), Flatten | Red cut lines on both island boundaries |
 
 ---
 
@@ -220,10 +241,11 @@ sequenceDiagram
 | Create | `src/logic/unfold/layoutIslands.ts` |
 | Create | `src/logic/unfold/unfoldMesh.test.ts` |
 | Create | `src/logic/unfold/layoutIslands.test.ts` |
-| Create | `src/ui/UnfoldViewer2D.tsx` |
+| Create | `src/logic/unfold/seamSegments2d.ts` |
+| Create | `src/logic/unfold/seamSegments2d.test.ts` |
+| Modify | `src/logic/unfold/unfoldMesh.ts` |
 | Modify | `src/logic/mesh/types.ts` |
-| Modify | `app/page.tsx` |
-| Modify | `app/globals.css` |
+| Modify | `src/ui/UnfoldViewer2D.tsx` |
 
 ---
 

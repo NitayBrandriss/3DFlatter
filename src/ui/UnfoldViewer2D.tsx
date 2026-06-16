@@ -2,8 +2,17 @@
 
 import type { UnfoldMeshResult } from "../logic/mesh/types";
 import { polygonPointsString } from "../logic/unfold/soupBounds";
-
-const VIEW_PADDING_RATIO = 0.05;
+import {
+  computeSvgViewBox,
+  viewBoxAttribute,
+} from "../logic/export/svg/viewBox";
+import { yFlipGroupTransform } from "../logic/export/svg/yFlip";
+import {
+  TIER1_BACKGROUND,
+  TIER1_FACE_FILL,
+  TIER1_FACE_STROKE,
+  TIER1_SEAM_STROKE,
+} from "../logic/export/svg/tier1Preview";
 
 export function UnfoldViewer2D({ result }: { result: UnfoldMeshResult | null }) {
   if (!result) {
@@ -16,32 +25,25 @@ export function UnfoldViewer2D({ result }: { result: UnfoldMeshResult | null }) 
     );
   }
 
-  const { minX, minY, maxX, maxY } = result.bounds;
-  const spanX = maxX - minX || 1;
-  const spanY = maxY - minY || 1;
-  const pad = Math.max(spanX, spanY) * VIEW_PADDING_RATIO;
-  const width = spanX + 2 * pad;
-  const height = spanY + 2 * pad;
-
-  // Math Y-up soup; flip keeps content in the original bbox for a standard viewBox.
-  const viewBox = `${minX - pad} ${minY - pad} ${width} ${height}`;
-  const flipTransform = `translate(0, ${minY + maxY}) scale(1, -1)`;
+  const viewBox = computeSvgViewBox(result.bounds);
+  const { minY, maxY } = viewBox.bounds;
+  const flipTransform = yFlipGroupTransform(minY, maxY);
 
   return (
     <div className="flatten-panel">
       <svg
         className="flatten-svg"
-        viewBox={viewBox}
+        viewBox={viewBoxAttribute(viewBox)}
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Flattened mesh pattern"
       >
         <rect
-          x={minX - pad}
-          y={minY - pad}
-          width={width}
-          height={height}
-          fill="#0a1628"
+          x={viewBox.x}
+          y={viewBox.y}
+          width={viewBox.width}
+          height={viewBox.height}
+          fill={TIER1_BACKGROUND}
         />
         <g transform={flipTransform}>
           {result.islands.map((island) =>
@@ -49,13 +51,25 @@ export function UnfoldViewer2D({ result }: { result: UnfoldMeshResult | null }) 
               <polygon
                 key={`${island.islandIndex}-${faceId}`}
                 points={polygonPointsString(island.positions2d, faceIdx)}
-                fill="rgba(200, 220, 240, 0.12)"
-                stroke="#7dd3fc"
+                fill={TIER1_FACE_FILL}
+                stroke={TIER1_FACE_STROKE}
                 strokeWidth={1}
                 vectorEffect="non-scaling-stroke"
               />
             )),
           )}
+          {result.seamSegments.map((seg, i) => (
+            <line
+              key={`seam-${i}`}
+              x1={seg.x0}
+              y1={seg.y0}
+              x2={seg.x1}
+              y2={seg.y1}
+              stroke={TIER1_SEAM_STROKE}
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
         </g>
       </svg>
     </div>

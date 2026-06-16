@@ -1,8 +1,7 @@
 {
   "name": "3dflatter",
   "version": "1.0.0",
-  "description": "This project is a web-based utility designed to transform 3D polygonal meshes into 2D flat patterns. Inspired by Pepakura, the goal is to allow users to define \"seams\" on a 3D model and generate a corresponding 2D layout that can be printed and reassembled into the original 3D shape.",
-  "main": "index.js",
+  "description": "Web PoC: 3D polygonal meshes to 2D flat patterns (Pepakura-style).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

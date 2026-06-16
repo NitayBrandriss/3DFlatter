@@ -143,10 +143,20 @@ export type LayoutedIsland = {
   bounds: Bbox2d;
 };
 
+/** One 2D line segment for a seam edge on a layouted island boundary. */
+export type SeamSegment2d = {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+};
+
 /** Full mesh unfold: all islands laid out without mutual overlap. */
 export type UnfoldMeshResult = {
   islands: LayoutedIsland[];
   bounds: Bbox2d;
+  /** Cut lines in global layout XY; one segment per seam side per incident face. */
+  seamSegments: SeamSegment2d[];
   error?: string;
 };
 

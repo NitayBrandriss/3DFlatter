@@ -296,7 +296,7 @@ describe("unfoldIsland", () => {
   });
 
   it("unfolds an open box island after seaming the top face free", () => {
-    const mesh = parseObj(CUBE_OBJ);
+    const { mesh } = parseObj(CUBE_OBJ);
     const topo = buildTopology(mesh);
     const seams = seamTopFaceFromCube(mesh, topo);
     const islands = partitionIslands(mesh, topo, seams);
@@ -318,7 +318,7 @@ describe("unfoldIsland", () => {
   });
 
   it("unfolds a welded icosahedron as one island without errors", () => {
-    const mesh = parseObj(unweldedIcosahedronObj());
+    const { mesh } = parseObj(unweldedIcosahedronObj());
     const topo = buildTopology(mesh);
     const islands = partitionIslands(mesh, topo, createSeamRegistry());
 
@@ -339,7 +339,7 @@ describe("unfoldIsland", () => {
   });
 
   it("completes on a closed cube with no seams (overlap not checked)", () => {
-    const mesh = parseObj(CUBE_OBJ);
+    const { mesh } = parseObj(CUBE_OBJ);
     const topo = buildTopology(mesh);
     const islands = partitionIslands(mesh, topo, createSeamRegistry());
     expect(islands).toHaveLength(1);
