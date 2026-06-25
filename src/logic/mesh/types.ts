@@ -1,3 +1,5 @@
+import type { Segment2d } from "../geom2d/segment2d";
+
 /**
  * Core mesh + topology contracts.
  *
@@ -6,7 +8,6 @@
  * - Undirected edges use a stable key based on sorted vertex indices.
  * - Seams are stored as a Set of stable EdgeKeys.
  */
-
 /** Face index in the triangulated mesh (0..faceCount-1). */
 export type FaceIndex = number;
 
@@ -151,12 +152,39 @@ export type SeamSegment2d = {
   y1: number;
 };
 
+/** Intra-island triangle interior overlap (ADR 0003 §3a). Layout-global XY. */
+export type TriangleCollision2d = {
+  islandIndex: number;
+  faceA: FaceIndex;
+  faceB: FaceIndex;
+  /** Overlap area in layout-global XY (offset applied). */
+  overlapArea: number;
+  /** Centroid of overlap polygon for UI highlight. */
+  centroid: { x: number; y: number };
+};
+
+/** Non-tree shared-edge 2D disagreement (ADR 0003 §3b). Layout-global XY. */
+export type EdgeTear2d = {
+  islandIndex: number;
+  edgeKey: EdgeKey;
+  faceA: FaceIndex;
+  faceB: FaceIndex;
+  kind: "gap" | "overlap" | "skew";
+  maxGap: number;
+  segmentA: Segment2d;
+  segmentB: Segment2d;
+};
+
 /** Full mesh unfold: all islands laid out without mutual overlap. */
 export type UnfoldMeshResult = {
   islands: LayoutedIsland[];
   bounds: Bbox2d;
   /** Cut lines in global layout XY; one segment per seam side per incident face. */
   seamSegments: SeamSegment2d[];
+  /** Empty when clean. Does not imply error (ADR 0003). */
+  collisions: TriangleCollision2d[];
+  /** Empty when clean. Does not imply error (ADR 0003). */
+  tears: EdgeTear2d[];
   error?: string;
 };
 

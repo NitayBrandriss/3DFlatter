@@ -1,9 +1,11 @@
+import { SAT_EPS } from "../geom2d/tolerances";
+import type { Vec2 } from "../geom2d/vec2";
 import type { MeshModel, VertexIndex } from "../mesh/types";
 
-/** Numeric tolerance — consistent with weldVertices. */
-export const EPS = 1e-6;
+/** Numeric tolerance — re-export of geom2d `SAT_EPS` (single source of truth). */
+export const EPS = SAT_EPS;
 
-export type Vec2 = { x: number; y: number };
+export type { Vec2 };
 
 export type PlacementResult =
   | { ok: true; point: Vec2 }
