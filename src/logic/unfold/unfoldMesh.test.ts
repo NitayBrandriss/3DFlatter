@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { parseObj } from "../io/obj/parseObj";
 import { unweldedIcosahedronObj } from "../io/obj/testMeshes";
 import { buildTopology } from "../mesh/buildTopology";
@@ -66,6 +66,8 @@ describe("unfoldMesh", () => {
     expect(bboxesOverlap(result.islands[0]!.bounds, result.islands[1]!.bounds)).toBe(
       false,
     );
+    expect(Array.isArray(result.collisions)).toBe(true);
+    expect(Array.isArray(result.tears)).toBe(true);
   });
 
   it("unfolds a welded icosahedron as one layouted island", () => {
@@ -79,5 +81,26 @@ describe("unfoldMesh", () => {
     expect(result.islands[0]!.positions2d).toHaveLength(120);
     expect(result.islands[0]!.positions2d.every((v) => Number.isFinite(v))).toBe(true);
     expect(result.bounds.maxX).toBeGreaterThan(result.bounds.minX);
+    expect(Array.isArray(result.collisions)).toBe(true);
+    expect(Array.isArray(result.tears)).toBe(true);
+  });
+
+  it("reports many collisions and tears for a closed cube with no seams", () => {
+    const { mesh } = parseObj(CUBE_OBJ);
+    const topo = buildTopology(mesh);
+    const result = unfoldMesh(mesh, topo, createSeamRegistry());
+
+    expect(result.error).toBeUndefined();
+    expect(result.islands).toHaveLength(1);
+    expect(result.collisions.length).toBeGreaterThan(0);
+    expect(result.tears.length).toBeGreaterThan(0);
+    for (const c of result.collisions) {
+      expect(c.islandIndex).toBe(0);
+      expect(c.overlapArea).toBeGreaterThan(0);
+    }
+    for (const t of result.tears) {
+      expect(t.islandIndex).toBe(0);
+      expect(t.maxGap).toBeGreaterThan(0);
+    }
   });
 });

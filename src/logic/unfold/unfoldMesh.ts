@@ -1,11 +1,13 @@
-import { partitionIslands } from "../mesh/partitionIslands";
+﻿import { partitionIslands } from "../mesh/partitionIslands";
 import type { MeshModel, SeamRegistry, Topology, UnfoldMeshResult } from "../mesh/types";
+import { analyzeUnfoldedIsland } from "./analyzeUnfoldedIsland";
 import { combinedBounds, layoutIslands } from "./layoutIslands";
 import { listSeamSegments2d } from "./seamSegments2d";
+import { toGlobalQualityReports } from "./toGlobalQualityReports";
 import { unfoldIsland } from "./unfoldIsland";
 
 /**
- * Partition by seams, unfold each island, and pack into global XY without overlap.
+ * Partition by seams, unfold each island, detect quality issues, and pack into global XY.
  */
 export function unfoldMesh(
   mesh: MeshModel,
@@ -14,6 +16,7 @@ export function unfoldMesh(
 ): UnfoldMeshResult {
   const islandFaceLists = partitionIslands(mesh, topology, seams);
   const unfolded = [];
+  const localReports = [];
 
   for (const islandFaces of islandFaceLists) {
     const result = unfoldIsland(mesh, topology, islandFaces);
@@ -28,14 +31,17 @@ export function unfoldMesh(
       };
     }
     unfolded.push(result);
+    localReports.push(analyzeUnfoldedIsland(mesh, topology, islandFaces, result));
   }
 
   const islands = layoutIslands(unfolded);
+  const { collisions, tears } = toGlobalQualityReports(localReports, islands);
+
   return {
     islands,
     bounds: combinedBounds(islands),
     seamSegments: listSeamSegments2d(mesh, topology, seams, islands),
-    collisions: [],
-    tears: [],
+    collisions,
+    tears,
   };
 }
