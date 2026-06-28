@@ -3,7 +3,7 @@ import { buildSvgDocument } from "@/logic/export/svg/buildSvgDocument";
 import type { UnfoldMeshResult } from "@/logic/mesh/types";
 import { unfoldMesh } from "@/logic/unfold/unfoldMesh";
 import type { MeshSession } from "@/state/meshSessionStore";
-import { downloadTextFile, svgFileNameFromObj } from "./download";
+import { downloadTextFile, svgFileNameFromMesh } from "./download";
 
 type NotifyToast = (text: string, tone?: "info" | "warning") => void;
 
@@ -35,7 +35,7 @@ export function useFlattenExport(session: MeshSession | null, notifyToast: Notif
   const onExportSvg = useCallback(() => {
     if (!flattenResult || flattenResult.error) return;
     try {
-      const fileName = session ? svgFileNameFromObj(session.fileName) : "pattern.svg";
+      const fileName = session ? svgFileNameFromMesh(session.fileName) : "pattern.svg";
       const { svg } = buildSvgDocument(flattenResult, {
         tier: "preview",
         includeSeams: includeSeamsInExport,

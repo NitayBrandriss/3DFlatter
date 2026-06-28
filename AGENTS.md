@@ -4,7 +4,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **Stack:** Next.js 16, React 19, Three.js / `@react-three/fiber`, Zustand, Vitest.
 
-**PoC constraints:** zero material thickness, OBJ v1 only (`v` + `f`), flattened output in the **XY plane**.
+**PoC constraints:** zero material thickness; mesh import via OBJ v1 (`v` + `f`) or STL (ASCII/binary) at the I/O boundary; flattened output in the **XY plane**.
 
 Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1), [ADR 0003](docs/decisions/0003-unfold-quality-detection.md) (quality detection). Plans: [docs/plans/README.md](docs/plans/README.md). Backlog: [thoughts.txt](thoughts.txt) (local, gitignored).
 
@@ -39,7 +39,7 @@ Pipeline: **load → topology → seams → islands → unfold → export**
 
 **Core contracts** live in [src/logic/mesh/types.ts](src/logic/mesh/types.ts): `MeshModel`, `Topology`, `EdgeKey`, `SeamRegistry`.
 
-Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`, `partitionIslands`, `unfoldIsland`, `canSelectAsSeam`, `parseObj`, `toggleSeam`, etc. Grep `src/logic/` before adding new utilities.
+Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`, `partitionIslands`, `unfoldIsland`, `canSelectAsSeam`, `parseObj`, `parseStl`, `toggleSeam`, etc. Grep `src/logic/` before adding new utilities.
 
 ---
 
@@ -110,7 +110,7 @@ Stop and get user approval before:
 ## Testing
 
 - Tests run in Node ([vitest.config.ts](vitest.config.ts)); keep logic tests Three.js-free.
-- Add or update tests when changing: OBJ parsing, topology, island partition, seam eligibility, pick resolution, unfold (`unfoldIsland`, `unfoldMesh`, layout).
+- Add or update tests when changing: OBJ/STL parsing, topology, island partition, seam eligibility, pick resolution, unfold (`unfoldIsland`, `unfoldMesh`, layout).
 - Prefer small fixtures in [src/logic/io/obj/testMeshes.ts](src/logic/io/obj/testMeshes.ts) over large OBJ files.
 - **Local-only assets** (gitignored): `3d_models/` for manual QA meshes; `tests/` for optional local fixtures. Do not commit large mesh files — keep Vitest fixtures inline in `testMeshes.ts`.
 

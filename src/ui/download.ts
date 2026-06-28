@@ -13,9 +13,9 @@ export function downloadTextFile(
   URL.revokeObjectURL(url);
 }
 
-/** Derive a safe `.svg` filename from an OBJ basename. */
-export function svgFileNameFromObj(fileName: string): string {
-  const base = fileName.replace(/\.obj$/i, "").trim() || "pattern";
+/** Derive a safe `.svg` filename from a mesh basename. */
+export function svgFileNameFromMesh(fileName: string): string {
+  const base = fileName.replace(/\.(obj|stl)$/i, "").trim() || "pattern";
   const safe = base.replace(/[^\w.\-]+/g, "_");
   return `${safe}.svg`;
 }

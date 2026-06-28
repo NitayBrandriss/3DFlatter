@@ -4,7 +4,7 @@ Single entry point for implementation plans. **ADRs** (`docs/decisions/`) hold a
 
 ```mermaid
 flowchart LR
-  load["Load OBJ"]
+  load["Load mesh (OBJ / STL)"]
   topo["Topology"]
   seams["Seams"]
   islands["Islands"]
@@ -23,6 +23,7 @@ flowchart LR
 | Step 1 | Hinge-island unfold (triangle soup) | **Complete** | [ADR 0002](../decisions/0002-unfold-step-1-hinge-island.md) |
 | Step 2 | `unfoldMesh` + layout + 2D viewer | **Complete** | [archive/step-2-flattening.md](archive/step-2-flattening.md) |
 | Step 2 stretch | 2D seam overlay on blueprint | **Complete** | [archive/step-2-seam-overlay.md](archive/step-2-seam-overlay.md) |
+| I/O | STL import (ASCII / binary) | **Complete** | `src/logic/io/stl/parseStl` |
 | Export | SVG preview (tier 1) | **Complete** | `src/logic/export/svg/` |
 | Export | SVG manufacturing / laser (tier 2) | Planned | See [thoughts.txt](../../thoughts.txt) |
 | Step 3 | Unfold quality detection (3a + 3b) | **In Progress** | [ADR 0003](../decisions/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
@@ -34,7 +35,7 @@ flowchart LR
 
 | Area | Key modules |
 |------|-------------|
-| I/O | `parseObj`, `polygonConvexity` |
+| I/O | `parseObj`, `parseStl`, `polygonConvexity`, `weldVertices` |
 | Topology | `buildTopology`, `partitionIslands` |
 | Seams | `seamRegistry`, `edgeEligibility`, `resolvePick` |
 | geom2d | `tolerances`, `segment2d`, `triangle2d`, `spatialGrid`, `vec2` |
