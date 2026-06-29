@@ -19,7 +19,7 @@ export default function HomePage() {
     error,
     seamMode,
     toasts,
-    loadObjFile,
+    loadMeshFile,
     toggleSeamAt,
     clearAllSeams,
     setSeamMode,
@@ -33,7 +33,7 @@ export default function HomePage() {
       error: s.error,
       seamMode: s.seamMode,
       toasts: s.toasts,
-      loadObjFile: s.loadObjFile,
+      loadMeshFile: s.loadMeshFile,
       toggleSeamAt: s.toggleSeamAt,
       clearAllSeams: s.clearAllSeams,
       setSeamMode: s.setSeamMode,
@@ -62,9 +62,9 @@ export default function HomePage() {
     async (file: File | null) => {
       if (!file) return;
       setModelScale(1);
-      await loadObjFile(file);
+      await loadMeshFile(file);
     },
-    [loadObjFile],
+    [loadMeshFile],
   );
 
   const onEdgePick = useCallback(
@@ -79,7 +79,7 @@ export default function HomePage() {
       <aside className="sidebar">
         <h2 style={{ marginTop: 0, marginBottom: 8 }}>3D Flatter</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Upload an <code>.obj</code> and click edges to mark seams.
+          Upload an <code>.obj</code> or <code>.stl</code> and click edges to mark seams.
         </p>
 
         <div className="col">
@@ -88,7 +88,7 @@ export default function HomePage() {
             <div className="row" style={{ justifyContent: "space-between" }}>
               <input
                 type="file"
-                accept=".obj"
+                accept=".obj,.stl"
                 disabled={isLoading}
                 onChange={(e) => onPickFile(e.currentTarget.files?.[0] ?? null)}
               />
@@ -302,7 +302,7 @@ export default function HomePage() {
             <div className="overlay">
               <div className="card">
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
-                <div className="muted">Parsing OBJ (UI thread)</div>
+                <div className="muted">Parsing mesh file (UI thread)</div>
               </div>
             </div>
           ) : null}
