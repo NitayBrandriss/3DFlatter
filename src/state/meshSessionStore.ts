@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ObjParseError, parseObj } from "../logic/io/obj/parseObj";
+import { parseStl, StlParseError } from "../logic/io/stl/parseStl";
 import { buildTopology } from "../logic/mesh/buildTopology";
 import { partitionIslands } from "../logic/mesh/partitionIslands";
 import { summarizeTopology } from "../logic/mesh/topologyStats";
@@ -35,7 +36,7 @@ type MeshSessionState = {
   toasts: ToastMessage[];
   toastSeq: number;
 
-  loadObjFile: (file: File) => Promise<void>;
+  loadMeshFile: (file: File) => Promise<void>;
   toggleSeamAt: (edgeKey: EdgeKey) => void;
   clearAllSeams: () => void;
   setSeamMode: (enabled: boolean) => void;
@@ -54,6 +55,43 @@ function pushToast(
   return { toasts, toastSeq: id };
 }
 
+function applyLoadWarnings(
+  state: MeshSessionState,
+  warnings: { kind: string }[],
+): Pick<MeshSessionState, "toasts" | "toastSeq"> {
+  let next = state;
+
+  const concaveCount = warnings.filter((w) => w.kind === "concave_ngon").length;
+  if (concaveCount > 0) {
+    next = {
+      ...next,
+      ...pushToast(
+        next,
+        concaveCount === 1
+          ? "Warning: 1 concave face detected. Topology may be invalid."
+          : `Warning: ${concaveCount} concave faces detected. Topology may be invalid.`,
+        "warning",
+      ),
+    };
+  }
+
+  const degenerateCount = warnings.filter((w) => w.kind === "degenerate_triangle").length;
+  if (degenerateCount > 0) {
+    next = {
+      ...next,
+      ...pushToast(
+        next,
+        degenerateCount === 1
+          ? "Warning: 1 degenerate triangle detected in STL."
+          : `Warning: ${degenerateCount} degenerate triangles detected in STL.`,
+        "warning",
+      ),
+    };
+  }
+
+  return { toasts: next.toasts, toastSeq: next.toastSeq };
+}
+
 function computeIslands(session: MeshSession) {
   return partitionIslands(session.mesh, session.topology, session.seams);
 }
@@ -67,14 +105,31 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   toasts: [],
   toastSeq: 0,
 
-  loadObjFile: async (file: File) => {
+  loadMeshFile: async (file: File) => {
     set({ isLoading: true, error: null });
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     try {
-      const text = await file.text();
-      const { mesh, warnings } = parseObj(text);
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+      const buffer = await file.arrayBuffer();
+
+      let mesh;
+      let warnings: { kind: string }[] = [];
+
+      if (ext === "obj") {
+        const text = new TextDecoder("utf-8").decode(buffer);
+        const result = parseObj(text);
+        mesh = result.mesh;
+        warnings = result.warnings;
+      } else if (ext === "stl") {
+        const result = parseStl(buffer);
+        mesh = result.mesh;
+        warnings = result.warnings;
+      } else {
+        throw new Error(`Unsupported file type ".${ext || "?"}" — use .obj or .stl`);
+      }
+
       const topology = buildTopology(mesh);
       const session: MeshSession = {
         mesh,
@@ -82,25 +137,19 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         seams: createSeamRegistry(),
         fileName: file.name,
       };
-      const concaveWarnings = warnings.filter((w) => w.kind === "concave_ngon");
+      const hasLoadWarnings = warnings.some(
+        (w) => w.kind === "concave_ngon" || w.kind === "degenerate_triangle",
+      );
       set((s) => ({
         session,
         meshLoadVersion: s.meshLoadVersion + 1,
         isLoading: false,
         error: null,
-        ...(concaveWarnings.length > 0
-          ? pushToast(
-              s,
-              concaveWarnings.length === 1
-                ? "Warning: 1 concave face detected. Topology may be invalid."
-                : `Warning: ${concaveWarnings.length} concave faces detected. Topology may be invalid.`,
-              "warning",
-            )
-          : {}),
+        ...(hasLoadWarnings ? applyLoadWarnings(s, warnings) : {}),
       }));
     } catch (e) {
       const message =
-        e instanceof ObjParseError
+        e instanceof ObjParseError || e instanceof StlParseError
           ? e.message
           : e instanceof Error
             ? e.message
