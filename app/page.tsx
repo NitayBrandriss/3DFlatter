@@ -6,6 +6,7 @@ import {
   computeSessionStats,
   useMeshSessionStore,
 } from "@/state/meshSessionStore";
+import { DEMO_MODELS } from "@/ui/demoModels";
 import { ToastStack } from "@/ui/ToastStack";
 import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
 import { useFlattenExport } from "@/ui/useFlattenExport";
@@ -53,10 +54,11 @@ export default function HomePage() {
     onExportSvg,
   } = useFlattenExport(session, notifyToast);
 
-  const [wireframe, setWireframe] = useState(false);
+  const [wireframe, setWireframe] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
+  const [selectedDemoId, setSelectedDemoId] = useState(DEMO_MODELS[0]?.id ?? "");
 
   const onPickFile = useCallback(
     async (file: File | null) => {
@@ -66,6 +68,27 @@ export default function HomePage() {
     },
     [loadMeshFile],
   );
+
+  const onLoadDemo = useCallback(async () => {
+    const demo = DEMO_MODELS.find((model) => model.id === selectedDemoId);
+    if (!demo) return;
+
+    setModelScale(1);
+    const response = await fetch(`/api/demo-models/${demo.id}`);
+    if (!response.ok) {
+      notifyToast(
+        response.status === 404
+          ? `Demo model "${demo.label}" not found. Add it under 3d_models/.`
+          : `Failed to load demo model "${demo.label}".`,
+        "warning",
+      );
+      return;
+    }
+
+    const blob = await response.blob();
+    const file = new File([blob], demo.fileName, { type: blob.type });
+    await loadMeshFile(file);
+  }, [loadMeshFile, notifyToast, selectedDemoId]);
 
   const onEdgePick = useCallback(
     (edgeKey: Parameters<typeof toggleSeamAt>[0]) => {
@@ -92,6 +115,35 @@ export default function HomePage() {
                 disabled={isLoading}
                 onChange={(e) => onPickFile(e.currentTarget.files?.[0] ?? null)}
               />
+            </div>
+
+            <div className="col" style={{ marginTop: 10, gap: 8 }}>
+              <div className="muted" style={{ fontSize: 13 }}>
+                Or load a local demo model:
+              </div>
+              <div className="row">
+                <select
+                  className="select"
+                  value={selectedDemoId}
+                  disabled={isLoading}
+                  onChange={(e) => setSelectedDemoId(e.currentTarget.value)}
+                  aria-label="Demo model"
+                >
+                  {DEMO_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={isLoading || !selectedDemoId}
+                  onClick={onLoadDemo}
+                >
+                  Load demo
+                </button>
+              </div>
             </div>
             <div className="muted" style={{ marginTop: 10 }}>
               {session ? (
