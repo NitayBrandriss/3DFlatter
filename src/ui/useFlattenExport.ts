@@ -16,17 +16,18 @@ export function useFlattenExport(session: MeshSession | null, notifyToast: Notif
     setFlattenResult(null);
   }, [session]);
 
-  const onFlatten = useCallback(() => {
-    if (!session) return;
+  const onFlatten = useCallback((): boolean => {
+    if (!session) return false;
     setFlattening(true);
     try {
       const result = unfoldMesh(session.mesh, session.topology, session.seams);
       if (result.error) {
         notifyToast(result.error, "warning");
         setFlattenResult(null);
-        return;
+        return false;
       }
       setFlattenResult(result);
+      return true;
     } finally {
       setFlattening(false);
     }
