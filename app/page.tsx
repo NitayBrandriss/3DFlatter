@@ -76,12 +76,7 @@ export default function HomePage() {
     setModelScale(1);
     const response = await fetch(`/api/demo-models/${demo.id}`);
     if (!response.ok) {
-      notifyToast(
-        response.status === 404
-          ? `Demo model "${demo.label}" not found. Add it under 3d_models/.`
-          : `Failed to load demo model "${demo.label}".`,
-        "warning",
-      );
+      notifyToast(`Failed to load demo model "${demo.label}".`, "warning");
       return;
     }
 
