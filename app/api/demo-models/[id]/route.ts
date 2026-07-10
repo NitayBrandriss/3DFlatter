@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
+import { getBundledDemoMesh } from "@/logic/io/demoMeshes";
 import { getDemoModelById } from "@/ui/demoModels";
 
 export async function GET(
@@ -15,22 +16,26 @@ export async function GET(
 
   const filePath = path.join(process.cwd(), "3d_models", model.relativePath);
 
+  const contentType = model.fileName.endsWith(".stl")
+    ? "model/stl"
+    : "text/plain";
+  const headers = {
+    "Content-Type": contentType,
+    "Content-Disposition": `inline; filename="${model.fileName}"`,
+  };
+
   try {
     const data = await readFile(filePath);
-    const contentType = model.fileName.endsWith(".stl")
-      ? "model/stl"
-      : "text/plain";
-
-    return new NextResponse(data, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${model.fileName}"`,
-      },
-    });
+    return new NextResponse(data, { headers });
   } catch {
-    return NextResponse.json(
-      { error: "Demo model file not found on disk" },
-      { status: 404 },
-    );
+    const bundled = getBundledDemoMesh(id);
+    if (!bundled) {
+      return NextResponse.json(
+        { error: "Demo model file not found on disk" },
+        { status: 404 },
+      );
+    }
+
+    return new NextResponse(bundled.text, { headers });
   }
 }
