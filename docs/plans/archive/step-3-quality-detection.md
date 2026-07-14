@@ -1,6 +1,6 @@
 # Step 3 — Unfold quality detection
 
-**Status:** In progress  
+**Status:** Complete  
 **ADR:** [0003 — Unfold quality detection](../../decisions/0003-unfold-quality-detection.md)  
 **Backlog:** [thoughts.txt](../../../thoughts.txt)
 
@@ -11,7 +11,7 @@ Detect-and-report intra-island unfold quality issues after hinge unfold, before 
 - **3a** — Triangle interior collisions (self-overlap)
 - **3b** — Non-tree shared-edge tears (2D disagreement)
 
-**Non-goals:** auto-fix unfold, inter-island collision, UI overlay (follow-up slice).
+**Non-goals:** auto-fix unfold, inter-island collision, UI overlay (planned separately on the [plans hub](../README.md) as Step 3 stretch).
 
 ## Pipeline
 
