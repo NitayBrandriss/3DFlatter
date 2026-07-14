@@ -13,25 +13,27 @@ import {
   writeStoredNumber,
 } from "./readLayoutStorage";
 
+/** Aria max when container size is unknown (LAYOUT-002 still uses a static fallback). */
+const ARIA_VIEWPORT_FALLBACK_PX = 1000;
+
 export function useResizableSplit(containerRef: RefObject<HTMLElement | null>) {
   const [split2dPx, setSplit2dPx] = useState(() =>
     readStoredNumber(STORAGE_KEY_SPLIT_2D, SPLIT_2D_DEFAULT),
   );
   const [isDragging, setIsDragging] = useState(false);
   const splitRef = useRef(split2dPx);
-  splitRef.current = split2dPx;
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.currentTarget.setPointerCapture(event.pointerId);
-      setIsDragging(true);
-      document.body.classList.add("is-resizing");
-
       const container = containerRef.current;
       if (!container) {
         return;
       }
+
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsDragging(true);
+      document.body.classList.add("is-resizing");
 
       const updateFromClientY = (clientY: number) => {
         const rect = container.getBoundingClientRect();
@@ -63,8 +65,7 @@ export function useResizableSplit(containerRef: RefObject<HTMLElement | null>) {
     [containerRef],
   );
 
-  const containerHeight = containerRef.current?.getBoundingClientRect().height ?? 1000;
-  const maxSplitPx = clampSplitHeight(containerHeight, Number.MAX_SAFE_INTEGER);
+  const maxSplitPx = clampSplitHeight(ARIA_VIEWPORT_FALLBACK_PX, Number.MAX_SAFE_INTEGER);
 
   return {
     split2dPx,

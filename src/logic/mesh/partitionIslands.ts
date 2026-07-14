@@ -1,4 +1,5 @@
 import { makeEdgeKey } from "./edgeKey";
+import { isIndexDegenerateFace } from "./faceDegeneracy";
 import type { EdgeSlot, FaceIndex, MeshModel, SeamRegistry, Topology } from "./types";
 import { getNeighborAcrossEdge } from "./types";
 
@@ -15,8 +16,37 @@ function edgeKeyForFace(mesh: MeshModel, faceId: FaceIndex, slot: EdgeSlot) {
 }
 
 /**
+ * Faces skipped by buildTopology (index-degenerate) must not form islands.
+ * Index check matches topology; remaining edge-map scan is defense if a face
+ * somehow has distinct indices but no edge registration.
+ */
+function isTopologyOrphanFace(
+  mesh: MeshModel,
+  topology: Topology,
+  faceId: FaceIndex,
+): boolean {
+  const base = 3 * faceId;
+  const v0 = mesh.faces[base]!;
+  const v1 = mesh.faces[base + 1]!;
+  const v2 = mesh.faces[base + 2]!;
+  if (isIndexDegenerateFace(v0, v1, v2)) {
+    return true;
+  }
+
+  for (const slot of EDGE_SLOTS) {
+    const key = edgeKeyForFace(mesh, faceId, slot);
+    const incidents = topology.edgeToFaces.get(key);
+    if (incidents?.some((inc) => inc.faceId === faceId)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
  * Partition faces into connected islands, cutting across seam edges.
  * Two faces are in the same island if reachable via non-seam manifold edges.
+ * Topology-orphan (index-degenerate) faces are excluded.
  */
 export function partitionIslands(
   mesh: MeshModel,
@@ -29,6 +59,10 @@ export function partitionIslands(
 
   for (let start = 0; start < faceCount; start++) {
     if (visited[start]) continue;
+    if (isTopologyOrphanFace(mesh, topology, start)) {
+      visited[start] = 1;
+      continue;
+    }
 
     const island: FaceIndex[] = [];
     const queue: FaceIndex[] = [start];

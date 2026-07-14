@@ -72,22 +72,22 @@ describe("parseStl", () => {
     expect(mesh).toMatchObject({ vertexCount: 8, faceCount: 12 });
   });
 
-  it("warns on geometrically degenerate triangle (coincident vertices)", () => {
+  it("rejects STL that is only a geometrically degenerate triangle", () => {
     const stl = buildAsciiStl("degenerate", [[[0, 0, 0], [0, 0, 0], [0, 0, 0]]]);
-    const { warnings } = parseStl(encodeText(stl));
-    expect(warnings).toEqual([{ kind: "degenerate_triangle", triangleIndex: 0 }]);
+    expect(() => parseStl(encodeText(stl))).toThrow(StlParseError);
+    expect(() => parseStl(encodeText(stl))).toThrow(/no geometry after welding/);
   });
 
-  it("skips collapsed triangles after welding in topology", () => {
+  it("drops collapsed triangles at weld so topology has no orphans", () => {
     const stl = buildAsciiStl("degenerate", [
       [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
       ...UNIT_CUBE_TRIANGLES,
     ]);
     const { mesh, warnings } = parseStl(encodeText(stl));
-    expect(warnings).toEqual([{ kind: "degenerate_triangle", triangleIndex: 0 }]);
+    expect(warnings).toEqual([{ kind: "degenerate_triangle", count: 1 }]);
     const topo = buildTopology(mesh);
-    expect(topo.skippedDegenerateFaceCount).toBe(1);
-    expect(mesh.faceCount).toBe(13);
+    expect(topo.skippedDegenerateFaceCount).toBe(0);
+    expect(mesh.faceCount).toBe(12);
   });
 
   it("parses binary STL with trailing padding bytes", () => {

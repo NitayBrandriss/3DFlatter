@@ -103,4 +103,59 @@ describe("unfoldMesh", () => {
       expect(t.maxGap).toBeGreaterThan(0);
     }
   });
+
+  it("unfolds remaining islands when a degenerate orphan would otherwise fail first", () => {
+    const { mesh: cube } = parseObj(CUBE_OBJ);
+    // Prepend an index-degenerate face (topology orphan) still present in MeshModel.
+    const faces = new Uint32Array(3 + cube.faces.length);
+    faces.set([0, 0, 0], 0);
+    faces.set(cube.faces, 3);
+    const mesh = {
+      vertices: cube.vertices,
+      faces,
+      vertexCount: cube.vertexCount,
+      faceCount: cube.faceCount + 1,
+    };
+    const topo = buildTopology(mesh);
+    expect(topo.skippedDegenerateFaceCount).toBe(1);
+
+    const result = unfoldMesh(mesh, topo, createSeamRegistry());
+
+    expect(result.error).toBeUndefined();
+    expect(result.islands.length).toBeGreaterThanOrEqual(1);
+    expect(result.warnings).toBeUndefined();
+  });
+
+  it("returns partial results with warnings when one island fails to unfold", () => {
+    const mesh = {
+      vertices: new Float32Array([
+        0, 0, 0, 1, 0, 0, 0, 1, 0, // valid triangle
+        5, 0, 0, 5, 0, 0, 5, 1, 0, // distinct indices, coincident v0/v1 → root fails
+      ]),
+      faces: new Uint32Array([0, 1, 2, 3, 4, 5]),
+      vertexCount: 6,
+      faceCount: 2,
+    };
+    const topo = buildTopology(mesh);
+    const result = unfoldMesh(mesh, topo, createSeamRegistry());
+
+    expect(result.error).toBeUndefined();
+    expect(result.islands).toHaveLength(1);
+    expect(result.warnings?.length).toBe(1);
+    expect(result.warnings![0]).toMatch(/Island 1/);
+  });
+
+  it("returns error when every island fails", () => {
+    const mesh = {
+      vertices: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      faces: new Uint32Array([0, 0, 0]),
+      vertexCount: 3,
+      faceCount: 1,
+    };
+    const topo = buildTopology(mesh);
+    const result = unfoldMesh(mesh, topo, createSeamRegistry());
+
+    expect(result.islands).toHaveLength(0);
+    expect(result.error).toBeDefined();
+  });
 });

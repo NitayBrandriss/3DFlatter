@@ -41,7 +41,7 @@ export function buildSvgDocument(
 
   const paddingRatio = options.paddingRatio;
   const viewBox = computeSvgViewBox(result.bounds, paddingRatio);
-  const { minX, minY, maxX, maxY } = viewBox.bounds;
+  const { minY, maxY } = viewBox.bounds;
   const includeSeams = options.includeSeams ?? true;
   const title = options.title ?? "Flattened mesh pattern";
 

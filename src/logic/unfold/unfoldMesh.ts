@@ -8,6 +8,7 @@ import { unfoldIsland } from "./unfoldIsland";
 
 /**
  * Partition by seams, unfold each island, detect quality issues, and pack into global XY.
+ * Failed islands are skipped with warnings when others succeed (LOGIC-002).
  */
 export function unfoldMesh(
   mesh: MeshModel,
@@ -17,21 +18,29 @@ export function unfoldMesh(
   const islandFaceLists = partitionIslands(mesh, topology, seams);
   const unfolded = [];
   const localReports = [];
+  const warnings: string[] = [];
 
-  for (const islandFaces of islandFaceLists) {
+  for (let i = 0; i < islandFaceLists.length; i++) {
+    const islandFaces = islandFaceLists[i]!;
     const result = unfoldIsland(mesh, topology, islandFaces);
     if (result.error) {
-      return {
-        islands: [],
-        bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
-        seamSegments: [],
-        collisions: [],
-        tears: [],
-        error: result.error,
-      };
+      warnings.push(`Island ${i} (${islandFaces.length} faces): ${result.error}`);
+      continue;
     }
     unfolded.push(result);
     localReports.push(analyzeUnfoldedIsland(mesh, topology, islandFaces, result));
+  }
+
+  if (unfolded.length === 0) {
+    return {
+      islands: [],
+      bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
+      seamSegments: [],
+      collisions: [],
+      tears: [],
+      warnings: warnings.length > 0 ? warnings : undefined,
+      error: warnings[0] ?? "No unfoldable islands",
+    };
   }
 
   const islands = layoutIslands(unfolded);
@@ -43,5 +52,6 @@ export function unfoldMesh(
     seamSegments: listSeamSegments2d(mesh, topology, seams, islands),
     collisions,
     tears,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

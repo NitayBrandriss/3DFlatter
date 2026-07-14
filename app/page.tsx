@@ -58,7 +58,7 @@ export default function HomePage() {
     setIncludeSeamsInExport,
     onFlatten,
     onExportSvg,
-  } = useFlattenExport(session, notifyToast);
+  } = useFlattenExport(session, meshLoadVersion, notifyToast);
 
   const [wireframe, setWireframe] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
@@ -86,9 +86,7 @@ export default function HomePage() {
     async (file: File | null): Promise<boolean> => {
       if (!file) return false;
       setModelScale(1);
-      await loadMeshFile(file);
-      const state = useMeshSessionStore.getState();
-      return state.session !== null && state.error === null;
+      return loadMeshFile(file);
     },
     [loadMeshFile],
   );
@@ -111,9 +109,7 @@ export default function HomePage() {
 
     const blob = await response.blob();
     const file = new File([blob], demo.fileName, { type: blob.type });
-    await loadMeshFile(file);
-    const state = useMeshSessionStore.getState();
-    return state.session !== null && state.error === null;
+    return loadMeshFile(file);
   }, [loadMeshFile, notifyToast, selectedDemoId]);
 
   const onEdgePick = useCallback(

@@ -1,9 +1,10 @@
 # 3DFlatter — QA Code Audit
 
-**Date:** 2026-07-10  
-**Scope:** `src/logic/`, `src/state/`, `src/ui/`, `src/viewer/`, `app/`  
-**Method:** Static review against ADRs 0001–0003, AGENTS.md boundaries, DRY/maintainability, and UX correctness. No code changes.  
-**Test baseline:** `npm test` — 27 files, 116 tests, all passing.
+**Date:** 2026-07-14 (refresh of 2026-07-10 audit)  
+**Scope:** `src/logic/`, `src/state/`, `src/ui/` (incl. `layout/`), `src/viewer/`, `app/`  
+**Method:** Static re-review against ADRs 0001–0003, AGENTS.md, mobile layout plan, and prior audit IDs. Code read + spot verification; **no code changes**.  
+**Test baseline:** `npm test` — **28 files, 122 tests, all passing** (post Critical/High fixes).  
+**Lint baseline:** `npm run lint` — **passes** (`eslint .` via flat config; TOOL-001 fixed).
 
 ---
 
@@ -12,18 +13,30 @@
 | Level | Meaning |
 |-------|---------|
 | **Critical** | Data loss, wrong geometry output, or broken core workflow for real inputs |
-| **High** | Significant UX bug, race condition, or stuck UI state |
+| **High** | Significant UX bug, race condition, stuck UI state, or broken required tooling |
 | **Medium** | Performance, maintainability, or inconsistent behavior under common use |
 | **Low** | Minor polish, dead code, or fragile patterns unlikely to bite soon |
-| **Info** | Documented PoC limits or acceptable tradeoffs |
+| **Info** | Documented PoC limits, intentional plan deferrals, or acceptable tradeoffs |
 
 ---
 
 ## Executive summary
 
-The pipeline architecture is sound: triangle-soup unfold (ADR 0002), `EdgeKey` seam identity, and logic/viewer separation are respected. **116 unit tests pass**, and core contracts are well tested in `src/logic/`.
+Architecture remains sound: triangle-soup unfold (ADR 0002), `EdgeKey` seam identity, and `src/logic/` free of React/Three.js. **117 unit tests pass.** The responsive layout slice landed in good structural shape (hooks extracted, peek CSS scoped correctly, auto-close gated on success).
 
-The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces in `MeshModel` can fail an entire flatten), **state/UI coupling** (flatten result clears on every seam toggle; no load race guard), and **duplicated unfold BFS logic** (tear detection can drift from unfold). Layout/responsive code has a **stuck resize state** bug and duplicated breakpoint constants between TS and CSS.
+**Critical + High (2026-07-14 fix pass):** Geometry lifecycle (LOGIC-001/002/003), load races/wipe (STATE-001/007/008), flatten-on-seam (STATE-002), resize stuck state (LAYOUT-003), Escape focus (A11Y-001), and lint (TOOL-001) are **addressed**. Remaining risk is Medium/Low backlog (DRY helpers, peek capture, hydration, etc.).
+
+---
+
+## Changes since 2026-07-10
+
+| Status | Notes |
+|--------|--------|
+| **Still open** | All prior Critical/High findings re-verified in current code |
+| **New High** | STATE-007, STATE-008, A11Y-001, TOOL-001 |
+| **New Medium** | LAYOUT-009/010, A11Y-002/003, IO-001/002, LOGIC-024 |
+| **Reclassified** | UI-006 → **Info** (explicitly deferred by mobile plan — not a regression) |
+| **Layout QA** | Peek-through CSS + success-gated `closeIfMobile` match plan; pointer-capture on peek wrapper is a residual risk |
 
 ---
 
@@ -34,9 +47,10 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Field | Detail |
 |-------|--------|
 | **Severity** | Critical |
+| **Status** | **Fixed** (2026-07-14) — weld drops index-degenerate faces; `partitionIslands` skips topology orphans; `unfoldMesh` continues past failed islands |
 | **Files** | `src/logic/mesh/buildTopology.ts`, `src/logic/mesh/partitionIslands.ts`, `src/logic/unfold/unfoldMesh.ts`, `src/logic/io/stl/parseStl.ts` |
-| **Description** | `buildTopology` skips index-degenerate faces (duplicate vertex indices) but **leaves them in `MeshModel.faces`**. They have no adjacency, so `partitionIslands` puts each in its own 1-face island. `unfoldMesh` aborts on the **first** failed island and returns a global `error`, discarding all valid islands. STL import can produce this: one degenerate triangle + cube yields `faceCount === 13` with `skippedDegenerateFaceCount === 1` (`parseStl.test.ts`), but there is no unfold test for that scenario. |
-| **Suggested fix** | Filter degenerate faces at import (with warnings), or exclude topology orphans during partition/unfold. Return per-island errors instead of failing the whole mesh. |
+| **Description** | ~~`buildTopology` skipped index-degenerate faces but left them in `MeshModel.faces`…~~ Addressed by weld filter + orphan skip + partial unfold. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ---
 
@@ -47,45 +61,90 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Field | Detail |
 |-------|--------|
 | **Severity** | High |
-| **Files** | `src/state/meshSessionStore.ts` (`loadMeshFile`, L108–163) |
-| **Description** | Rapid successive file picks (upload + demo overlap) can resolve out of order. An older `await` may overwrite a newer load because there is no monotonic `loadId` or `AbortController`. |
-| **Suggested fix** | Increment a load token at start; ignore stale completions before `set()`. Optionally return `{ ok, error }` from `loadMeshFile`. |
+| **Status** | **Fixed** (2026-07-14) — monotonic `loadSeq` ignores stale completions |
+| **Files** | `src/state/meshSessionStore.ts` (`loadMeshFile`) |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done (`loadSeq` + boolean return). |
+
+### STATE-007 — Failed load wipes previous good session *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — failure keeps prior `session`, does not bump `meshLoadVersion` |
+| **Files** | `src/state/meshSessionStore.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
+
+### STATE-008 — `isLoading` not tied to in-flight generation *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — only latest `loadSeq` clears `isLoading` / writes state |
+| **Files** | `src/state/meshSessionStore.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### STATE-002 — Flatten result clears on every seam toggle
 
 | Field | Detail |
 |-------|--------|
 | **Severity** | High |
-| **Files** | `src/ui/useFlattenExport.ts` (L15–17), `src/state/meshSessionStore.ts` (`toggleSeamAt`, L178–181) |
-| **Description** | `useFlattenExport` resets flatten via `useEffect(..., [session])`. Seam toggles replace the whole `session` object (`{ ...session, seams }`), so **every seam click clears the 2D result** even though mesh/topology are unchanged. Users must re-flatten after each seam edit. |
-| **Suggested fix** | Key the effect on `session.mesh` + `meshLoadVersion` (or a stable mesh fingerprint), not the full session reference. |
+| **Status** | **Fixed** (2026-07-14) — flatten snapshot keyed on `meshLoadVersion` |
+| **Files** | `src/ui/useFlattenExport.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. Re-flatten after seam edits for accuracy. |
 
 ### LOGIC-002 — `unfoldMesh` all-or-nothing error handling
 
 | Field | Detail |
 |-------|--------|
 | **Severity** | High |
-| **Files** | `src/logic/unfold/unfoldMesh.ts` (L21–31) |
-| **Description** | One bad island (degenerate face, disconnected component, hinge failure) fails the entire flatten. Valid islands are discarded. Conflicts with ADR 0003 spirit of “detect and report” at the orchestration layer. |
-| **Suggested fix** | Unfold islands independently; return partial `islands` plus structured per-island warnings. |
-
-### LAYOUT-003 — Stuck resize state when container ref is null
-
-| Field | Detail |
-|-------|--------|
-| **Severity** | High |
-| **Files** | `src/ui/layout/useResizableSplit.ts` (L28–34) |
-| **Description** | `setIsDragging(true)` and `document.body.classList.add("is-resizing")` run **before** container validation. If `containerRef.current` is null, early `return` leaves dragging/body class set with no pointer listeners — stuck resize cursor and selection lock. |
-| **Suggested fix** | Validate container first, or clean up dragging/body class in the early-return path. |
+| **Status** | **Fixed** (2026-07-14) — partial islands + `warnings`; `error` only if zero succeed |
+| **Files** | `src/logic/unfold/unfoldMesh.ts`, `src/logic/mesh/types.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-003 — Welding can create index-degenerate faces with no post-check
 
 | Field | Detail |
 |-------|--------|
 | **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — `weldVertices` drops index-degenerate triangles; I/O wires counts/warnings |
 | **Files** | `src/logic/mesh/weldVertices.ts`, `src/logic/io/obj/parseObj.ts`, `src/logic/io/stl/parseStl.ts` |
-| **Description** | `weldVertices` remaps indices but never validates resulting triangles. Coincident corners that merge to the same index produce faces like `(0,0,0)` that survive into `MeshModel` and are only caught later in `buildTopology` (as orphans per LOGIC-001). |
-| **Suggested fix** | After welding, drop or flag faces where `v0===v1 || v1===v2 || v2===v0`; surface as load warnings. |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
+
+### LAYOUT-003 — Stuck resize state when container ref is null
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — validate container before dragging/body class |
+| **Files** | `src/ui/layout/useResizableSplit.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
+
+### A11Y-001 — Escape closes sidebar but cannot restore focus *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — focus open button in `useEffect` after close transition |
+| **Files** | `src/ui/layout/useSidebarState.ts` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
+
+### TOOL-001 — `npm run lint` broken on Next.js 16 *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | High |
+| **Status** | **Fixed** (2026-07-14) — `eslint.config.mjs` + `"lint": "eslint ."` |
+| **Files** | `package.json`, `eslint.config.mjs` |
+| **Description** | ~~…~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ---
 
@@ -132,7 +191,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Field | Detail |
 |-------|--------|
 | **Severity** | Medium |
-| **Files** | `src/logic/seams/displaySeamSegments.ts`, `src/logic/unfold/seamSegments2d.ts`, `src/logic/unfold/detectTears.ts` (L72–74) |
+| **Files** | `src/logic/seams/displaySeamSegments.ts`, `src/logic/unfold/seamSegments2d.ts`, `src/logic/unfold/detectTears.ts` |
 | **Description** | Edge key parsing is reimplemented instead of living beside `makeEdgeKey` in `edgeKey.ts`. `detectTears` uses `.split(",").map(Number)` inline while others define a local `parseEdgeKey`. |
 | **Suggested fix** | Add `parseEdgeKey(key: EdgeKey): [VertexIndex, VertexIndex]` to `mesh/edgeKey.ts`. |
 
@@ -141,7 +200,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Field | Detail |
 |-------|--------|
 | **Severity** | Medium |
-| **Files** | `src/logic/unfold/detectTears.ts` (L56–90) |
+| **Files** | `src/logic/unfold/detectTears.ts` |
 | **Description** | Iterates all `topology.edgeToFaces` entries and filters by `islandSet`. For large meshes with small islands this is O(mesh edges) per island. |
 | **Suggested fix** | Build island edge list once from incident faces. |
 
@@ -199,12 +258,22 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | **Description** | Export draws segments for any key in `seams.seams`, including stale or boundary/non-manifold edges if ever stored. |
 | **Suggested fix** | Filter through `canSelectAsSeam` or require `incidents.length === 2`. |
 
+### LOGIC-024 — Island order makes orphan failures hit first *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New (amplifier of LOGIC-001/002) |
+| **Files** | `src/logic/mesh/partitionIslands.ts`, `src/logic/unfold/unfoldMesh.ts` |
+| **Description** | Islands emit in ascending face-index order. A degenerate at face 0 fails flatten before any later valid island is attempted — deterministic full failure on common “bad triangle + mesh” STL shapes. |
+| **Suggested fix** | Skip topology-orphan faces in partition, or unfold with partial results + per-island errors. |
+
 ### STATE-003 — Full island re-partition on every seam toggle
 
 | Field | Detail |
 |-------|--------|
 | **Severity** | Medium |
-| **Files** | `src/state/meshSessionStore.ts` (`computeSessionStats`), `app/page.tsx` (L52) |
+| **Files** | `src/state/meshSessionStore.ts` (`computeSessionStats`), `app/page.tsx` |
 | **Description** | `computeSessionStats` calls `partitionIslands` on every seam toggle because `page.tsx` memoizes on `session`. Large meshes will re-partition on each pick for sidebar stats. |
 | **Suggested fix** | Memoize islands on seams content hash; or split cheap counters from full partition. |
 
@@ -214,8 +283,8 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 |-------|--------|
 | **Severity** | Medium |
 | **Files** | `src/ui/layout/useSidebarState.ts` |
-| **Description** | Escape always calls `persistOverride(false)` when `sidebarOpen`, including on desktop — may collapse an open sidebar the user did not expect to be “dismissible.” |
-| **Suggested fix** | Gate Escape with `!isDesktop` or only in drawer overlay mode. |
+| **Description** | Escape always closes when `sidebarOpen`, including on desktop. Matches the mobile layout plan’s a11y note, but desktop users may not expect an in-flow sidebar to be Escape-dismissible. |
+| **Suggested fix** | Gate Escape with `!isDesktop` or only in drawer overlay mode (product decision). |
 
 ### UI-001 — Duplicated post-load success check
 
@@ -224,7 +293,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | **Severity** | Medium |
 | **Files** | `app/page.tsx` (`onPickFile`, `onLoadDemo`) |
 | **Description** | Both paths duplicate: `setModelScale(1)` + `loadMeshFile` + `getState()` + `session !== null && error === null`. |
-| **Suggested fix** | Extract `loadMeshFromFile(file): Promise<boolean>` helper. |
+| **Suggested fix** | Extract `loadMeshFromFile(file): Promise<boolean>` helper, or return `{ ok }` from `loadMeshFile`. |
 
 ### UI-002 — `AppSidebar` prop drilling (~40 props)
 
@@ -253,15 +322,6 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | **Description** | `unfoldMesh` runs synchronously inside `try/finally`. Large meshes freeze the viewport; loading overlay covers parse only, not flatten. |
 | **Suggested fix** | Web Worker, `startTransition`, or explicit progress UI. |
 
-### UI-006 — Mobile flatten does not switch to 2D panel
-
-| Field | Detail |
-|-------|--------|
-| **Severity** | Medium |
-| **Files** | `app/page.tsx`, `src/ui/layout/AppSidebar.tsx` |
-| **Description** | Mobile flatten succeeds but `mobilePanel` stays `"3d"`. User must manually switch tabs to see the pattern. |
-| **Suggested fix** | On successful flatten + `!isDesktop`, call `setMobilePanel("2d")`. |
-
 ### UI-008 — 2D viewer always shows seams; export has toggle
 
 | Field | Detail |
@@ -277,7 +337,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 |-------|--------|
 | **Severity** | Medium |
 | **Files** | `src/ui/layout/constants.ts`, `app/globals.css` |
-| **Description** | Breakpoint `769`, sidebar widths `360/80`, split `280/140/0.6` exist in both TS constants and CSS custom properties / media queries. Drift risk. |
+| **Description** | Breakpoint `769`, sidebar widths `360/80`, split `280/140/0.6` exist in both TS constants and CSS custom properties / media queries. `--layout-breakpoint` is unused by `@media` rules. Drift risk. |
 | **Suggested fix** | Single source of truth — generate CSS vars from TS or read vars in hooks. |
 
 ### LAYOUT-002 — Stale `containerHeight` for split aria max
@@ -295,8 +355,8 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 |-------|--------|
 | **Severity** | Medium |
 | **Files** | `src/ui/layout/useMediaQuery.ts`, `src/ui/layout/useSidebarState.ts` |
-| **Description** | SSR `getServerSnapshot` returns `true` (desktop); mobile hydrates to `isDesktop === false`. `sidebarOpen = userOverride ?? isDesktop` can flash open→closed on first paint. |
-| **Suggested fix** | Mobile-first SSR default, or suppress transition until hydrated. |
+| **Description** | SSR `getServerSnapshot` returns `true` (desktop); mobile hydrates to `isDesktop === false`. `sidebarOpen = userOverride ?? isDesktop` can flash open→closed on first paint. Reading `localStorage` in `useState` init (not `useEffect`) worsens mismatch. |
+| **Suggested fix** | Mobile-first SSR default, defer storage read to `useEffect`, or suppress transition until hydrated. |
 
 ### LAYOUT-008 — Stored split height not clamped on init
 
@@ -304,8 +364,68 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 |-------|--------|
 | **Severity** | Medium |
 | **Files** | `src/ui/layout/useResizableSplit.ts`, `src/ui/layout/readLayoutStorage.ts` |
-| **Description** | Corrupt/huge localStorage values apply until user drags. |
+| **Description** | Corrupt/huge localStorage values apply until user drifts. Clamp only runs inside drag (`updateFromClientY`). |
 | **Suggested fix** | Clamp `readStoredNumber` result with `clampSplitHeight` once container is measurable. |
+
+### LAYOUT-009 — Peek `setPointerCapture` may starve range slider *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/ui/layout/usePeekThrough.ts`, `src/ui/layout/PeekThroughControl.tsx` |
+| **Description** | Peek CSS correctly keeps `.peek-through-target { pointer-events: auto }`, but the wrapper calls `setPointerCapture` on pointerdown. In some browsers that can retarget moves away from the native `<input type="range">`, so the slider stops tracking mid-drag while drawer is ghosted. |
+| **Suggested fix** | Prefer capture on the range itself, or skip capture and rely on CSS + `lostpointercapture` cleanup. Manual QA on mobile Chrome/Safari. |
+
+### LAYOUT-010 — Layout storage read during `useState` init *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/ui/layout/readLayoutStorage.ts`, `useResizableSplit.ts`, `useSidebarState.ts` |
+| **Description** | Client `useState(() => readStored*)` during SSR of `"use client"` pages: server gets fallback/`null`, client can get storage → hydration mismatch (feeds LAYOUT-004/008). Mobile plan recommended reading storage in `useEffect`. |
+| **Suggested fix** | Defer storage read to `useEffect` after mount; clamp split once container is measured. |
+
+### A11Y-002 — Mobile tabs lack keyboard tab pattern *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/ui/layout/ViewportChrome.tsx` |
+| **Description** | Tabs expose `role="tablist"` / `tab` / `tabpanel` and `aria-selected`, but lack WAI-ARIA keyboard pattern (`ArrowLeft`/`ArrowRight`, roving `tabIndex`). |
+| **Suggested fix** | Add roving tabindex + key handlers. |
+
+### A11Y-003 — Split separator not keyboard-resizable *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/ui/layout/ViewportChrome.tsx`, `src/ui/layout/useResizableSplit.ts` |
+| **Description** | `role="separator"` exposes `aria-valuemin/max/now` but has no `ArrowUp`/`ArrowDown` (or equivalent) to adjust height. |
+| **Suggested fix** | Adjust `split2dPx` on keys; clamp + persist on keyup. |
+
+### IO-001 — STL format heuristic can prefer binary over ASCII *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/logic/io/stl/parseStl.ts` |
+| **Description** | If header looks like ASCII (`solid…`) but `byteLength` matches binary layout for the uint32 at offset 80, detector returns `"binary"`. Edge-case ASCII files can parse incorrectly or throw empty-binary errors. |
+| **Suggested fix** | Prefer ASCII when `looksLikeAsciiStl` unless binary header is unmistakably valid; try ASCII fallback on empty/failed binary. |
+
+### IO-002 — No max file / triangle budget on client load *(new)*
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Status** | New |
+| **Files** | `src/logic/io/stl/parseStl.ts`, `src/state/meshSessionStore.ts` |
+| **Description** | No soft max bytes / face count. Large STL/OBJ can allocate huge typed arrays / strings and freeze/OOM the tab. |
+| **Suggested fix** | Soft limits with a clear user-facing error before allocate/decode. |
 
 ### VIEW-001 — PickableMesh drag guard can leave stale pointer state
 
@@ -322,7 +442,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 |-------|--------|
 | **Severity** | Medium |
 | **Files** | `app/page.tsx` |
-| **Description** | ~200+ lines wiring Zustand, flatten export, viewport prefs, demo fetch, layout hooks, backdrop, and both viewports. Hard to test and reason about. |
+| **Description** | ~200+ lines wiring Zustand, flatten export, viewport prefs, demo fetch, layout hooks, backdrop, and both viewports. Harder to test than the extracted layout modules. |
 | **Suggested fix** | Split into `HomePageShell`, `useViewportPreferences`, `useDemoLoader`. |
 
 ### ARCH-001 — Broad Zustand selector re-renders entire page on seam toggle
@@ -330,7 +450,7 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Field | Detail |
 |-------|--------|
 | **Severity** | Medium |
-| **Files** | `app/page.tsx` (L35–50) |
+| **Files** | `app/page.tsx` |
 | **Description** | `useShallow` selects `session` wholesale; seam toggles re-render sidebar, chrome, and overlays. Necessary for stats but over-invalidates unrelated UI. |
 | **Suggested fix** | Split selectors: mesh-only subtree vs seams/stats. |
 
@@ -341,18 +461,20 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | ID | Files | Description | Suggested fix |
 |----|-------|-------------|---------------|
 | **STATE-004** | `meshSessionStore.ts` | Failed loads still bump `meshLoadVersion`, forcing Canvas remount with no mesh change | Only increment on successful load/clear |
-| **STATE-005** | `meshSessionStore.ts` L110–111 | Double `requestAnimationFrame` before parse is undocumented; may not prevent jank on large files | Worker, `startTransition`, or document intent |
+| **STATE-005** | `meshSessionStore.ts` | Double `requestAnimationFrame` before parse is undocumented; may not prevent jank on large files | Worker, `startTransition`, or document intent |
 | **UI-005** | `ToastStack.tsx` | `ToastItem` effect depends on `onDismiss`; unstable callback would reset timers | Stable ref or omit from deps |
 | **UI-007** | `AppSidebar.tsx` | `stats ?` nested inside `session ?` is redundant | Simplify conditionals |
-| **LAYOUT-005** | `ViewportChrome.tsx` | Dead re-export `SPLIT_2D_MIN` (“for aria in parent if needed”) | Remove or wire up |
-| **LAYOUT-006** | `usePeekThrough.ts` | `usePeekThroughBind` returns new handler object every render | `useMemo` bind object |
+| **LAYOUT-005** | `ViewportChrome.tsx` | Dead re-export `SPLIT_2D_MIN` | Remove unused export |
+| **LAYOUT-006** | `usePeekThrough.ts` | `usePeekThroughBind` returns new handler object every render | Memoize bind object |
 | **LAYOUT-007** | `app/page.tsx` | Mobile backdrop lives in page; sidebar state in hook | Move into `AppSidebar` or shell |
 | **VIEW-002** | `MeshViewport.tsx` | Camera refit may miss control target on first frame | `useLayoutEffect` or refit in ref callback |
 | **VIEW-003** | `MeshViewport.tsx` | Empty vs loaded scene use different OrbitControls config | Share one controls config |
 | **VIEW-004** | `SeamOverlay.tsx` | `linewidth={2}` ignored on most WebGL platforms | Document or use mesh-line |
+| **VIEW-005** *(new)* | `page.tsx`, `ViewportChrome.tsx` | Toasts live inside `viewport3d`; on mobile 2D tab they are hidden with the panel | Portal toasts to `.page` or keep a non-hidden stack |
 | **APP-002** | `app/api/demo-models/`, `demoModels.ts` | API route imports catalog from `src/ui/` | Move to `src/data/` or `src/config/` |
 | **APP-003** | `app/page.tsx`, API route | Demo error strings partially duplicated | Single error-mapping helper |
 | **ARCH-002** | `app/page.tsx` | Imperative `getState()` after `await` instead of return value from `loadMeshFile` | Return `{ ok, error }` from loader |
+| **IO-003** *(new)* | `parseObj.ts` | `parseInt` accepts prefixes (`"12abc"` → 12); can silently corrupt geometry | Require full-token integer match |
 | **LOGIC-016** | `mesh/types.ts` | `MeshFace` interface exported but unused | Remove or use |
 | **LOGIC-017** | `unfold/placeTriangle2d.ts` | `placeRootTriangleCCW` name implies forced CCW; preserves stored winding | Rename to `placeRootTriangle` |
 | **LOGIC-018** | `unfold/placeTriangle2d.ts` | `readVertex3d` returns `Vec2 & { z: number }` | Introduce `Vec3` type |
@@ -368,6 +490,24 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | **LOGIC-021** | `io/obj/polygonConvexity.ts` | Degenerate normals return “not concave”; severely non-planar polygons get no concave warning |
 | **LOGIC-022** | `unfold/unfoldIsland.ts` | Finiteness of `positions2d` tested but not asserted post-unfold in production |
 | **LOGIC-023** | `detectCollisions.ts`, `detectTears.ts` | Closed cube with no seams reports many collisions + tears; intentional per ADR 0003 |
+| **UI-006** | `page.tsx`, `AppSidebar.tsx` | Mobile flatten does **not** auto-switch to 2D tab — **explicitly deferred** by mobile layout plan (not a regression). Optional follow-up UX. |
+| **APP-002-sec** | `app/api/demo-models/[id]/route.ts` | Demo IDs resolve via allowlist then disk/bundled fallback — path traversal mitigated. No action required. |
+
+---
+
+## Layout slice health check (mobile plan)
+
+| Expectation | QA verdict |
+|-------------|------------|
+| Constants + CSS tokens | Done; values still duplicated (LAYOUT-001) |
+| Hooks: media / sidebar / split / peek | Done |
+| `closeIfMobile` only after successful major actions | **Correct** (better than early plan sketch) |
+| Peek scoped `pointer-events` CSS | **Correct** |
+| Desktop in-flow vs mobile overlay + backdrop | **Correct** |
+| Escape + aria toggles + tab roles + separator values | Mostly done; focus + keyboard gaps (A11Y-001/002/003) |
+| `prefers-reduced-motion` | **Correct** |
+| Auto-switch to 2D after flatten | Out of scope by plan (UI-006 → Info) |
+| Persist sidebar / split | Done, but init unclamped + hydration-hostile (LAYOUT-004/008/010) |
 
 ---
 
@@ -382,32 +522,35 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | XY flatten plane | Compliant |
 | Quality detection orthogonal to unfold | Compliant |
 | `meshLoadVersion` not bumped on seam toggles | Compliant |
-| Surface degenerate/non-manifold limits to user | **Partial** — counts in UI; console.warn and orphan faces are weak spots |
+| Surface degenerate/non-manifold limits to user | **Partial** — counts in UI; `console.warn` and orphan faces are weak spots |
 | `src/logic/` free of React/Three.js | Compliant |
 
 ---
 
 ## What looks solid
 
-- **Test coverage:** 116 logic tests across topology, I/O, unfold, quality detection, export, and layout clamping.
-- **Layer boundaries:** `displayNormalization.ts` stays Three.js-free; pick/overlay/render share `buildDisplayMeshAssets`.
+- **Test coverage:** 117 logic/layout tests across topology, I/O, unfold, quality detection, export, and `clampSplitHeight`.
+- **Layer boundaries:** `displayNormalization.ts` stays Three.js-free; pick/overlay/render share display assets cleanly.
 - **GPU cleanup:** `geometry.dispose()` in `MeshViewport` and `SeamOverlay`.
 - **Pick handler freshness:** `PickableMesh` uses `displayMeshRef.current` to avoid stale mesh in pick handler.
-- **`useMediaQuery`:** Correct `useSyncExternalStore` pattern without hydration listener leaks.
+- **`useMediaQuery`:** Correct `useSyncExternalStore` pattern.
 - **Seam invariant:** `meshLoadVersion` correctly excluded from seam toggle path.
+- **Layout extraction:** `AppSidebar` / `ViewportChrome` / layout hooks keep `page.tsx` thinner than the prior monolith.
+- **Mobile UX gates:** Peek CSS exception + success-only auto-close are implemented carefully.
 
 ---
 
 ## Recommended fix priority
 
-1. **LOGIC-001 / LOGIC-003 / LOGIC-004** — degenerate face lifecycle (import → topology → partition → unfold)
-2. **STATE-002** — flatten cleared on seam toggle (high-impact UX)
-3. **LAYOUT-003** — stuck resize state
-4. **STATE-001** — load race guard
-5. **LOGIC-002** — partial unfold results
-6. **LOGIC-006 / LOGIC-007 / LOGIC-008** — dedupe BFS and face/edge helpers
-7. **LOGIC-005 / LOGIC-012 / LOGIC-013** — structured warnings and tolerance consolidation
-8. **UI-003 / LAYOUT-001** — DRY for preview/export and layout constants
+1. ~~**LOGIC-001 / LOGIC-003 / LOGIC-024 / LOGIC-002**~~ — **Done** (2026-07-14)
+2. ~~**STATE-002**~~ — **Done**
+3. ~~**STATE-007 / STATE-001 / STATE-008**~~ — **Done**
+4. ~~**TOOL-001**~~ — **Done**
+5. ~~**LAYOUT-003 / A11Y-001**~~ — **Done**
+6. **LAYOUT-009 / LAYOUT-008 / LAYOUT-010** — peek capture + storage init hardening
+7. **LOGIC-006 / LOGIC-007 / LOGIC-008** — dedupe BFS and face/edge helpers
+8. **LOGIC-005 / LOGIC-012 / LOGIC-013 / IO-*** — warnings, tolerances, STL detection, file limits
+9. **UI-003 / LAYOUT-001 / A11Y-002/003** — DRY preview/export, constants, keyboard a11y
 
 ---
 
@@ -416,12 +559,12 @@ The highest-risk gaps cluster around **degenerate-face lifecycle** (orphan faces
 | Severity | Count |
 |----------|-------|
 | Critical | 1 |
-| High | 5 |
-| Medium | 28 |
-| Low | 16 |
-| Info | 4 |
-| **Total** | **54** |
+| High | 9 |
+| Medium | 34 |
+| Low | 19 |
+| Info | 6 |
+| **Total** | **69** |
 
 ---
 
-*This document is a point-in-time audit. Re-run after major pipeline or layout changes.*
+*This document is a point-in-time audit (refreshed 2026-07-14). Re-run after major pipeline, session, or layout changes.*

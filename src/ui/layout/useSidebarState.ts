@@ -18,6 +18,7 @@ export function useSidebarState() {
     readStoredBoolean(STORAGE_KEY_SIDEBAR),
   );
   const openButtonRef = useRef<HTMLButtonElement | null>(null);
+  const prevOpenRef = useRef<boolean | null>(null);
 
   const sidebarOpen = userOverride ?? isDesktop;
 
@@ -51,12 +52,20 @@ export function useSidebarState() {
       }
       event.preventDefault();
       persistOverride(false);
-      openButtonRef.current?.focus();
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [persistOverride, sidebarOpen]);
+
+  // Focus open control after close (button mounts only when collapsed — A11Y-001).
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = sidebarOpen;
+    if (wasOpen === true && !sidebarOpen) {
+      openButtonRef.current?.focus();
+    }
+  }, [sidebarOpen]);
 
   return {
     isDesktop,

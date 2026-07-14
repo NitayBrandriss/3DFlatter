@@ -185,6 +185,9 @@ export type UnfoldMeshResult = {
   collisions: TriangleCollision2d[];
   /** Empty when clean. Does not imply error (ADR 0003). */
   tears: EdgeTear2d[];
+  /** Non-fatal per-island unfold failures when at least one island succeeded. */
+  warnings?: string[];
+  /** Set when no island could be unfolded. */
   error?: string;
 };
 
