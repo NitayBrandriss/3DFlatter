@@ -118,7 +118,7 @@ Stop and get user approval before:
 
 ## Planning workflow
 
-- **Plans hub:** [docs/plans/README.md](docs/plans/README.md) — status, backlog, links to archived specs.
+- **Plans hub (only):** [docs/plans/README.md](docs/plans/README.md) — status, backlog, archived specs under [docs/plans/archive/](docs/plans/archive/). Do not treat `.cursor/plans/` as canonical; promote Cursor-generated plans into `docs/plans/`.
 - **Plan / Ask mode:** next phase step, tradeoffs, ADR impact — don't implement yet.
 - **Agent mode:** one incremental step from an approved plan.
 - **Review pass:** separate prompt to scan for bugs and ADR violations after a slice lands.

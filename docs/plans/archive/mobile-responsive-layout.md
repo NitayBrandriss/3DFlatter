@@ -1,38 +1,30 @@
----
-name: Mobile responsive layout
-overview: Responsive shell with collapsible sidebar (desktop open by default, mobile closed), labeled toggles, draggable desktop 2D split, mobile 3D/2D tabs, and mobile-only interaction refinements (auto-close on major actions, peek-through on continuous controls) — implemented via extracted layout hooks/components in src/ui/layout/.
-todos:
-  - id: layout-constants
-    content: Add src/ui/layout/constants.ts + clampSplitHeight.ts (pure, unit-tested) and CSS :root tokens for widths/z-index/peek opacity
-    status: completed
-  - id: layout-hooks
-    content: Add useMediaQuery (useSyncExternalStore), useSidebarState (breakpoint default + user override + closeIfMobile), useResizableSplit
-    status: completed
-  - id: layout-peek
-    content: Add usePeekThrough hook + PeekThroughControl wrapper for continuous inputs (scale slider); data-sidebar-peek CSS
-    status: pending
-  - id: layout-components
-    content: Extract AppSidebar.tsx + ViewportChrome.tsx; wire auto-close on file/demo load + flatten (mobile only)
-    status: completed
-  - id: layout-css
-    content: "Refactor app/globals.css: CSS variables, data-attribute selectors, desktop in-flow width vs mobile overlay drawer"
-    status: pending
-  - id: a11y-keyboard
-    content: Escape closes sidebar; aria-expanded/controls; mobile tab tablist/tabpanel; separator valuemin/max/now on resize handle
-    status: pending
-  - id: verify
-    content: npm test (incl. clampSplitHeight), npm run lint, manual desktop/mobile QA incl. peek + auto-close
-    status: completed
-isProject: false
+# UI shell — Mobile responsive layout
+
+**Status:** Complete  
+**Hub:** [Plans & roadmap](../README.md)  
+**QA:** [qa-audit.md](../../qa-audit.md) (layout slice health check)
+
+Responsive shell: collapsible sidebar (desktop open by default, mobile closed), labeled toggles, draggable desktop 2D split, mobile 3D/2D tabs, auto-close on major actions, peek-through on continuous controls — via extracted layout hooks/components in `src/ui/layout/`.
+
+### Delivery checklist (all done)
+
+| Id | Work |
+|----|------|
+| layout-constants | `constants.ts` + `clampSplitHeight` (+ test) + CSS `:root` tokens |
+| layout-hooks | `useMediaQuery`, `useSidebarState`, `useResizableSplit` |
+| layout-peek | `usePeekThrough` + `PeekThroughControl`; `data-sidebar-peek` CSS |
+| layout-components | `AppSidebar` + `ViewportChrome`; mobile auto-close |
+| layout-css | `globals.css` tokens + data attrs; desktop vs mobile drawer |
+| a11y-keyboard | Escape, aria, tabs, separator valuemin/max/now |
+| verify | `npm test` / `npm run lint` / manual QA checklist below |
+
 ---
 
-# Responsive layout — sidebar + 2D split (architecture review)
-
-## Architecture principles (aligned with [AGENTS.md](AGENTS.md))
+## Architecture principles (aligned with [AGENTS.md](../../../AGENTS.md))
 
 | Principle | Decision |
 |-----------|----------|
-| **Thin route, fat UI module** | [`app/page.tsx`](app/page.tsx) stays orchestration (store wiring); layout UI moves to [`src/ui/layout/`](src/ui/layout/) — same pattern as [`useFlattenExport.ts`](src/ui/useFlattenExport.ts) |
+| **Thin route, fat UI module** | [`app/page.tsx`](../../../app/page.tsx) stays orchestration (store wiring); layout UI moves to [`src/ui/layout/`](../../../src/ui/layout/) — same pattern as [`useFlattenExport.ts`](../../../src/ui/useFlattenExport.ts) |
 | **No logic in `src/logic/`** | Layout is presentation-only; clamp math lives in `src/ui/layout/` as pure functions with Vitest tests |
 | **No new dependencies** | CSS transitions, `useSyncExternalStore`, Pointer Events, `localStorage` |
 | **Single source of truth** | Breakpoint + dimensions in `constants.ts`; mirrored as CSS custom properties in `:root` |
@@ -44,10 +36,13 @@ isProject: false
 
 ## Current state
 
-- Layout: [`app/page.tsx`](app/page.tsx) + [`app/globals.css`](app/globals.css)
-- Fixed `360px | 1fr` grid; no `@media` queries
-- 3D/2D: `grid-template-rows: 1fr minmax(200px, 35vh)` — not resizable
+**Implementation complete.** Optional follow-ups and residual layout issues are tracked in [qa-audit.md](../../qa-audit.md).
 
+- Shell: [`app/page.tsx`](../../../app/page.tsx) wires store → [`src/ui/layout/`](../../../src/ui/layout/) (`AppSidebar`, `ViewportChrome`, hooks)
+- Responsive CSS: [`app/globals.css`](../../../app/globals.css) — tokens, `data-sidebar` / `data-sidebar-peek`, desktop in-flow width vs mobile overlay drawer
+- Desktop: collapsible sidebar, draggable 2D split (`useResizableSplit` + `clampSplitHeight`)
+- Mobile: rail + overlay drawer, 3D/2D tabs, auto-close on major actions, scale-slider peek-through
+- Also landed: [`readLayoutStorage.ts`](../../../src/ui/layout/readLayoutStorage.ts)
 ```mermaid
 flowchart TB
   Page["app/page.tsx orchestrator"]
@@ -91,7 +86,7 @@ app/page.tsx                # wires store → layout components
 app/globals.css             # layout tokens + responsive rules
 ```
 
-[`app/page.tsx`](app/page.tsx) target: ~80 lines of wiring (down from ~370 lines of mixed layout + controls).
+[`app/page.tsx`](../../../app/page.tsx) target: ~80 lines of wiring (down from ~370 lines of mixed layout + controls).
 
 ---
 
@@ -496,7 +491,7 @@ sequenceDiagram
 - Keyboard shortcut `[` to toggle sidebar on desktop
 - Auto-switch to 2D tab after flatten
 - Extend peek-through to desktop sidebar (probably unnecessary)
-- Extract `readLayoutStorage` util if more keys are added
+- ~~Extract `readLayoutStorage` util if more keys are added~~ — done (`readLayoutStorage.ts`)
 
 ---
 

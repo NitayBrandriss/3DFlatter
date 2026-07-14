@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-14 (refresh of 2026-07-10 audit)  
 **Scope:** `src/logic/`, `src/state/`, `src/ui/` (incl. `layout/`), `src/viewer/`, `app/`  
-**Method:** Static re-review against ADRs 0001–0003, AGENTS.md, mobile layout plan, and prior audit IDs. Code read + spot verification; **no code changes**.  
+**Method:** Static re-review against ADRs 0001–0003, AGENTS.md, [mobile-responsive-layout plan](plans/archive/mobile-responsive-layout.md), and prior audit IDs. Code read + spot verification; **no code changes**.
 **Test baseline:** `npm test` — **28 files, 122 tests, all passing** (post Critical/High fixes).  
 **Lint baseline:** `npm run lint` — **passes** (`eslint .` via flat config; TOOL-001 fixed).
 
@@ -495,7 +495,7 @@ Architecture remains sound: triangle-soup unfold (ADR 0002), `EdgeKey` seam iden
 
 ---
 
-## Layout slice health check (mobile plan)
+## Layout slice health check ([mobile-responsive-layout](plans/archive/mobile-responsive-layout.md))
 
 | Expectation | QA verdict |
 |-------------|------------|
