@@ -20,6 +20,8 @@ function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   // Refit only when geometry identity changes (new file load), not on seam edits.
+  // Three.js PerspectiveCamera is a mutable scene object; R3F's camera is updated in place.
+  /* eslint-disable react-hooks/immutability -- intentional Three.js camera mutation */
   useEffect(() => {
     geometry.computeBoundingSphere();
     const sphere = geometry.boundingSphere;
@@ -44,6 +46,7 @@ function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
       controls.update();
     }
   }, [camera, geometry]);
+  /* eslint-enable react-hooks/immutability */
 
   return (
     <OrbitControls

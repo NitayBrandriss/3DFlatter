@@ -12,11 +12,16 @@ export class ObjParseError extends Error {
   }
 }
 
-export type ObjLoadWarning = {
-  kind: "concave_ngon";
-  line: number;
-  vertexCount: number;
-};
+export type ObjLoadWarning =
+  | {
+      kind: "concave_ngon";
+      line: number;
+      vertexCount: number;
+    }
+  | {
+      kind: "degenerate_triangle";
+      count: number;
+    };
 
 export type ParseObjResult = {
   mesh: MeshModel;
@@ -135,8 +140,19 @@ export function parseObj(text: string): ParseObjResult {
     throw new ObjParseError(`No faces found`, 1);
   }
 
-  return {
-    mesh: weldVertices(new Float32Array(vertices), new Uint32Array(faces)),
-    warnings,
-  };
+  const { mesh, removedDegenerateFaceCount } = weldVertices(
+    new Float32Array(vertices),
+    new Uint32Array(faces),
+  );
+  if (mesh.faceCount === 0) {
+    throw new ObjParseError(`No faces remaining after welding`, 1);
+  }
+  if (removedDegenerateFaceCount > 0) {
+    warnings.push({
+      kind: "degenerate_triangle",
+      count: removedDegenerateFaceCount,
+    });
+  }
+
+  return { mesh, warnings };
 }

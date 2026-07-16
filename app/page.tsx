@@ -1,16 +1,22 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   computeSessionStats,
   useMeshSessionStore,
 } from "@/state/meshSessionStore";
-import { DEMO_MODELS } from "@/ui/demoModels";
+import { AppSidebar } from "@/ui/layout/AppSidebar";
+import { usePeekThrough } from "@/ui/layout/usePeekThrough";
+import { useResizableSplit } from "@/ui/layout/useResizableSplit";
+import { useSidebarState } from "@/ui/layout/useSidebarState";
+import { ViewportChrome } from "@/ui/layout/ViewportChrome";
+import type { MobilePanel } from "@/ui/layout/ViewportChrome";
 import { ToastStack } from "@/ui/ToastStack";
 import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
 import { useFlattenExport } from "@/ui/useFlattenExport";
 import { MeshViewport } from "@/viewer/MeshViewport";
+import { DEMO_MODELS } from "@/ui/demoModels";
 
 export default function HomePage() {
   const {
@@ -52,37 +58,58 @@ export default function HomePage() {
     setIncludeSeamsInExport,
     onFlatten,
     onExportSvg,
-  } = useFlattenExport(session, notifyToast);
+  } = useFlattenExport(session, meshLoadVersion, notifyToast);
 
   const [wireframe, setWireframe] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
   const [selectedDemoId, setSelectedDemoId] = useState(DEMO_MODELS[0]?.id ?? "");
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
+
+  const {
+    isDesktop,
+    sidebarOpen,
+    toggleSidebar,
+    closeSidebar,
+    closeIfMobile,
+    openButtonRef,
+    sidebarDrawerId,
+  } = useSidebarState();
+
+  const { isPeeking, onPeekChange } = usePeekThrough();
+
+  const viewportRef = useRef<HTMLElement | null>(null);
+  const { split2dPx, isDragging, splitHandleProps } = useResizableSplit(viewportRef);
 
   const onPickFile = useCallback(
-    async (file: File | null) => {
-      if (!file) return;
+    async (file: File | null): Promise<boolean> => {
+      if (!file) return false;
       setModelScale(1);
-      await loadMeshFile(file);
+      return loadMeshFile(file);
     },
     [loadMeshFile],
   );
 
-  const onLoadDemo = useCallback(async () => {
+  const onLoadDemo = useCallback(async (): Promise<boolean> => {
     const demo = DEMO_MODELS.find((model) => model.id === selectedDemoId);
-    if (!demo) return;
+    if (!demo) return false;
 
     setModelScale(1);
     const response = await fetch(`/api/demo-models/${demo.id}`);
     if (!response.ok) {
-      notifyToast(`Failed to load demo model "${demo.label}".`, "warning");
-      return;
+      notifyToast(
+        response.status === 404
+          ? `Demo model "${demo.label}" not found. Add it under 3d_models/.`
+          : `Failed to load demo model "${demo.label}".`,
+        "warning",
+      );
+      return false;
     }
 
     const blob = await response.blob();
     const file = new File([blob], demo.fileName, { type: blob.type });
-    await loadMeshFile(file);
+    return loadMeshFile(file);
   }, [loadMeshFile, notifyToast, selectedDemoId]);
 
   const onEdgePick = useCallback(
@@ -92,271 +119,94 @@ export default function HomePage() {
     [toggleSeamAt],
   );
 
+  const showMobileBackdrop = !isDesktop && sidebarOpen && !isPeeking;
+
   return (
-    <div className="page">
-      <aside className="sidebar">
-        <h2 style={{ marginTop: 0, marginBottom: 8 }}>3D Flatter</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Upload an <code>.obj</code> or <code>.stl</code> and click edges to mark seams.
-        </p>
+    <div
+      className="page"
+      data-sidebar={sidebarOpen ? "open" : "collapsed"}
+      data-sidebar-peek={isPeeking ? "true" : "false"}
+    >
+      {showMobileBackdrop ? (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close menu"
+          onClick={closeSidebar}
+        />
+      ) : null}
 
-        <div className="col">
-          <div className="card">
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>File</div>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <input
-                type="file"
-                accept=".obj,.stl"
-                disabled={isLoading}
-                onChange={(e) => onPickFile(e.currentTarget.files?.[0] ?? null)}
-              />
-            </div>
+      <AppSidebar
+        sidebarOpen={sidebarOpen}
+        sidebarDrawerId={sidebarDrawerId}
+        openButtonRef={openButtonRef}
+        onToggleSidebar={toggleSidebar}
+        onCloseSidebar={closeSidebar}
+        closeIfMobile={closeIfMobile}
+        peekEnabled={!isDesktop && sidebarOpen}
+        isPeeking={isPeeking}
+        onPeekChange={onPeekChange}
+        session={session}
+        stats={stats}
+        isLoading={isLoading}
+        error={error}
+        seamMode={seamMode}
+        setSeamMode={setSeamMode}
+        clearAllSeams={clearAllSeams}
+        flattening={flattening}
+        flattenResult={flattenResult}
+        includeSeamsInExport={includeSeamsInExport}
+        setIncludeSeamsInExport={setIncludeSeamsInExport}
+        onPickFile={onPickFile}
+        onLoadDemo={onLoadDemo}
+        onFlatten={onFlatten}
+        onExportSvg={onExportSvg}
+        wireframe={wireframe}
+        setWireframe={setWireframe}
+        showGrid={showGrid}
+        setShowGrid={setShowGrid}
+        showAxes={showAxes}
+        setShowAxes={setShowAxes}
+        modelScale={modelScale}
+        setModelScale={setModelScale}
+        selectedDemoId={selectedDemoId}
+        setSelectedDemoId={setSelectedDemoId}
+      />
 
-            <div className="col" style={{ marginTop: 10, gap: 8 }}>
-              <div className="muted" style={{ fontSize: 13 }}>
-                Or load a local demo model:
-              </div>
-              <div className="row">
-                <select
-                  className="select"
-                  value={selectedDemoId}
-                  disabled={isLoading}
-                  onChange={(e) => setSelectedDemoId(e.currentTarget.value)}
-                  aria-label="Demo model"
-                >
-                  {DEMO_MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={isLoading || !selectedDemoId}
-                  onClick={onLoadDemo}
-                >
-                  Load demo
-                </button>
-              </div>
-            </div>
-            <div className="muted" style={{ marginTop: 10 }}>
-              {session ? (
-                <>
-                  <div>
-                    <span style={{ opacity: 0.8 }}>Loaded:</span> {session.fileName}
-                  </div>
-                  {stats ? (
-                    <>
-                      <div>
-                        <span style={{ opacity: 0.8 }}>Stats:</span>{" "}
-                        {stats.vertexCount.toLocaleString()} verts,{" "}
-                        {stats.faceCount.toLocaleString()} tris
-                      </div>
-                      <div>
-                        <span style={{ opacity: 0.8 }}>Edges:</span>{" "}
-                        {stats.manifoldEdgesCount.toLocaleString()} manifold,{" "}
-                        {stats.boundaryEdgesCount.toLocaleString()} boundary,{" "}
-                        {stats.nonManifoldEdgesCount.toLocaleString()} non-manifold
-                        {stats.skippedDegenerateFaceCount > 0
-                          ? ` (${stats.skippedDegenerateFaceCount} degenerate faces skipped)`
-                          : null}
-                      </div>
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                "No file loaded."
-              )}
-            </div>
-          </div>
-
-          <div className="card">
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>Seams</div>
-
-            <label className="toggle">
-              <span className="muted">Seam mode</span>
-              <input
-                type="checkbox"
-                checked={seamMode}
-                disabled={!session}
-                onChange={(e) => setSeamMode(e.currentTarget.checked)}
-              />
-            </label>
-
-            <div className="muted" style={{ marginTop: 6 }}>
-              {stats ? (
-                <>
-                  <div>
-                    <span style={{ opacity: 0.8 }}>Selected:</span>{" "}
-                    {stats.seamCount.toLocaleString()} seam
-                    {stats.seamCount === 1 ? "" : "s"}
-                  </div>
-                  <div>
-                    <span style={{ opacity: 0.8 }}>Islands:</span>{" "}
-                    {stats.islandCount.toLocaleString()}
-                    {stats.islandFaceCounts.length > 1 ? (
-                      <span style={{ opacity: 0.75 }}>
-                        {" "}
-                        ({stats.islandFaceCounts.join(" / ")} faces)
-                      </span>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                "Load a mesh to select seams."
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="btn"
-              style={{ marginTop: 10, width: "100%" }}
-              disabled={!session || !stats || stats.seamCount === 0}
-              onClick={clearAllSeams}
-            >
-              Clear seams
-            </button>
-          </div>
-
-          <div className="card">
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>Flatten</div>
-            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
-              Unfold all islands into a 2D blueprint pattern.
-            </p>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: "100%" }}
-              disabled={!session || flattening}
-              onClick={onFlatten}
-            >
-              {flattening ? "Flattening…" : "Flatten"}
-            </button>
-          </div>
-
-          <div className="card">
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>Export</div>
-            <p className="muted" style={{ marginTop: 0, marginBottom: 10 }}>
-              Download the flattened pattern as SVG (preview).
-            </p>
-            <label className="toggle">
-              <span className="muted">Include seam overlay</span>
-              <input
-                type="checkbox"
-                checked={includeSeamsInExport}
-                disabled={!flattenResult}
-                onChange={(e) => setIncludeSeamsInExport(e.currentTarget.checked)}
-              />
-            </label>
-            <button
-              type="button"
-              className="btn"
-              style={{ marginTop: 10, width: "100%" }}
-              disabled={!flattenResult || !!flattenResult.error}
-              onClick={onExportSvg}
-            >
-              Export SVG
-            </button>
-          </div>
-
-          <div className="card">
-            <div style={{ fontWeight: 600, marginBottom: 10 }}>View</div>
-
-            <label className="toggle">
-              <span className="muted">Grid</span>
-              <input
-                type="checkbox"
-                checked={showGrid}
-                onChange={(e) => setShowGrid(e.currentTarget.checked)}
-              />
-            </label>
-            <label className="toggle">
-              <span className="muted">Axes</span>
-              <input
-                type="checkbox"
-                checked={showAxes}
-                onChange={(e) => setShowAxes(e.currentTarget.checked)}
-              />
-            </label>
-            <label className="toggle">
-              <span className="muted">Wireframe</span>
-              <input
-                type="checkbox"
-                checked={wireframe}
-                onChange={(e) => setWireframe(e.currentTarget.checked)}
-              />
-            </label>
-
-            {stats ? (
-              <label className="col" style={{ marginTop: 4, gap: 6 }}>
-                <div className="row" style={{ justifyContent: "space-between" }}>
-                  <span className="muted">Model scale</span>
-                  <span className="muted" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {modelScale.toFixed(2)}×
-                  </span>
+      <ViewportChrome
+        containerRef={viewportRef}
+        isDesktop={isDesktop}
+        mobilePanel={mobilePanel}
+        onMobilePanelChange={setMobilePanel}
+        split2dPx={split2dPx}
+        isDragging={isDragging}
+        splitHandleProps={splitHandleProps}
+        viewport3d={
+          <>
+            <MeshViewport
+              mesh={session?.mesh ?? null}
+              seams={session?.seams ?? null}
+              meshLoadVersion={meshLoadVersion}
+              wireframe={wireframe}
+              showGrid={showGrid}
+              showAxes={showAxes}
+              modelScale={modelScale}
+              seamMode={seamMode}
+              onEdgePick={onEdgePick}
+            />
+            <ToastStack toasts={toasts} onDismiss={dismissToast} />
+            {isLoading ? (
+              <div className="overlay">
+                <div className="card">
+                  <div className="card-heading">Loading…</div>
+                  <div className="muted">Parsing mesh file (UI thread)</div>
                 </div>
-                <input
-                  type="range"
-                  min={0.25}
-                  max={3}
-                  step={0.05}
-                  value={modelScale}
-                  onChange={(e) => setModelScale(Number(e.currentTarget.value))}
-                  style={{ width: "100%" }}
-                />
-              </label>
-            ) : null}
-          </div>
-
-          {error ? (
-            <div className="card" style={{ borderColor: "rgba(255,70,70,0.35)" }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>Error</div>
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: "pre-wrap",
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                  fontSize: 12,
-                  color: "rgba(255, 220, 220, 0.95)",
-                }}
-              >
-                {error}
-              </pre>
-            </div>
-          ) : null}
-        </div>
-      </aside>
-
-      <main className="viewport viewport-split">
-        <div className="viewport-3d">
-          <MeshViewport
-            mesh={session?.mesh ?? null}
-            seams={session?.seams ?? null}
-            meshLoadVersion={meshLoadVersion}
-            wireframe={wireframe}
-            showGrid={showGrid}
-            showAxes={showAxes}
-            modelScale={modelScale}
-            seamMode={seamMode}
-            onEdgePick={onEdgePick}
-          />
-
-          <ToastStack toasts={toasts} onDismiss={dismissToast} />
-
-          {isLoading ? (
-            <div className="overlay">
-              <div className="card">
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>Loading…</div>
-                <div className="muted">Parsing mesh file (UI thread)</div>
               </div>
-            </div>
-          ) : null}
-        </div>
-
-        <UnfoldViewer2D result={flattenResult} />
-      </main>
+            ) : null}
+          </>
+        }
+        viewport2d={<UnfoldViewer2D result={flattenResult} />}
+      />
     </div>
   );
 }

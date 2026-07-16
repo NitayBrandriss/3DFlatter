@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { buildSvgDocument } from "@/logic/export/svg/buildSvgDocument";
 import type { UnfoldMeshResult } from "@/logic/mesh/types";
 import { unfoldMesh } from "@/logic/unfold/unfoldMesh";
@@ -7,30 +7,52 @@ import { downloadTextFile, svgFileNameFromMesh } from "./download";
 
 type NotifyToast = (text: string, tone?: "info" | "warning") => void;
 
-export function useFlattenExport(session: MeshSession | null, notifyToast: NotifyToast) {
-  const [flattenResult, setFlattenResult] = useState<UnfoldMeshResult | null>(null);
+/**
+ * Flatten/export UI state.
+ * Result is tied to `meshLoadVersion` so seam toggles do not clear it (STATE-002).
+ * After seam edits, re-flatten for an accurate pattern.
+ */
+export function useFlattenExport(
+  session: MeshSession | null,
+  meshLoadVersion: number,
+  notifyToast: NotifyToast,
+) {
+  const [flattenSnapshot, setFlattenSnapshot] = useState<{
+    version: number;
+    result: UnfoldMeshResult;
+  } | null>(null);
   const [flattening, setFlattening] = useState(false);
   const [includeSeamsInExport, setIncludeSeamsInExport] = useState(true);
 
-  useEffect(() => {
-    setFlattenResult(null);
-  }, [session]);
+  const flattenResult =
+    flattenSnapshot && flattenSnapshot.version === meshLoadVersion
+      ? flattenSnapshot.result
+      : null;
 
-  const onFlatten = useCallback(() => {
-    if (!session) return;
+  const onFlatten = useCallback((): boolean => {
+    if (!session) return false;
     setFlattening(true);
     try {
       const result = unfoldMesh(session.mesh, session.topology, session.seams);
       if (result.error) {
         notifyToast(result.error, "warning");
-        setFlattenResult(null);
-        return;
+        setFlattenSnapshot(null);
+        return false;
       }
-      setFlattenResult(result);
+      if (result.warnings && result.warnings.length > 0) {
+        notifyToast(
+          result.warnings.length === 1
+            ? result.warnings[0]!
+            : `${result.warnings.length} islands failed to unfold; showing the rest.`,
+          "warning",
+        );
+      }
+      setFlattenSnapshot({ version: meshLoadVersion, result });
+      return true;
     } finally {
       setFlattening(false);
     }
-  }, [session, notifyToast]);
+  }, [session, meshLoadVersion, notifyToast]);
 
   const onExportSvg = useCallback(() => {
     if (!flattenResult || flattenResult.error) return;

@@ -125,7 +125,7 @@ export function resolvePick(
     return null;
   }
 
-  const [_, a, b] = EDGE_SLOTS[bestSlot]!;
+  const [, a, b] = EDGE_SLOTS[bestSlot]!;
   const edgeKey = makeEdgeKey(indices[a]!, indices[b]!);
   return { edgeKey, slot: bestSlot };
 }

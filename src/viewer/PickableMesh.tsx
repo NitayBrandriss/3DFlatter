@@ -1,7 +1,7 @@
 "use client";
 
 import * as THREE from "three";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import type { EdgeKey, MeshModel } from "../logic/mesh/types";
 import { resolvePick } from "../logic/seams/resolvePick";
@@ -26,7 +26,10 @@ export function PickableMesh({
 }) {
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   const displayMeshRef = useRef(displayMesh);
-  displayMeshRef.current = displayMesh;
+
+  useEffect(() => {
+    displayMeshRef.current = displayMesh;
+  }, [displayMesh]);
 
   const onPointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {

@@ -10,10 +10,8 @@
 
 ## Plans & roadmap
 
-All phased plans and backlog live in **[plans/README.md](plans/README.md)**.
+**Single folder for plans:** **[plans/README.md](plans/README.md)** (status table + links). Specs live in [plans/archive/](plans/archive/) — geometry phases and UI shell plans together. Do not keep the only copy under `.cursor/plans/`.
 
 Prioritized engineering backlog (local, gitignored): **[thoughts.txt](../thoughts.txt)** at repo root.
-
-Completed implementation specs are in [plans/archive/](plans/archive/).
 
 For agent and contributor workflow, see [AGENTS.md](../AGENTS.md) at the repo root.

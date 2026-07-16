@@ -19,9 +19,10 @@ export class StlParseError extends Error {
   }
 }
 
+/** Matches OBJ weld/import warnings — aggregate count, not per-triangle rows. */
 export type StlLoadWarning = {
   kind: "degenerate_triangle";
-  triangleIndex: number;
+  count: number;
 };
 
 export type ParseStlResult = {
@@ -32,11 +33,10 @@ export type ParseStlResult = {
 type RawSoup = {
   vertices: Float32Array;
   faces: Uint32Array;
-  warnings: StlLoadWarning[];
+  /** Geometric collapses detected before weld (exact coincident corners). */
+  preWeldDegenerateCount: number;
 };
-
 const TRIANGLE_RECORD_SIZE = 50;
-const HEADER_SIZE = 80;
 const COUNT_OFFSET = 80;
 
 type Vec3 = readonly [number, number, number];
@@ -119,7 +119,7 @@ function parseStlBinary(buffer: ArrayBuffer): RawSoup {
 
   const vertices = new Float32Array(triCount * 9);
   const faces = new Uint32Array(triCount * 3);
-  const warnings: StlLoadWarning[] = [];
+  let preWeldDegenerateCount = 0;
 
   let offset = COUNT_OFFSET + 4;
   for (let t = 0; t < triCount; t++) {
@@ -140,15 +140,14 @@ function parseStlBinary(buffer: ArrayBuffer): RawSoup {
     }
 
     if (isDegenerateTrianglePositions(triVerts[0]!, triVerts[1]!, triVerts[2]!)) {
-      warnings.push({ kind: "degenerate_triangle", triangleIndex: t });
+      preWeldDegenerateCount++;
     }
 
     offset += TRIANGLE_RECORD_SIZE;
   }
 
-  return { vertices, faces, warnings };
+  return { vertices, faces, preWeldDegenerateCount };
 }
-
 function parseVertexLine(parts: string[], lineNumber: number): [number, number, number] {
   if (parts.length < 4 || parts[0]?.toLowerCase() !== "vertex") {
     throw new StlParseError(`expected "vertex x y z"`, { line: lineNumber });
@@ -168,10 +167,8 @@ function pushAsciiFacet(
   facetVerts: [number, number, number][],
   vertices: number[],
   faces: number[],
-  warnings: StlLoadWarning[],
-  triangleIndex: number,
   lineNumber: number,
-): void {
+): boolean {
   if (facetVerts.length !== 3) {
     throw new StlParseError(
       `facet must have exactly 3 vertices (found ${facetVerts.length})`,
@@ -186,21 +183,18 @@ function pushAsciiFacet(
   faces.push(base, base + 1, base + 2);
 
   const [a, b, c] = facetVerts;
-  if (isDegenerateTrianglePositions(a!, b!, c!)) {
-    warnings.push({ kind: "degenerate_triangle", triangleIndex });
-  }
+  return isDegenerateTrianglePositions(a!, b!, c!);
 }
 
 function parseStlAscii(text: string): RawSoup {
   const vertices: number[] = [];
   const faces: number[] = [];
-  const warnings: StlLoadWarning[] = [];
+  let preWeldDegenerateCount = 0;
   const lines = text.split(/\r?\n/);
 
   let facetVerts: [number, number, number][] = [];
   let inFacet = false;
   let inLoop = false;
-  let triangleIndex = 0;
   let sawFacet = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -255,9 +249,10 @@ function parseStlAscii(text: string): RawSoup {
       if (inLoop) {
         throw new StlParseError("facet ended before endloop", { line: lineNumber });
       }
-      pushAsciiFacet(facetVerts, vertices, faces, warnings, triangleIndex, lineNumber);
+      if (pushAsciiFacet(facetVerts, vertices, faces, lineNumber)) {
+        preWeldDegenerateCount++;
+      }
       sawFacet = true;
-      triangleIndex++;
       inFacet = false;
       facetVerts = [];
       continue;
@@ -281,12 +276,12 @@ function parseStlAscii(text: string): RawSoup {
   return {
     vertices: new Float32Array(vertices),
     faces: new Uint32Array(faces),
-    warnings,
+    preWeldDegenerateCount,
   };
 }
 
 function finalizeMesh(raw: RawSoup): ParseStlResult {
-  const mesh = weldVertices(raw.vertices, raw.faces);
+  const { mesh, removedDegenerateFaceCount } = weldVertices(raw.vertices, raw.faces);
 
   if (mesh.vertexCount === 0 || mesh.faceCount === 0) {
     throw new StlParseError("no geometry after welding");
@@ -299,7 +294,12 @@ function finalizeMesh(raw: RawSoup): ParseStlResult {
     }
   }
 
-  return { mesh, warnings: raw.warnings };
+  // Prefer the larger of pre-weld geometric detections vs faces dropped by weld.
+  const count = Math.max(raw.preWeldDegenerateCount, removedDegenerateFaceCount);
+  const warnings: StlLoadWarning[] =
+    count > 0 ? [{ kind: "degenerate_triangle", count }] : [];
+
+  return { mesh, warnings };
 }
 
 /**

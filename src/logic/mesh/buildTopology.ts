@@ -1,4 +1,5 @@
 import { makeEdgeKey } from "./edgeKey";
+import { isIndexDegenerateFace } from "./faceDegeneracy";
 import type {
   EdgeIncident,
   EdgeKey,
@@ -9,10 +10,6 @@ import type {
   Topology,
 } from "./types";
 import { NO_NEIGHBOR, neighborIndex } from "./types";
-
-function isDegenerateFace(v0: number, v1: number, v2: number): boolean {
-  return v0 === v1 || v1 === v2 || v2 === v0;
-}
 
 function registerEdge(
   edgeToFaces: EdgeToFacesMap,
@@ -50,7 +47,7 @@ export function buildTopology(mesh: MeshModel): Topology {
     const v1 = faces[base + 1]!;
     const v2 = faces[base + 2]!;
 
-    if (isDegenerateFace(v0, v1, v2)) {
+    if (isIndexDegenerateFace(v0, v1, v2)) {
       skippedDegenerateFaceCount++;
       continue;
     }

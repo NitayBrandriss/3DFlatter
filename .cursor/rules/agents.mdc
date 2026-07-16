@@ -7,5 +7,6 @@ alwaysApply: true
 
 - Read [AGENTS.md](AGENTS.md) at session start for commands, boundaries, and architecture.
 - Follow [docs/decisions/0001-mesh-model-and-topology.md](docs/decisions/0001-mesh-model-and-topology.md) for mesh, seam, and topology contracts.
+- Plans hub: [docs/plans/README.md](docs/plans/README.md) — not `.cursor/plans/`.
 - Prefer minimal diffs; extend existing code in `src/logic/`; ask before architectural changes or new dependencies.
 - Run `npm test` before marking work complete.

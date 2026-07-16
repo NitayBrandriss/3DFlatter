@@ -36,7 +36,7 @@ type MeshSessionState = {
   toasts: ToastMessage[];
   toastSeq: number;
 
-  loadMeshFile: (file: File) => Promise<void>;
+  loadMeshFile: (file: File) => Promise<boolean>;
   toggleSeamAt: (edgeKey: EdgeKey) => void;
   clearAllSeams: () => void;
   setSeamMode: (enabled: boolean) => void;
@@ -57,7 +57,7 @@ function pushToast(
 
 function applyLoadWarnings(
   state: MeshSessionState,
-  warnings: { kind: string }[],
+  warnings: { kind: string; count?: number }[],
 ): Pick<MeshSessionState, "toasts" | "toastSeq"> {
   let next = state;
 
@@ -75,15 +75,18 @@ function applyLoadWarnings(
     };
   }
 
-  const degenerateCount = warnings.filter((w) => w.kind === "degenerate_triangle").length;
+  const degenerateCount = warnings.reduce((sum, w) => {
+    if (w.kind !== "degenerate_triangle") return sum;
+    return sum + (typeof w.count === "number" ? w.count : 1);
+  }, 0);
   if (degenerateCount > 0) {
     next = {
       ...next,
       ...pushToast(
         next,
         degenerateCount === 1
-          ? "Warning: 1 degenerate triangle detected in STL."
-          : `Warning: ${degenerateCount} degenerate triangles detected in STL.`,
+          ? "Warning: 1 degenerate triangle detected and skipped."
+          : `Warning: ${degenerateCount} degenerate triangles detected and skipped.`,
         "warning",
       ),
     };
@@ -96,6 +99,10 @@ function computeIslands(session: MeshSession) {
   return partitionIslands(session.mesh, session.topology, session.seams);
 }
 
+/** Monotonic load generation — module-scoped so overlapping async loads stay ordered.
+ * Only the latest load may commit session / clear isLoading (STATE-001 / STATE-008). */
+let loadSeq = 0;
+
 export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   session: null,
   meshLoadVersion: 0,
@@ -106,6 +113,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   toastSeq: 0,
 
   loadMeshFile: async (file: File) => {
+    const myId = ++loadSeq;
     set({ isLoading: true, error: null });
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -115,7 +123,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
       const buffer = await file.arrayBuffer();
 
       let mesh;
-      let warnings: { kind: string }[] = [];
+      let warnings: { kind: string; count?: number }[] = [];
 
       if (ext === "obj") {
         const text = new TextDecoder("utf-8").decode(buffer);
@@ -128,6 +136,10 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         warnings = result.warnings;
       } else {
         throw new Error(`Unsupported file type ".${ext || "?"}" — use .obj or .stl`);
+      }
+
+      if (myId !== loadSeq) {
+        return false;
       }
 
       const topology = buildTopology(mesh);
@@ -147,6 +159,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         error: null,
         ...(hasLoadWarnings ? applyLoadWarnings(s, warnings) : {}),
       }));
+      return true;
     } catch (e) {
       const message =
         e instanceof ObjParseError || e instanceof StlParseError
@@ -154,12 +167,15 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
           : e instanceof Error
             ? e.message
             : String(e);
-      set((s) => ({
-        session: null,
-        meshLoadVersion: s.meshLoadVersion + 1,
+      if (myId !== loadSeq) {
+        return false;
+      }
+      // Keep prior session; do not bump meshLoadVersion (STATE-007 / STATE-004).
+      set({
         isLoading: false,
         error: message,
-      }));
+      });
+      return false;
     }
   },
 

@@ -1,7 +1,6 @@
 import type {
   EdgeSlot,
   FaceIndex,
-  FlattenedTriangleSoup,
   MeshModel,
   Topology,
   UnfoldIslandResult,

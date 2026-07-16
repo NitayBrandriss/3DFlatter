@@ -73,4 +73,20 @@ describe("partitionIslands", () => {
     expect(islands).toHaveLength(2);
     expect(islands.map((isl) => isl.length).sort((a, b) => a - b)).toEqual([1, 1]);
   });
+
+  it("excludes topology-orphan degenerate faces from islands", () => {
+    const mesh = {
+      vertices: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0, 0]),
+      // face 0 degenerate (duplicate indices); face 1 valid
+      faces: new Uint32Array([0, 0, 0, 0, 1, 2]),
+      vertexCount: 4,
+      faceCount: 2,
+    };
+    const topo = buildTopology(mesh);
+    expect(topo.skippedDegenerateFaceCount).toBe(1);
+
+    const islands = partitionIslands(mesh, topo, createSeamRegistry());
+    expect(islands).toHaveLength(1);
+    expect(islands[0]).toEqual([1]);
+  });
 });

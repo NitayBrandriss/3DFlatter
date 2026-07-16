@@ -1,4 +1,4 @@
-import type { MeshModel, SeamRegistry } from "../mesh/types";
+import type { SeamRegistry } from "../mesh/types";
 
 function parseEdgeKey(key: string): [number, number] {
   const [a, b] = key.split(",").map((s) => Number.parseInt(s, 10));
