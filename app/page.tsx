@@ -119,6 +119,14 @@ export default function HomePage() {
     [toggleSeamAt],
   );
 
+  const handleFlatten = useCallback((): boolean => {
+    const ok = onFlatten();
+    if (ok && !isDesktop) {
+      setMobilePanel("2d");
+    }
+    return ok;
+  }, [isDesktop, onFlatten]);
+
   const showMobileBackdrop = !isDesktop && sidebarOpen && !isPeeking;
 
   return (
@@ -159,7 +167,7 @@ export default function HomePage() {
         setIncludeSeamsInExport={setIncludeSeamsInExport}
         onPickFile={onPickFile}
         onLoadDemo={onLoadDemo}
-        onFlatten={onFlatten}
+        onFlatten={handleFlatten}
         onExportSvg={onExportSvg}
         wireframe={wireframe}
         setWireframe={setWireframe}

@@ -142,11 +142,12 @@ export function AppSidebar({
           </button>
         ) : null}
 
-        <p className="sidebar-intro muted">
-          Upload an <code>.obj</code> or <code>.stl</code> and click edges to mark seams.
-        </p>
+        <div className="sidebar-drawer-body">
+          <p className="sidebar-intro muted">
+            Upload an <code>.obj</code> or <code>.stl</code> and click edges to mark seams.
+          </p>
 
-        <div className="col sidebar-cards">
+          <div className="col sidebar-cards">
           <div className="card">
             <div className="card-heading">File</div>
             <div className="row row--spread">
@@ -361,6 +362,7 @@ export function AppSidebar({
               <pre className="sidebar-error">{error}</pre>
             </div>
           ) : null}
+          </div>
         </div>
       </div>
     </aside>
