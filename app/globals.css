@@ -72,6 +72,7 @@ body.is-resizing {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  overflow: visible;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   background: #0b0d12;
   z-index: var(--z-sidebar);
@@ -102,8 +103,19 @@ body.is-resizing {
   position: relative;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: visible;
+}
+
+.sidebar-drawer-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
   padding: 0 16px 16px;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sidebar-cards {
@@ -112,13 +124,14 @@ body.is-resizing {
 
 .sidebar-toggle {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
   min-width: 44px;
   min-height: 44px;
   padding: 8px 10px;
+  white-space: nowrap;
 }
 
 .sidebar-toggle-icon {
@@ -136,19 +149,19 @@ body.is-resizing {
 
 .sidebar-toggle--open {
   align-self: flex-start;
+  padding: 8px 8px;
 }
 
 .sidebar-toggle--close {
   position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
-  min-height: 72px;
-  padding: 12px 10px;
-  border-radius: 10px 0 0 10px;
-  border-right: none;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.25);
+  left: 100%;
+  top: 16px;
+  z-index: 3;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 0 10px 10px 0;
+  border-left: none;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.25);
 }
 
 .sidebar-backdrop {
@@ -462,8 +475,7 @@ body.is-resizing {
 }
 
 @media (min-width: 769px) {
-  .sidebar-drawer {
-    overflow-y: auto;
+  .sidebar-drawer-body {
     transition: opacity 180ms ease;
   }
 
@@ -502,6 +514,7 @@ body.is-resizing {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: visible;
   }
 
   .sidebar-rail {
@@ -520,21 +533,33 @@ body.is-resizing {
     left: var(--sidebar-rail-width);
     bottom: 0;
     width: min(280px, calc(100vw - var(--sidebar-rail-width)));
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-    padding-top: calc(16px + env(safe-area-inset-top));
-    overflow-y: auto;
+    padding: 0;
+    overflow: visible;
     background: #0b0d12;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
-    transform: translateX(-100%);
-    transition: transform 220ms ease, opacity 180ms ease;
+    transition: transform 220ms ease, opacity 180ms ease, visibility 220ms ease;
   }
 
+  .sidebar-drawer-body {
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .sidebar-toggle--close {
+    top: calc(16px + env(safe-area-inset-top));
+  }
+
+  /* Drive both states explicitly — avoid a lingering off-screen "open" drawer. */
   .page[data-sidebar="open"] .sidebar-drawer {
     transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .page[data-sidebar="collapsed"] .sidebar-drawer {
+    transform: translateX(-100%);
+    visibility: hidden;
     pointer-events: none;
   }
 

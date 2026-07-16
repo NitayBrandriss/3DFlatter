@@ -20,6 +20,7 @@ export function useSidebarState() {
   const openButtonRef = useRef<HTMLButtonElement | null>(null);
   const prevOpenRef = useRef<boolean | null>(null);
 
+  // First visit: desktop open, mobile closed. Persist wins after explicit toggle.
   const sidebarOpen = userOverride ?? isDesktop;
 
   const persistOverride = useCallback((open: boolean) => {
