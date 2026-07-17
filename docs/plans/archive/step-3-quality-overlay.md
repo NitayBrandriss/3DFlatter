@@ -64,12 +64,17 @@ Add a tiny pure helper (testable, no React):
 ```typescript
 countQualityIssues(result): { collisionCount, tearCount, hasIssues }
 formatQualityIssueToast(counts): string | null  // null when clean
+capForOverlay<T>(items, max): { visible, total, truncated }
+formatTruncatedOverlayHint(shown, total, kind): string | null
+QUALITY_OVERLAY_MAX_COLLISIONS = 50
+QUALITY_OVERLAY_MAX_TEARS = 50
 ```
 
 **Toast copy (ADR W4 — separate counts, W5 — summarize only):**
 
 - Both nonzero: `"Pattern issues: 42 face overlaps, 18 edge tears. Toggle overlay in Flatten panel."`
 - Collisions only / tears only: single-kind variant
+- When counts exceed overlay cap, append truncation hint: `"Overlay shows first 50 of 142 overlaps."` (and tears if applicable)
 - **Tone:** `"warning"` (matches existing flatten warnings; not `"info"` because issues are actionable)
 - **When clean:** no extra toast (flatten success is implicit via 2D pattern appearing)
 
@@ -121,7 +126,9 @@ For each `TriangleCollision2d`:
 
 **Why centroid-only (ADR 0003):** `centroid` is precomputed for UI highlight; no intersection polygon is stored. Drawing full overlap regions would require new logic types and violate “consume only” for Step 3 logic.
 
-**Efficiency:** O(n) SVG nodes, n = `collisions.length`. No runtime geometry. Acceptable per ADR W1/W5 for PoC island sizes. Overlay gated behind toggle so clean exports/views pay zero cost.
+**Marker cap (approved UX):** Render at most `QUALITY_OVERLAY_MAX_COLLISIONS` (50) collision markers and `QUALITY_OVERLAY_MAX_TEARS` (50) tear pairs via `capForOverlay`. Sidebar, toast, and in-viewer legend show full totals plus a truncation hint when capped (`"Showing 50 of 142 overlaps"`).
+
+**Efficiency:** O(cap) SVG nodes when overlay on — not O(n) for bad closed meshes. No runtime geometry. Overlay gated behind toggle so clean views pay zero cost.
 
 ### Tears (3b)
 
@@ -162,17 +169,20 @@ const [showQualityOverlay, setShowQualityOverlay] = useState(false);
 
 **Why not Zustand:** Matches `includeSeamsInExport`, `wireframe`, `showGrid` — session-local UI prefs, not mesh session data. Avoids store bloat and preserves `meshLoadVersion` invariants.
 
-### Auto-enable behavior
+### Auto-enable behavior (approved UX)
 
-On successful flatten **when `hasIssues`:**
+On successful flatten **when `hasIssues` and overlay has not been auto-enabled yet this mesh session:**
 
-- Set `showQualityOverlay` to `true` automatically.
+- Set `showQualityOverlay` to `true` once.
+- Track via `hasAutoEnabledQualityOverlay` ref in `useFlattenExport`; reset when `meshLoadVersion` changes.
+
+If the user toggles overlay **off**, respect that on subsequent flattens (no forced re-enable).
 
 On successful flatten **when clean:**
 
 - Leave toggle as-is (user preference); overlay group renders nothing anyway.
 
-**Why:** Closed-shell demo (cube, no seams) produces many issues — auto-on ensures mobile users (auto-switched to 2D tab) immediately see markers without hunting for the toggle.
+**Why:** First flatten with issues surfaces markers immediately (especially on mobile → 2D tab); repeat flattens do not override an explicit user off.
 
 ### Toggle placement — sidebar **Flatten card**
 
@@ -189,13 +199,13 @@ In **`AppSidebar.tsx`**, inside the existing Flatten card, below the Flatten but
 
 **Why not a 2D panel toolbar:** Avoids extending `ViewportChrome` API and keeps the responsive shell unchanged (per mobile layout ADR).
 
-### Optional in-viewer legend (minimal polish)
+### In-viewer legend (required for mobile)
 
 When overlay is on and issues exist, render a small absolutely positioned badge inside `.flatten-panel` (top-right):
 
-`"● overlaps  ● tears"` with color swatches matching SVG constants.
+`"● overlaps  ● tears"` with color swatches matching SVG constants, plus truncation hint when capped.
 
-**Why:** On mobile, sidebar closes after Flatten; legend gives context without reopening the menu. Pure CSS in `globals.css`; no layout component changes.
+**Why:** On mobile, sidebar closes after Flatten; legend is the only always-visible context for marker colors and capped counts. Pure CSS in `globals.css`; no layout component changes.
 
 ### Wiring
 
@@ -212,9 +222,9 @@ page.tsx
 
 | Slice | Scope | Verify |
 |-------|--------|--------|
-| **1 — Summary helper** | `qualitySummary.ts` + Vitest (counts, toast string, null when clean) | `npm test` |
-| **2 — Toast + mobile fix** | `useFlattenExport` toast on issues; relocate `ToastStack` to `.page` root | Manual: mobile Flatten → toast visible on 2D tab |
-| **3 — Viewer overlay** | Constants in `tier1Preview.ts`; collision circles + tear segment lines in `UnfoldViewer2D` | Manual: seamed cube flatten, toggle on |
+| **1 — Summary helper** | `qualitySummary.ts` + Vitest (counts, toast, cap helpers, truncation hints) | `npm test` |
+| **2 — Toast + mobile fix** | `useFlattenExport` toast on issues; auto-once overlay flag; relocate `ToastStack` to `.page` root | Manual: mobile Flatten → toast visible on 2D tab |
+| **3 — Viewer overlay** | Constants in `tier1Preview.ts`; capped collision circles + tear lines in `UnfoldViewer2D` | Manual: closed cube → ≤50 markers + truncation hint |
 | **4 — Toggle wiring** | `showQualityOverlay` in hook; Flatten card UI in `AppSidebar`; pass prop from `page.tsx` | Manual: toggle off → clean view; on → markers |
 | **5 — Legend + a11y** | In-panel legend CSS; SVG `aria-label` / `aria-hidden` on overlay group | Visual + screen reader spot check |
 | **6 — Regression** | `npm test`, `npm run lint`; manual table below | All green |
@@ -223,7 +233,7 @@ page.tsx
 
 | Id | Steps | Expected |
 |----|-------|----------|
-| MT-Q1 | Cube, no seams → Flatten | Warning toast with both counts; overlay auto-on; orange dots + amber tear pairs visible |
+| MT-Q1 | Cube, no seams → Flatten | Warning toast with full counts + truncation hint; overlay auto-on once; ≤50 orange dots + ≤50 tear pairs; legend shows "of N" |
 | MT-Q2 | Same → toggle overlay off | Clean blueprint (faces + red seams only) |
 | MT-Q3 | Cube, top face seamed → Flatten | Fewer/zero issues possible; toast only if counts > 0 |
 | MT-Q4 | Mobile: Flatten | Drawer closes, 2D tab active, toast visible, overlay on if issues |
@@ -235,12 +245,12 @@ page.tsx
 
 | Risk | Mitigation |
 |------|------------|
-| Large collision/tear arrays (ADR W5) | Counts in toast/sidebar; render all when overlay on; revisit sampling only if perf regresses |
+| Large collision/tear arrays (ADR W5) | Cap SVG markers at 50 per kind; full counts + truncation hint in toast/sidebar/legend |
 | Toast hidden on mobile 2D tab | Slice 2 page-level `ToastStack` |
 | Marker clutter on bad patterns | Default toggle off when clean; user can disable; legend explains colors |
 | Tear/seam color confusion | Distinct palette (orange/amber vs seam red); tears dashed vs seams solid |
 
-**Deferred:** quality layer in SVG export, 3D viewport hints, per-kind tear styling, localStorage for overlay preference, clustering/capping of markers.
+**Deferred:** quality layer in SVG export, 3D viewport hints, per-kind tear styling, localStorage for overlay preference, smart marker sampling beyond fixed cap.
 
 ---
 
