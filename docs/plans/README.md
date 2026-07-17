@@ -32,7 +32,7 @@ flowchart LR
 | Export | SVG preview (tier 1) | **Complete** | `src/logic/export/svg/` |
 | Export | SVG manufacturing / laser (tier 2) | Planned | See [thoughts.txt](../../thoughts.txt) |
 | Step 3 | Unfold quality detection (3a + 3b) | **Complete** | [ADR 0003](../decisions/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
-| Step 3 stretch | Quality overlay in 2D viewer | **Planned** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
+| Step 3 stretch | Quality overlay in 2D viewer | **Complete** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
 | Phase 2 | Auto seam suggestions | Planned | [thoughts.txt](../../thoughts.txt) |
 

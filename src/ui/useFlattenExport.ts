@@ -1,11 +1,35 @@
 import { useCallback, useState } from "react";
 import { buildSvgDocument } from "@/logic/export/svg/buildSvgDocument";
 import type { UnfoldMeshResult } from "@/logic/mesh/types";
+import {
+  countQualityIssues,
+  formatQualityIssueToast,
+  type QualityIssueCounts,
+} from "@/logic/unfold/qualitySummary";
 import { unfoldMesh } from "@/logic/unfold/unfoldMesh";
 import type { MeshSession } from "@/state/meshSessionStore";
 import { downloadTextFile, svgFileNameFromMesh } from "./download";
 
 type NotifyToast = (text: string, tone?: "info" | "warning") => void;
+
+type QualityOverlayState = {
+  meshVersion: number;
+  show: boolean;
+  autoEnabled: boolean;
+};
+
+function defaultQualityOverlayState(meshVersion: number): QualityOverlayState {
+  return { meshVersion, show: false, autoEnabled: false };
+}
+
+function resolveQualityOverlayState(
+  state: QualityOverlayState,
+  meshLoadVersion: number,
+): QualityOverlayState {
+  return state.meshVersion === meshLoadVersion
+    ? state
+    : defaultQualityOverlayState(meshLoadVersion);
+}
 
 /**
  * Flatten/export UI state.
@@ -23,11 +47,33 @@ export function useFlattenExport(
   } | null>(null);
   const [flattening, setFlattening] = useState(false);
   const [includeSeamsInExport, setIncludeSeamsInExport] = useState(true);
+  const [qualityOverlayState, setQualityOverlayState] = useState(() =>
+    defaultQualityOverlayState(meshLoadVersion),
+  );
+
+  const activeQualityOverlay = resolveQualityOverlayState(
+    qualityOverlayState,
+    meshLoadVersion,
+  );
 
   const flattenResult =
     flattenSnapshot && flattenSnapshot.version === meshLoadVersion
       ? flattenSnapshot.result
       : null;
+
+  const qualityCounts: QualityIssueCounts | null = flattenResult
+    ? countQualityIssues(flattenResult)
+    : null;
+
+  const setShowQualityOverlay = useCallback(
+    (show: boolean) => {
+      setQualityOverlayState((prev) => {
+        const base = resolveQualityOverlayState(prev, meshLoadVersion);
+        return { ...base, show };
+      });
+    },
+    [meshLoadVersion],
+  );
 
   const onFlatten = useCallback((): boolean => {
     if (!session) return false;
@@ -46,6 +92,16 @@ export function useFlattenExport(
             : `${result.warnings.length} islands failed to unfold; showing the rest.`,
           "warning",
         );
+      }
+      const counts = countQualityIssues(result);
+      const qualityToast = formatQualityIssueToast(counts);
+      if (qualityToast) {
+        notifyToast(qualityToast, "warning");
+        setQualityOverlayState((prev) => {
+          const base = resolveQualityOverlayState(prev, meshLoadVersion);
+          if (base.autoEnabled) return base;
+          return { meshVersion: meshLoadVersion, show: true, autoEnabled: true };
+        });
       }
       setFlattenSnapshot({ version: meshLoadVersion, result });
       return true;
@@ -76,6 +132,9 @@ export function useFlattenExport(
     flattening,
     includeSeamsInExport,
     setIncludeSeamsInExport,
+    showQualityOverlay: flattenResult ? activeQualityOverlay.show : false,
+    setShowQualityOverlay,
+    qualityCounts,
     onFlatten,
     onExportSvg,
   };

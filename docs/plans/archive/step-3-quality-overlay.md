@@ -1,6 +1,6 @@
 # Step 3 stretch — 2D viewer quality overlay
 
-**Status:** Planned  
+**Status:** Complete  
 **ADR:** [0003 — Unfold quality detection](../../decisions/0003-unfold-quality-detection.md) (consume only; no logic changes)  
 **Depends on:** [step-3-quality-detection.md](step-3-quality-detection.md), [step-2-seam-overlay.md](step-2-seam-overlay.md), [mobile-responsive-layout.md](mobile-responsive-layout.md)  
 **Hub:** [Plans & roadmap](../README.md)
