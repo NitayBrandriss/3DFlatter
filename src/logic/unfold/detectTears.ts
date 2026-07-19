@@ -7,6 +7,7 @@
 } from "../geom2d/segment2d";
 import { ANGLE_EPS, SAT_EPS, tearThreshold } from "../geom2d/tolerances";
 import { parseEdgeKey } from "../mesh/edgeKey";
+import { EDGE_SLOTS, edgeKeyForFace } from "../mesh/faceUtils";
 import type {
   EdgeKey,
   EdgeTear2d,
@@ -16,7 +17,7 @@ import type {
   UnfoldIslandResult,
 } from "../mesh/types";
 import { distance3d } from "./placeTriangle2d";
-import { segment2dForFaceSlot } from "./unfoldEdge2d";
+import { buildFaceSoupIndexMap, segment2dForFaceSlot } from "./unfoldEdge2d";
 
 function segmentEndpointMaxGap(a: Segment2d, b: Segment2d): number {
   const dist = (x0: number, y0: number, x1: number, y1: number) =>
@@ -62,40 +63,50 @@ export function detectTears(
   treeEdges: Set<EdgeKey>,
 ): EdgeTear2d[] {
   const islandSet = new Set(islandFaces);
+  const faceSoupIndex = buildFaceSoupIndexMap(result);
   const tears: EdgeTear2d[] = [];
+  const seenEdges = new Set<EdgeKey>();
 
-  for (const [edgeKey, incidents] of topology.edgeToFaces) {
-    if (incidents.length !== 2) continue;
+  // Island-local edges only (LOGIC-009) — O(island faces), not O(mesh edges).
+  for (const faceId of islandFaces) {
+    for (const slot of EDGE_SLOTS) {
+      const edgeKey = edgeKeyForFace(mesh, faceId, slot);
+      if (seenEdges.has(edgeKey)) continue;
+      seenEdges.add(edgeKey);
 
-    const faceA = incidents[0]!.faceId;
-    const faceB = incidents[1]!.faceId;
-    if (!islandSet.has(faceA) || !islandSet.has(faceB)) continue;
-    if (treeEdges.has(edgeKey)) continue;
+      const incidents = topology.edgeToFaces.get(edgeKey);
+      if (!incidents || incidents.length !== 2) continue;
 
-    const slotA = incidents[0]!.slot;
-    const slotB = incidents[1]!.slot;
-    const segmentA = segment2dForFaceSlot(mesh, result, faceA, slotA);
-    const segmentB = segment2dForFaceSlot(mesh, result, faceB, slotB);
-    if (!segmentA || !segmentB) continue;
+      const faceA = incidents[0]!.faceId;
+      const faceB = incidents[1]!.faceId;
+      if (!islandSet.has(faceA) || !islandSet.has(faceB)) continue;
+      if (treeEdges.has(edgeKey)) continue;
 
-    if (segmentLength(segmentA) < SAT_EPS || segmentLength(segmentB) < SAT_EPS) continue;
+      const slotA = incidents[0]!.slot;
+      const slotB = incidents[1]!.slot;
+      const segmentA = segment2dForFaceSlot(mesh, result, faceA, slotA, faceSoupIndex);
+      const segmentB = segment2dForFaceSlot(mesh, result, faceB, slotB, faceSoupIndex);
+      if (!segmentA || !segmentB) continue;
 
-    const [va, vb] = parseEdgeKey(edgeKey);
-    const edgeLen3d = distance3d(mesh, va, vb);
-    const thresh = tearThreshold(edgeLen3d);
-    const maxGap = segmentEndpointMaxGap(segmentA, segmentB);
-    if (maxGap <= thresh) continue;
+      if (segmentLength(segmentA) < SAT_EPS || segmentLength(segmentB) < SAT_EPS) continue;
 
-    tears.push({
-      islandIndex: 0,
-      edgeKey,
-      faceA,
-      faceB,
-      kind: classifyTearKind(segmentA, segmentB),
-      maxGap,
-      segmentA,
-      segmentB,
-    });
+      const [va, vb] = parseEdgeKey(edgeKey);
+      const edgeLen3d = distance3d(mesh, va, vb);
+      const thresh = tearThreshold(edgeLen3d);
+      const maxGap = segmentEndpointMaxGap(segmentA, segmentB);
+      if (maxGap <= thresh) continue;
+
+      tears.push({
+        islandIndex: 0,
+        edgeKey,
+        faceA,
+        faceB,
+        kind: classifyTearKind(segmentA, segmentB),
+        maxGap,
+        segmentA,
+        segmentB,
+      });
+    }
   }
 
   return tears;

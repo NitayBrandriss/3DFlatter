@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** In progress (Slices 0–2 complete)  
+**Status:** In progress (Slices 0–3 complete)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -45,7 +45,7 @@ flowchart TD
 | **0** | ADR / docs sync | **Complete** (2026-07-19) | DOC-001, DOC-002, DOC-003 (+ tear-kind ADR interim note) |
 | **1** | Quality correctness | **Complete** (2026-07-19) | TEAR-001, LOGIC-006 (assert), LOGIC-025 |
 | **2** | Logic DRY foundation | **Complete** (2026-07-19) | LOGIC-007, LOGIC-008, LOGIC-012 |
-| **3** | Quality hot-path perf | Execute | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
+| **3** | Quality hot-path perf | **Complete** (2026-07-19) | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
 | **4** | I/O + seam robustness | Execute | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
 | **5** | Zustand session scale | Execute | STATE-003, ARCH-001, ARCH-003, UI-008 |
 | **6** | Layout + a11y | **Optional / Backlog** | LAYOUT-*, A11Y-002/003, STATE-006, VIEW-001 |
@@ -183,11 +183,11 @@ flowchart TD
 
 **Done when:**
 
-- [ ] No triple-SAT / double-clip on the collision hot path
-- [ ] Tear scan not O(full mesh edges) per island
-- [ ] Fixture detection counts unchanged (within documented tolerance)
-- [ ] `npm test` green
-- [ ] **Manual visual QA with a complex seamed model** recorded
+- [x] No triple-SAT / double-clip on the collision hot path
+- [x] Tear scan not O(full mesh edges) per island
+- [x] Fixture detection counts unchanged (within documented tolerance) — closed cube: 20 collisions, 7 tears
+- [x] `npm test` green
+- [x] **Manual visual QA with a complex seamed model** recorded — **Pass** (2026-07-19): collision centroids and tear segments correct on seamed Flatten; no missing/extra overlay noise
 
 ---
 

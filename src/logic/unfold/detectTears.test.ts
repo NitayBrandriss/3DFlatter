@@ -99,7 +99,8 @@ describe("detectTears", () => {
     const treeEdges = buildUnfoldTreeEdges(mesh, topo, islandFaces);
     const tears = detectTears(mesh, topo, islandFaces, result, treeEdges);
 
-    expect(tears.length).toBeGreaterThan(0);
+    // Fixture pin (Slice 3 — keep stable across hot-path refactors).
+    expect(tears).toHaveLength(7);
     for (const t of tears) {
       expect(t.maxGap).toBeGreaterThan(0);
       expect(["gap", "overlap", "skew"]).toContain(t.kind);

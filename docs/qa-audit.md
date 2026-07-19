@@ -34,10 +34,10 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2) |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
-| **New Low** | PERF-002, DOC-002 |
-| **Reconfirmed open** | LOGIC-004–006/009–011/013–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
+| **New Low** | DOC-002 (PERF-002 fixed Slice 3) |
+| **Reconfirmed open** | LOGIC-004–006/013–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
 | **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
 
 ---
@@ -232,9 +232,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 3) — island-local edge walk via `edgeKeyForFace` |
 | **Files** | `src/logic/unfold/detectTears.ts` |
-| **Description** | Iterates all `topology.edgeToFaces` filtered by island set → O(mesh edges) per island. |
-| **Suggested fix** | Build island edge list from incident faces once. |
+| **Description** | ~~Iterates all `topology.edgeToFaces` filtered by island set → O(mesh edges) per island.~~ Now O(island faces). |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-010 — `segment2dForFaceSlot` uses O(n) `indexOf` in hot paths
 
@@ -242,9 +243,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
-| **Files** | `src/logic/unfold/unfoldEdge2d.ts` |
-| **Description** | Called per edge pair in collision/tear detection; linear scan per call. |
-| **Suggested fix** | `Map<FaceIndex, soupIndex>` once per island analysis. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 3) — `buildFaceSoupIndexMap` once per island analysis |
+| **Files** | `src/logic/unfold/unfoldEdge2d.ts`, callers in `detectCollisions` / `detectTears` |
+| **Description** | ~~Called per edge pair in collision/tear detection; linear scan per call.~~ Optional `Map` lookup. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-011 — Triple SAT + double triangle clipping in collision detection
 
@@ -252,9 +254,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 3) — one SAT + `clipOverlappingTriangles`; area/centroid from same polygon |
 | **Files** | `detectCollisions.ts`, `geom2d/triangle2d.ts` |
-| **Description** | Per candidate pair: `satOverlap` → `clipTriangleIntersection` (re-runs SAT + clip) → `clipTriangleArea` (re-clips again). ≈ 3× SAT + 2× Sutherland–Hodgman where 1× SAT + 1× clip suffice. |
-| **Suggested fix** | One intersection polygon; derive area + centroid from it. |
+| **Description** | ~~Per candidate pair: ≈ 3× SAT + 2× clip.~~ Hot path is 1× SAT + 1× clip. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-012 — Tolerance constants fragmented
 
@@ -512,7 +515,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 | ID | Category | Files | Description | Suggested fix | Status |
 |----|----------|-------|-------------|---------------|--------|
-| **PERF-002** *(new)* | Performance | `spatialGrid.ts` | Per-call rebuild of index map + string-keyed `seen` (`${lo},${hi}`) on dense meshes | Index by soup position; numeric pair keys | Open |
+| **PERF-002** *(new)* | Performance | `spatialGrid.ts` | Per-call rebuild of index map + string-keyed `seen` (`${lo},${hi}`) on dense meshes | Index by soup position; numeric pair keys | **Fixed** (Slice 3, 2026-07-19) — soup-index array + `lo * stride + hi` |
 | **DOC-002** *(new)* | Documentation Alignment | ADR 0002 | “Deferred to Step 2+” lists shipped features | Mark superseded / point at plans + ADR 0003 | **Fixed** (Slice 0, 2026-07-19) |
 | **STATE-005** | Logic | `meshSessionStore.ts` | Undocumented double `rAF` before parse | Worker / `startTransition` / document intent | Open |
 | **UI-005** | Logic | `ToastStack.tsx` | `ToastItem` effect depends on `onDismiss` | Stable ref or omit from deps | Open |
@@ -616,7 +619,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 3. ~~**TEAR-001 + LOGIC-006**~~ — **Done** (Slice 1; shared BFS walker optional)
 4. ~~**LOGIC-025**~~ — **Done** (Slice 1)
 5. ~~**LOGIC-007 / LOGIC-008 / LOGIC-012**~~ — **Done** (Slice 2, 2026-07-19)
-6. **LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002) — collision/tear hot-path performance (Slice 3)
+6. ~~**LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002)~~ — **Done** (Slice 3, 2026-07-19)
 7. **STATE-003 / ARCH-001 / IO-002** — scale readiness (repartition, selectors, file budgets); UI-004 Web Worker deferred per ADR 0004
 8. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
 9. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
@@ -629,12 +632,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~30 | + DOC-001/003; LOGIC-007/008/012 (Slice 2) |
-| Low | ~17 | + DOC-002 fixed; STATE-004, VIEW-005 |
+| Medium | ~27 | + DOC-001/003; LOGIC-007–012 (Slices 2–3) |
+| Low | ~16 | + DOC-002 fixed; STATE-004, VIEW-005; PERF-002 (Slice 3) |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~54** | — |
+| **Open total** | **~50** | — |
 
-*Counts approximate after Slices 0–2.*
+*Counts approximate after Slices 0–3.*
 
 ---
 
@@ -646,7 +649,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **Documentation Alignment** | LOGIC-005, LOGIC-017 — DOC-*/TEAR-001 addressed Slices 0–1 |
 | **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
 | **Logic** | LOGIC-004/005/013–015, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
-| **Performance** | LOGIC-009–011, STATE-003, UI-004, IO-002, ARCH-001, PERF-002 |
+| **Performance** | STATE-003, UI-004, IO-002, ARCH-001 |
 | **SoC** | No open violations — keep `logic/` boundary |
 
 ---

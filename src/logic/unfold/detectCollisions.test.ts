@@ -67,7 +67,8 @@ describe("detectCollisions", () => {
     expect(result.error).toBeUndefined();
 
     const collisions = detectCollisions(mesh, topo, result);
-    expect(collisions.length).toBeGreaterThan(0);
+    // Fixture pin (Slice 3 — keep stable across hot-path refactors).
+    expect(collisions).toHaveLength(20);
     for (const c of collisions) {
       expect(c.overlapArea).toBeGreaterThan(0);
       expect(Number.isFinite(c.centroid.x)).toBe(true);
