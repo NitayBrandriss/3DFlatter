@@ -5,6 +5,10 @@ import type { SvgBuildStats } from "./types";
 export const TIER1_FACE_FILL = "rgba(200, 220, 240, 0.12)";
 export const TIER1_FACE_STROKE = "#7dd3fc";
 export const TIER1_SEAM_STROKE = "#ff4444";
+export const TIER1_COLLISION_FILL = "rgba(249, 115, 22, 0.85)";
+export const TIER1_COLLISION_STROKE = "#9a3412";
+export const TIER1_TEAR_STROKE_A = "#fbbf24";
+export const TIER1_TEAR_STROKE_B = "#fbbf24";
 export const TIER1_BACKGROUND = "#0a1628";
 
 function seamLineElement(seg: SeamSegment2d, index: number): string {

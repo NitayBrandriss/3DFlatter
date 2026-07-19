@@ -32,7 +32,7 @@ flowchart LR
 | Export | SVG preview (tier 1) | **Complete** | `src/logic/export/svg/` |
 | Export | SVG manufacturing / laser (tier 2) | Planned | See [thoughts.txt](../../thoughts.txt) |
 | Step 3 | Unfold quality detection (3a + 3b) | **Complete** | [ADR 0003](../decisions/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
-| Step 3 stretch | Quality overlay in 2D viewer | Planned | Follow-up to Step 3 (logic reports exist; UI not shipped) |
+| Step 3 stretch | Quality overlay in 2D viewer | **Complete** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
 | Phase 2 | Auto seam suggestions | Planned | [thoughts.txt](../../thoughts.txt) |
 
@@ -72,6 +72,7 @@ Completed (or in-progress) implementation specs (historical detail, substeps, ri
 | [step-2-flattening.md](archive/step-2-flattening.md) | Orchestration, layout, `UnfoldViewer2D`, manual test table |
 | [step-2-seam-overlay.md](archive/step-2-seam-overlay.md) | `listSeamSegments2d`, `UnfoldMeshResult.seamSegments` |
 | [step-3-quality-detection.md](archive/step-3-quality-detection.md) | ADR 0003 wiring: collision + tear detection |
+| [step-3-quality-overlay.md](archive/step-3-quality-overlay.md) | 2D viewer overlay + toast + Flatten card toggle (Step 3 stretch) |
 | [mobile-responsive-layout.md](archive/mobile-responsive-layout.md) | Collapsible sidebar, 2D split, mobile tabs, peek-through |
 
 When a backlog item ships, add an archive doc and update the status table above.

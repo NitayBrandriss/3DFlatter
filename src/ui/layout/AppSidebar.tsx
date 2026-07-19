@@ -2,6 +2,10 @@
 
 import type { RefObject } from "react";
 import type { UnfoldMeshResult } from "@/logic/mesh/types";
+import {
+  formatQualityIssueSummary,
+  type QualityIssueCounts,
+} from "@/logic/unfold/qualitySummary";
 import type { MeshSession } from "@/state/meshSessionStore";
 import type { computeSessionStats } from "@/state/meshSessionStore";
 import { DEMO_MODELS } from "@/ui/demoModels";
@@ -28,6 +32,9 @@ export type AppSidebarProps = {
   clearAllSeams: () => void;
   flattening: boolean;
   flattenResult: UnfoldMeshResult | null;
+  qualityCounts: QualityIssueCounts | null;
+  showQualityOverlay: boolean;
+  setShowQualityOverlay: (value: boolean) => void;
   includeSeamsInExport: boolean;
   setIncludeSeamsInExport: (value: boolean) => void;
   onPickFile: (file: File | null) => Promise<boolean>;
@@ -65,6 +72,9 @@ export function AppSidebar({
   clearAllSeams,
   flattening,
   flattenResult,
+  qualityCounts,
+  showQualityOverlay,
+  setShowQualityOverlay,
   includeSeamsInExport,
   setIncludeSeamsInExport,
   onPickFile,
@@ -277,6 +287,20 @@ export function AppSidebar({
             >
               {flattening ? "Flattening…" : "Flatten"}
             </button>
+            {qualityCounts?.hasIssues ? (
+              <div className="muted sidebar-meta-tight">
+                {formatQualityIssueSummary(qualityCounts)}
+              </div>
+            ) : null}
+            <label className="toggle">
+              <span className="muted">Show quality overlay</span>
+              <input
+                type="checkbox"
+                checked={showQualityOverlay}
+                disabled={!flattenResult || !qualityCounts?.hasIssues}
+                onChange={(e) => setShowQualityOverlay(e.currentTarget.checked)}
+              />
+            </label>
           </div>
 
           <div className="card">

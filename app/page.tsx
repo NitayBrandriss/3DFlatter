@@ -56,6 +56,9 @@ export default function HomePage() {
     flattening,
     includeSeamsInExport,
     setIncludeSeamsInExport,
+    showQualityOverlay,
+    setShowQualityOverlay,
+    qualityCounts,
     onFlatten,
     onExportSvg,
   } = useFlattenExport(session, meshLoadVersion, notifyToast);
@@ -163,6 +166,9 @@ export default function HomePage() {
         clearAllSeams={clearAllSeams}
         flattening={flattening}
         flattenResult={flattenResult}
+        qualityCounts={qualityCounts}
+        showQualityOverlay={showQualityOverlay}
+        setShowQualityOverlay={setShowQualityOverlay}
         includeSeamsInExport={includeSeamsInExport}
         setIncludeSeamsInExport={setIncludeSeamsInExport}
         onPickFile={onPickFile}
@@ -180,6 +186,8 @@ export default function HomePage() {
         selectedDemoId={selectedDemoId}
         setSelectedDemoId={setSelectedDemoId}
       />
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
       <ViewportChrome
         containerRef={viewportRef}
@@ -202,7 +210,6 @@ export default function HomePage() {
               seamMode={seamMode}
               onEdgePick={onEdgePick}
             />
-            <ToastStack toasts={toasts} onDismiss={dismissToast} />
             {isLoading ? (
               <div className="overlay">
                 <div className="card">
@@ -213,7 +220,13 @@ export default function HomePage() {
             ) : null}
           </>
         }
-        viewport2d={<UnfoldViewer2D result={flattenResult} />}
+        viewport2d={
+          <UnfoldViewer2D
+            result={flattenResult}
+            showQualityOverlay={showQualityOverlay}
+            qualityCounts={qualityCounts}
+          />
+        }
       />
     </div>
   );
