@@ -1,5 +1,5 @@
+import { parseEdgeKey } from "../mesh/edgeKey";
 import type {
-  EdgeKey,
   FaceIndex,
   LayoutedIsland,
   MeshModel,
@@ -8,11 +8,6 @@ import type {
   Topology,
 } from "../mesh/types";
 import { corner2dForVertexOnFaceSlice } from "./soupBounds";
-
-function parseEdgeKey(key: EdgeKey): [number, number] {
-  const [a, b] = key.split(",").map((s) => Number.parseInt(s, 10));
-  return [a!, b!];
-}
 
 function buildFacePlacementMap(
   islands: LayoutedIsland[],

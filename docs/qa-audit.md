@@ -34,10 +34,10 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1) |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
 | **New Low** | PERF-002, DOC-002 |
-| **Reconfirmed open** | LOGIC-004–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
+| **Reconfirmed open** | LOGIC-004–006/009–011/013–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
 | **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
 
 ---
@@ -199,10 +199,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY / Logic |
-| **Status** | **Mitigated** (2026-07-19, Slice 1) — production assert in `analyzeUnfoldedIsland`; BFS code still duplicated pending Slice 2 / LOGIC-007 |
-| **Files** | `buildUnfoldTreeEdges.ts`, `unfoldIsland.ts`, `analyzeUnfoldedIsland.ts` |
-| **Description** | Tear detection depends on mirroring unfold BFS (ADR 0003 W2). Duplicated queue/slot walk remains; drift now **throws** instead of silently misclassifying. |
-| **Suggested fix** | Shared BFS walker in Slice 2 (LOGIC-007); assert remains as safety net. |
+| **Status** | **Mitigated** (2026-07-19, Slice 1 + Slice 2) — production assert in `analyzeUnfoldedIsland`; face/edge helpers shared via `faceUtils` (LOGIC-007). Full shared BFS walker still optional; assert remains safety net. |
+| **Files** | `buildUnfoldTreeEdges.ts`, `unfoldIsland.ts`, `analyzeUnfoldedIsland.ts`, `faceUtils.ts` |
+| **Description** | Tear detection depends on mirroring unfold BFS (ADR 0003 W2). Queue/slot walk still duplicated; face/edge helper drift reduced; size mismatch **throws**. |
+| **Suggested fix** | Optional: extract shared BFS walker later; assert remains. |
 
 ### LOGIC-007 — Duplicated face/edge helpers (DRY)
 
@@ -210,9 +210,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY |
-| **Files** | `unfoldIsland.ts`, `buildUnfoldTreeEdges.ts`, `soupBounds.ts`, `partitionIslands.ts`, `unfoldEdge2d.ts` |
-| **Description** | `faceVertices` / `readFaceVertices`, `directedEdgeForSlot`, `edgeKeyForFace`, `EDGE_SLOTS` near-copies. |
-| **Suggested fix** | Centralize in `src/logic/mesh/faceUtils.ts` beside `edgeKey.ts`. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 2) — `src/logic/mesh/faceUtils.ts` |
+| **Files** | `faceUtils.ts`; call sites: `unfoldIsland.ts`, `buildUnfoldTreeEdges.ts`, `partitionIslands.ts`, `unfoldEdge2d.ts`, `resolvePick.ts` |
+| **Description** | ~~`faceVertices` / `readFaceVertices`, `directedEdgeForSlot`, `edgeKeyForFace`, `EDGE_SLOTS` near-copies.~~ Centralized. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-008 — `parseEdgeKey` duplicated / inconsistent
 
@@ -220,9 +221,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY |
-| **Files** | `displaySeamSegments.ts`, `seamSegments2d.ts`, `detectTears.ts`, `edgeKey.ts` |
-| **Description** | Local `parseEdgeKey` in two modules; `detectTears` inlines `.split(",").map(Number)` (`Number` vs `parseInt` diverge on malformed tokens). `makeEdgeKey` has no inverse. |
-| **Suggested fix** | Add `parseEdgeKey` next to `makeEdgeKey`; use everywhere. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 2) — `parseEdgeKey` beside `makeEdgeKey` |
+| **Files** | `edgeKey.ts`; callers: `displaySeamSegments.ts`, `seamSegments2d.ts`, `detectTears.ts` |
+| **Description** | ~~Local `parseEdgeKey` in two modules; `detectTears` inlined `.split(",").map(Number)`.~~ Unified on `parseInt`. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-009 — `detectTears` scans entire mesh edge map per island
 
@@ -260,9 +262,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY / Architecture |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 2) — `WELD_EPSILON`, `CONVEXITY_EPS`, `PICK_EDGE_FRACTION` exported from `tolerances.ts` |
 | **Files** | `tolerances.ts`, `weldVertices.ts`, `polygonConvexity.ts`, `resolvePick.ts` |
-| **Description** | `WELD_EPSILON`, convexity `EPS`, pick `0.15` sit outside central tolerances; weld matches `SAT_EPS` numerically but not by import. |
-| **Suggested fix** | Document and export weld/pick constants from `tolerances.ts`. |
+| **Description** | ~~Fragmented local epsilons.~~ Centralized; weld/convexity alias `SAT_EPS`; pick fraction documented as scale-relative. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-013 — STL degenerate detection uses exact float equality
 
@@ -610,10 +613,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 1. ~~Critical/High from 2026-07-14~~ — **Done**
 2. ~~**DOC-001 / DOC-002 / DOC-003**~~ — **Done** (Slice 0, 2026-07-19)
-3. ~~**TEAR-001 + LOGIC-006**~~ — **Done** (Slice 1; BFS DRY remains Slice 2)
+3. ~~**TEAR-001 + LOGIC-006**~~ — **Done** (Slice 1; shared BFS walker optional)
 4. ~~**LOGIC-025**~~ — **Done** (Slice 1)
-5. **LOGIC-011 / LOGIC-010 / LOGIC-009** — collision/tear hot-path performance
-6. **LOGIC-007 / LOGIC-008 / LOGIC-012** — DRY face/edge/key/tolerance helpers
+5. ~~**LOGIC-007 / LOGIC-008 / LOGIC-012**~~ — **Done** (Slice 2, 2026-07-19)
+6. **LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002) — collision/tear hot-path performance (Slice 3)
 7. **STATE-003 / ARCH-001 / IO-002** — scale readiness (repartition, selectors, file budgets); UI-004 Web Worker deferred per ADR 0004
 8. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
 9. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
@@ -626,12 +629,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~33 | + DOC-001, DOC-003 fixed |
+| Medium | ~30 | + DOC-001/003; LOGIC-007/008/012 (Slice 2) |
 | Low | ~17 | + DOC-002 fixed; STATE-004, VIEW-005 |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~57** | — |
+| **Open total** | **~54** | — |
 
-*Counts approximate after Slice 0 doc fixes (DOC-001/002/003).*
+*Counts approximate after Slices 0–2.*
 
 ---
 
@@ -641,7 +644,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|-------------|
 | **Architecture** | ARCH-001, ARCH-003, UI-002, APP-001, APP-002, LAYOUT-007 |
 | **Documentation Alignment** | LOGIC-005, LOGIC-017 — DOC-*/TEAR-001 addressed Slices 0–1 |
-| **DRY** | LOGIC-006 (walker still duplicated), LOGIC-007–008, LOGIC-012, UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
+| **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
 | **Logic** | LOGIC-004/005/013–015, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
 | **Performance** | LOGIC-009–011, STATE-003, UI-004, IO-002, ARCH-001, PERF-002 |
 | **SoC** | No open violations — keep `logic/` boundary |

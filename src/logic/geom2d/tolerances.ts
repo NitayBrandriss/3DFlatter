@@ -1,8 +1,27 @@
 /**
- * Central numeric tolerances for 2D geometry (ADR 0003).
- * `SAT_EPS` is the single source of truth — `placeTriangle2d` re-exports it as `EPS`.
+ * Central numeric tolerances for geometry (ADR 0003 + I/O / pick helpers).
+ * `SAT_EPS` is the single source of truth for near-zero comparisons —
+ * `placeTriangle2d` re-exports it as `EPS`; weld/convexity reuse the same value.
  */
 export const SAT_EPS = 1e-6;
+
+/**
+ * Vertex-weld grid cell size (matches `SAT_EPS`).
+ * Deliberately aliased so I/O welding stays in lockstep with 2D near-zero eps.
+ */
+export const WELD_EPSILON = SAT_EPS;
+
+/**
+ * Near-coplanar / zero-area checks in OBJ fan convexity (`polygonConvexity`).
+ * Same magnitude as `SAT_EPS`; exported so callers do not invent a second 1e-6.
+ */
+export const CONVEXITY_EPS = SAT_EPS;
+
+/**
+ * Pick edge hit tolerance as a fraction of shortest face edge length
+ * (`resolvePick`). Not an absolute epsilon — scale-relative click threshold.
+ */
+export const PICK_EDGE_FRACTION = 0.15;
 
 /** Minimum overlap area for collision reporting. */
 export const COLLISION_AREA_ABS = 1e-10;

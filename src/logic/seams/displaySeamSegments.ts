@@ -1,9 +1,5 @@
+import { parseEdgeKey } from "../mesh/edgeKey";
 import type { SeamRegistry } from "../mesh/types";
-
-function parseEdgeKey(key: string): [number, number] {
-  const [a, b] = key.split(",").map((s) => Number.parseInt(s, 10));
-  return [a!, b!];
-}
 
 /**
  * Seam line segments using display-normalized vertex positions.

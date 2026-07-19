@@ -1,19 +1,7 @@
-import { makeEdgeKey } from "./edgeKey";
+import { EDGE_SLOTS, edgeKeyForFace, faceVertices } from "./faceUtils";
 import { isIndexDegenerateFace } from "./faceDegeneracy";
-import type { EdgeSlot, FaceIndex, MeshModel, SeamRegistry, Topology } from "./types";
+import type { FaceIndex, MeshModel, SeamRegistry, Topology } from "./types";
 import { getNeighborAcrossEdge } from "./types";
-
-const EDGE_SLOTS: EdgeSlot[] = [0, 1, 2];
-
-function edgeKeyForFace(mesh: MeshModel, faceId: FaceIndex, slot: EdgeSlot) {
-  const base = 3 * faceId;
-  const v0 = mesh.faces[base]!;
-  const v1 = mesh.faces[base + 1]!;
-  const v2 = mesh.faces[base + 2]!;
-  if (slot === 0) return makeEdgeKey(v0, v1);
-  if (slot === 1) return makeEdgeKey(v1, v2);
-  return makeEdgeKey(v2, v0);
-}
 
 /**
  * Faces skipped by buildTopology (index-degenerate) must not form islands.
@@ -25,10 +13,7 @@ function isTopologyOrphanFace(
   topology: Topology,
   faceId: FaceIndex,
 ): boolean {
-  const base = 3 * faceId;
-  const v0 = mesh.faces[base]!;
-  const v1 = mesh.faces[base + 1]!;
-  const v2 = mesh.faces[base + 2]!;
+  const [v0, v1, v2] = faceVertices(mesh, faceId);
   if (isIndexDegenerateFace(v0, v1, v2)) {
     return true;
   }

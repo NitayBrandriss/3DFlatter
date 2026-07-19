@@ -1,29 +1,7 @@
 ﻿import { makeEdgeKey } from "../mesh/edgeKey";
-import type {
-  EdgeKey,
-  EdgeSlot,
-  FaceIndex,
-  MeshModel,
-  Topology,
-  VertexIndex,
-} from "../mesh/types";
+import { EDGE_SLOTS, directedEdgeForSlot, faceVertices } from "../mesh/faceUtils";
+import type { EdgeKey, FaceIndex, MeshModel, Topology } from "../mesh/types";
 import { getNeighborAcrossEdge } from "../mesh/types";
-
-const EDGE_SLOTS: EdgeSlot[] = [0, 1, 2];
-
-type FaceVerts = [VertexIndex, VertexIndex, VertexIndex];
-
-function readFaceVertices(mesh: MeshModel, faceId: FaceIndex): FaceVerts {
-  const base = 3 * faceId;
-  return [mesh.faces[base]!, mesh.faces[base + 1]!, mesh.faces[base + 2]!];
-}
-
-function directedEdgeForSlot(verts: FaceVerts, slot: EdgeSlot): [VertexIndex, VertexIndex] {
-  const [v0, v1, v2] = verts;
-  if (slot === 0) return [v0, v1];
-  if (slot === 1) return [v1, v2];
-  return [v2, v0];
-}
 
 /**
  * BFS unfold tree edges mirroring `unfoldIsland` (root = islandFaces[0], FIFO, slots [0,1,2]).
@@ -50,7 +28,7 @@ export function buildUnfoldTreeEdges(
         continue;
       }
 
-      const parentVerts = readFaceVertices(mesh, faceId);
+      const parentVerts = faceVertices(mesh, faceId);
       const [va, vb] = directedEdgeForSlot(parentVerts, slot);
       treeEdges.add(makeEdgeKey(va, vb));
 

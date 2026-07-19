@@ -1,3 +1,9 @@
+import {
+  EDGE_SLOTS,
+  directedEdgeForSlot,
+  faceVertices,
+  type FaceVerts,
+} from "../mesh/faceUtils";
 import type {
   EdgeSlot,
   FaceIndex,
@@ -16,27 +22,6 @@ import {
   signedArea2d,
   type Vec2,
 } from "./placeTriangle2d";
-
-const EDGE_SLOTS: EdgeSlot[] = [0, 1, 2];
-
-type FaceVerts = [VertexIndex, VertexIndex, VertexIndex];
-
-/** Read the three vertex indices for a packed triangle face. */
-function faceVertices(mesh: MeshModel, faceId: FaceIndex): FaceVerts {
-  const base = 3 * faceId;
-  return [mesh.faces[base]!, mesh.faces[base + 1]!, mesh.faces[base + 2]!];
-}
-
-/**
- * Directed edge endpoints for a face slot (CCW order):
- * slot 0 = v0→v1, slot 1 = v1→v2, slot 2 = v2→v0.
- */
-function directedEdgeForSlot(verts: FaceVerts, slot: EdgeSlot): [VertexIndex, VertexIndex] {
-  const [v0, v1, v2] = verts;
-  if (slot === 0) return [v0, v1];
-  if (slot === 1) return [v1, v2];
-  return [v2, v0];
-}
 
 /** Third vertex of `verts` that is not `va` or `vb`. */
 function thirdVertex(verts: FaceVerts, va: VertexIndex, vb: VertexIndex): VertexIndex | null {

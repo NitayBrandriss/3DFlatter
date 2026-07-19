@@ -6,6 +6,7 @@
   type Segment2d,
 } from "../geom2d/segment2d";
 import { ANGLE_EPS, SAT_EPS, tearThreshold } from "../geom2d/tolerances";
+import { parseEdgeKey } from "../mesh/edgeKey";
 import type {
   EdgeKey,
   EdgeTear2d,
@@ -79,9 +80,7 @@ export function detectTears(
 
     if (segmentLength(segmentA) < SAT_EPS || segmentLength(segmentB) < SAT_EPS) continue;
 
-    const base = edgeKey.split(",").map(Number);
-    const va = base[0]!;
-    const vb = base[1]!;
+    const [va, vb] = parseEdgeKey(edgeKey);
     const edgeLen3d = distance3d(mesh, va, vb);
     const thresh = tearThreshold(edgeLen3d);
     const maxGap = segmentEndpointMaxGap(segmentA, segmentB);

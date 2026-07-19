@@ -34,7 +34,7 @@ flowchart LR
 | Step 3 | Unfold quality detection (3a + 3b) | **Complete** | [ADR 0003](../decisions/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
 | Step 3 stretch | Quality overlay in 2D viewer | **Complete** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
-| QA | Audit remediation (Slices 0–5; 6–7 backlog) | **In progress** (Slices 0–1 complete) | [ADR 0004](../decisions/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](../qa-audit.md) |
+| QA | Audit remediation (Slices 0–5; 6–7 backlog) | **In progress** (Slices 0–2 complete) | [ADR 0004](../decisions/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](../qa-audit.md) |
 | Phase 2 | Auto seam suggestions | Planned | [thoughts.txt](../../thoughts.txt) |
 
 ---

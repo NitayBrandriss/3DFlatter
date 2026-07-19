@@ -1,4 +1,6 @@
+import { PICK_EDGE_FRACTION } from "../geom2d/tolerances";
 import { makeEdgeKey } from "../mesh/edgeKey";
+import { EDGE_SLOTS, directedEdgeForSlot, faceVertices } from "../mesh/faceUtils";
 import type { EdgeKey, EdgeSlot, MeshModel } from "../mesh/types";
 
 export type ResolvedPick = {
@@ -64,12 +66,6 @@ function segmentLengthSq(
   return dx * dx + dy * dy + dz * dz;
 }
 
-const EDGE_SLOTS: readonly [EdgeSlot, number, number][] = [
-  [0, 0, 1],
-  [1, 1, 2],
-  [2, 2, 0],
-];
-
 /**
  * Resolve a raycast hit on a triangle to the closest mesh edge.
  * Returns null when the hit is too far from all edges (e.g. face-center click).
@@ -83,23 +79,17 @@ export function resolvePick(
     return null;
   }
 
-  const base = 3 * faceIndex;
-  const indices = [
-    mesh.faces[base]!,
-    mesh.faces[base + 1]!,
-    mesh.faces[base + 2]!,
-  ];
-
-  const verts = indices.map((vi) => readVertex(mesh, vi));
+  const indices = faceVertices(mesh, faceIndex);
   const { x: px, y: py, z: pz } = hitPoint;
 
   let bestSlot: EdgeSlot = 0;
   let bestDistSq = Number.POSITIVE_INFINITY;
   let shortestEdgeLenSq = Number.POSITIVE_INFINITY;
 
-  for (const [slot, a, b] of EDGE_SLOTS) {
-    const va = verts[a]!;
-    const vb = verts[b]!;
+  for (const slot of EDGE_SLOTS) {
+    const [ia, ib] = directedEdgeForSlot(indices, slot);
+    const va = readVertex(mesh, ia);
+    const vb = readVertex(mesh, ib);
     const edgeLenSq = segmentLengthSq(va.x, va.y, va.z, vb.x, vb.y, vb.z);
     shortestEdgeLenSq = Math.min(shortestEdgeLenSq, edgeLenSq);
 
@@ -120,12 +110,11 @@ export function resolvePick(
     }
   }
 
-  const threshold = 0.15 * Math.sqrt(shortestEdgeLenSq);
+  const threshold = PICK_EDGE_FRACTION * Math.sqrt(shortestEdgeLenSq);
   if (bestDistSq > threshold * threshold) {
     return null;
   }
 
-  const [, a, b] = EDGE_SLOTS[bestSlot]!;
-  const edgeKey = makeEdgeKey(indices[a]!, indices[b]!);
-  return { edgeKey, slot: bestSlot };
+  const [ia, ib] = directedEdgeForSlot(indices, bestSlot);
+  return { edgeKey: makeEdgeKey(ia, ib), slot: bestSlot };
 }

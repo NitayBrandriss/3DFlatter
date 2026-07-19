@@ -1,8 +1,7 @@
 ﻿import type { Segment2d } from "../geom2d/segment2d";
+import { EDGE_SLOTS, directedEdgeForSlot, faceVertices } from "../mesh/faceUtils";
 import type { EdgeSlot, FaceIndex, MeshModel, Topology, UnfoldIslandResult } from "../mesh/types";
 import { getNeighborAcrossEdge } from "../mesh/types";
-
-const EDGE_SLOTS: EdgeSlot[] = [0, 1, 2];
 
 export function segment2dForFaceSlot(
   mesh: MeshModel,
@@ -15,9 +14,8 @@ export function segment2dForFaceSlot(
 
   const off = 6 * soupIndex;
   const base = 3 * faceId;
-  const verts = [mesh.faces[base]!, mesh.faces[base + 1]!, mesh.faces[base + 2]!];
-  const [va, vb] =
-    slot === 0 ? [verts[0]!, verts[1]!] : slot === 1 ? [verts[1]!, verts[2]!] : [verts[2]!, verts[0]!];
+  const verts = faceVertices(mesh, faceId);
+  const [va, vb] = directedEdgeForSlot(verts, slot);
 
   const corner = (vi: number): { x: number; y: number } | null => {
     for (let i = 0; i < 3; i++) {
