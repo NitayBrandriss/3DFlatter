@@ -6,7 +6,7 @@
   TriangleCollision2d,
   UnfoldIslandResult,
 } from "../mesh/types";
-import { buildUnfoldTreeEdges } from "./buildUnfoldTreeEdges";
+import { buildUnfoldTreeEdges, expectedTreeEdgeCount } from "./buildUnfoldTreeEdges";
 import { detectCollisions } from "./detectCollisions";
 import { detectTears } from "./detectTears";
 
@@ -23,6 +23,13 @@ export function analyzeUnfoldedIsland(
   result: UnfoldIslandResult,
 ): IslandQualityReport {
   const treeEdges = buildUnfoldTreeEdges(mesh, topology, islandFaces);
+  const expected = expectedTreeEdgeCount(islandFaces.length);
+  if (treeEdges.size !== expected) {
+    // LOGIC-006 / ADR 0003 W2 — detect BFS drift vs unfoldIsland after a successful unfold.
+    throw new Error(
+      `Unfold tree edge count mismatch: got ${treeEdges.size}, expected ${expected} for ${islandFaces.length} face(s)`,
+    );
+  }
   return {
     collisions: detectCollisions(mesh, topology, result),
     tears: detectTears(mesh, topology, islandFaces, result, treeEdges),

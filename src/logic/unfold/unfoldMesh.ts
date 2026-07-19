@@ -27,7 +27,8 @@ export function unfoldMesh(
       warnings.push(`Island ${i} (${islandFaces.length} faces): ${result.error}`);
       continue;
     }
-    unfolded.push(result);
+    // Keep partition index so quality reports match warning labels when earlier islands fail.
+    unfolded.push({ ...result, sourceIslandIndex: i });
     localReports.push(analyzeUnfoldedIsland(mesh, topology, islandFaces, result));
   }
 

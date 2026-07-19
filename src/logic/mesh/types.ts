@@ -136,6 +136,10 @@ export type Bbox2d = {
 
 /** One island after global layout offsets have been applied. */
 export type LayoutedIsland = {
+  /**
+   * Partition index from `partitionIslands` (stable across failed siblings).
+   * Prefers `UnfoldIslandResult.sourceIslandIndex` when set (LOGIC-025).
+   */
   islandIndex: number;
   faces: FaceIndex[];
   /** Soup in global XY (math Y-up); layout offset already baked in. */
@@ -200,6 +204,11 @@ export interface UnfoldIslandResult {
    * If `error` is set, discard this buffer — it may be partially filled.
    */
   positions2d: FlattenedTriangleSoup;
+  /**
+   * Index in the `partitionIslands` list when produced via `unfoldMesh`.
+   * Used so layout/quality reports match warning labels when earlier islands fail (LOGIC-025).
+   */
+  sourceIslandIndex?: number;
   /** When set, `positions2d` is invalid and must not be used. */
   error?: string;
 }

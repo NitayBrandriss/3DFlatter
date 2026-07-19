@@ -63,7 +63,7 @@ export function layoutIslands(
     const bounds = boundsFromSoup(positions2d);
 
     layouted.push({
-      islandIndex: i,
+      islandIndex: item.sourceIslandIndex ?? i,
       faces: item.faces,
       positions2d,
       offset: { x: dx, y: dy },

@@ -92,4 +92,19 @@ describe("layoutIslands", () => {
     }
     expect(out[1]!.bounds.maxY).toBeLessThanOrEqual(out[0]!.bounds.minY - ISLAND_GAP + 1e-6);
   });
+
+  it("preserves sourceIslandIndex as layout islandIndex (LOGIC-025)", () => {
+    const input = [
+      { ...islandFromBounds(0, 0, 1, 1), sourceIslandIndex: 2 },
+      { ...islandFromBounds(0, 0, 1, 1), sourceIslandIndex: 5 },
+    ];
+    const out = layoutIslands(input, { maxRowWidth: 100 });
+    expect(out.map((isl) => isl.islandIndex)).toEqual([2, 5]);
+  });
+
+  it("falls back to pack order when sourceIslandIndex is absent", () => {
+    const input = [islandFromBounds(0, 0, 1, 1), islandFromBounds(0, 0, 1, 1)];
+    const out = layoutIslands(input, { maxRowWidth: 100 });
+    expect(out.map((isl) => isl.islandIndex)).toEqual([0, 1]);
+  });
 });

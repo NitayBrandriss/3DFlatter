@@ -34,7 +34,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented (was Info / plan-deferred); **DOC-001, DOC-002, DOC-003** (remediation Slice 0) |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
 | **New Low** | PERF-002, DOC-002 |
 | **Reconfirmed open** | LOGIC-004–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
@@ -50,7 +50,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 |-----|--------------|----------|
 | **0001 — Mesh + topology** | **Yes — keep** | Packed arrays, 0-based indices, `EdgeKey`, XY plane remain optimal. Fan triangulation + concave warning is an honest PoC tradeoff. Half-edge remains correctly deferred. **Amend:** document STL as a first-class I/O path; clarify that “degenerate” means **index** degeneracy only (geometric zero-area with distinct indices is out of scope). Vertex welding is shipped but only mentioned as a future note — promote to a short accepted consequence or tiny follow-up ADR. |
 | **0002 — Hinge unfold + triangle soup** | **Yes — keep** | Rejecting `Map<VertexIndex, Vec2>` is still the right call for slits/darts and SVG soup. Parent-soup-copy BFS is implemented faithfully. **Amend:** “Deferred to Step 2+” (orchestration, layout, 2D viewer, collision) is **stale** — those shipped under plans/ADR 0003. Mark deferred items superseded or add a short ADR 0004 for mesh-level orchestration contracts (`unfoldMesh`, layout indexing). |
-| **0003 — Quality detection** | **Yes — keep** | Orthogonality (detect ≠ fix) and complementary 3a/3b are sound. Central `tolerances.ts` matches the table. **Amend:** W2 claims a production `\|treeEdges\| === \|F\|-1` assertion — only tests call `expectedTreeEdgeCount`. Tear kinds `gap \| overlap \| skew` overstate code (see TEAR-001). Soft-cap hooks for huge closed-mesh reports remain a good future note as meshes grow. |
+| **0003 — Quality detection** | **Yes — keep** | Orthogonality and complementary 3a/3b remain sound. Tear kinds and W2 production assert updated in Slice 1. Soft-cap hooks for huge closed-mesh reports remain a future note as meshes grow. |
 
 ### Code alignment (drift)
 
@@ -67,7 +67,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | `src/logic/` free of React/Three.js | **Compliant** (grep: zero matches) |
 | ADR 0001 OBJ-only narrative vs STL in product | **Addressed** (DOC-001, Slice 0 — 2026-07-19) |
 | ADR 0002 deferred list vs shipped Step 2/3 | **Addressed** (DOC-002, Slice 0 — 2026-07-19) |
-| ADR 0003 tear taxonomy + W2 assertion | **Partial** — W2 wording fixed (DOC-003); tear-kind code still TEAR-001 / Slice 1 |
+| ADR 0003 tear taxonomy + W2 assertion | **Addressed** (Slice 1 — TEAR-001 + LOGIC-006 production assert) |
 
 ### State management (Zustand vs local hooks)
 
@@ -125,9 +125,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / Documentation Alignment |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 1) — parallel non-collinear → `gap`; angled → `skew`; ADR 0003 tear-kind table updated |
 | **Files** | `src/logic/unfold/detectTears.ts` (`classifyTearKind`) |
-| **Description** | After the collinear `gap`/`overlap` branch, both remaining paths return `"skew"`. `segmentParallelAngle` is computed but unused for classification. ADR 0003’s “parallel offset → tear” case is therefore labeled `skew`, which will mislead any future kind-colored UI. |
-| **Suggested fix** | Return a meaningful kind for parallel-but-non-collinear offsets (e.g. `gap`), or drop the dead branch and amend ADR 0003’s tear-kind table to match reality. |
+| **Description** | ~~After the collinear `gap`/`overlap` branch, both remaining paths returned `"skew"`…~~ Fixed. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-025 — Quality `islandIndex` rebased after failed islands *(new)*
 
@@ -135,9 +136,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
-| **Files** | `src/logic/unfold/unfoldMesh.ts`, `layoutIslands.ts`, `toGlobalQualityReports.ts` |
-| **Description** | Warnings use the **partition** index (`Island ${i}`). Successful islands are compacted; `layoutIslands` assigns `islandIndex: i` in the compacted array. After a failed early island, overlay/report “island 2” may not match warning “Island 3”. Geometry is correct; traceability is not. |
-| **Suggested fix** | Carry `sourceIslandIndex` (partition index) through unfolded → layout → quality reports and warnings. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 1) — `sourceIslandIndex` on successful unfolds; `layoutIslands` prefers it for `islandIndex` |
+| **Files** | `unfoldMesh.ts`, `layoutIslands.ts`, `types.ts` (`UnfoldIslandResult.sourceIslandIndex`) |
+| **Description** | ~~Warnings used partition index; layout rebased…~~ Fixed. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### DOC-001 — ADR 0001 still OBJ-centric while STL is first-class *(new)*
 
@@ -156,10 +158,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Documentation Alignment / Logic |
-| **Status** | **Fixed** (2026-07-19, remediation Slice 0) — W2 now states test-enforced; production assert deferred to Slice 1 (LOGIC-006) |
-| **Files** | `docs/decisions/0003-unfold-quality-detection.md` (W2), `buildUnfoldTreeEdges.ts` |
-| **Description** | ~~W2 listed production `\|treeEdges\| === \|F\|-1`…~~ Doc corrected; code assert still Slice 1. |
-| **Suggested fix** | ~~…~~ Doc done. Follow-up: LOGIC-006 in Slice 1. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 0) — W2 softened then tightened by Slice 1 production assert |
+| **Files** | `docs/decisions/0003-unfold-quality-detection.md` (W2), `analyzeUnfoldedIsland.ts` |
+| **Description** | ~~W2 listed production assert…~~ Doc + Slice 1 assert done. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### ARCH-003 — Flatten/session dual state without shared selector strategy *(new)*
 
@@ -197,9 +199,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY / Logic |
+| **Status** | **Mitigated** (2026-07-19, Slice 1) — production assert in `analyzeUnfoldedIsland`; BFS code still duplicated pending Slice 2 / LOGIC-007 |
 | **Files** | `buildUnfoldTreeEdges.ts`, `unfoldIsland.ts`, `analyzeUnfoldedIsland.ts` |
-| **Description** | Tear detection depends on mirroring unfold BFS (ADR 0003 W2). Duplicated queue/slot walk; no production size assert. |
-| **Suggested fix** | Shared BFS walker + runtime `treeEdges.size === faces - 1` when unfold succeeded. |
+| **Description** | Tear detection depends on mirroring unfold BFS (ADR 0003 W2). Duplicated queue/slot walk remains; drift now **throws** instead of silently misclassifying. |
+| **Suggested fix** | Shared BFS walker in Slice 2 (LOGIC-007); assert remains as safety net. |
 
 ### LOGIC-007 — Duplicated face/edge helpers (DRY)
 
@@ -586,7 +589,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | `meshLoadVersion` not bumped on seam toggles | Compliant |
 | Surface degenerate/non-manifold limits to user | **Partial** — counts + I/O toasts; topology `console.warn` weak spot |
 | `src/logic/` free of React/Three.js | Compliant |
-| ADR docs match shipped I/O + Step 2/3 scope | **Compliant** (Slice 0) — tear-kind *code* still TEAR-001 |
+| ADR docs match shipped I/O + Step 2/3 scope | **Compliant** (Slices 0–1) |
 
 ---
 
@@ -607,8 +610,8 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 1. ~~Critical/High from 2026-07-14~~ — **Done**
 2. ~~**DOC-001 / DOC-002 / DOC-003**~~ — **Done** (Slice 0, 2026-07-19)
-3. **TEAR-001 + LOGIC-006** — tear taxonomy + shared BFS / production tree assert (correctness of quality UX)
-4. **LOGIC-025** — stable island indices across warnings vs reports
+3. ~~**TEAR-001 + LOGIC-006**~~ — **Done** (Slice 1; BFS DRY remains Slice 2)
+4. ~~**LOGIC-025**~~ — **Done** (Slice 1)
 5. **LOGIC-011 / LOGIC-010 / LOGIC-009** — collision/tear hot-path performance
 6. **LOGIC-007 / LOGIC-008 / LOGIC-012** — DRY face/edge/key/tolerance helpers
 7. **STATE-003 / ARCH-001 / IO-002** — scale readiness (repartition, selectors, file budgets); UI-004 Web Worker deferred per ADR 0004
@@ -637,9 +640,9 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | Category | Notable IDs |
 |----------|-------------|
 | **Architecture** | ARCH-001, ARCH-003, UI-002, APP-001, APP-002, LAYOUT-007 |
-| **Documentation Alignment** | TEAR-001 (ADR tear kinds vs code), LOGIC-005, LOGIC-017 — DOC-001/002/003 fixed Slice 0 |
-| **DRY** | LOGIC-006–008, LOGIC-012, UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
-| **Logic** | TEAR-001, LOGIC-004/005/013–015/025, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
+| **Documentation Alignment** | LOGIC-005, LOGIC-017 — DOC-*/TEAR-001 addressed Slices 0–1 |
+| **DRY** | LOGIC-006 (walker still duplicated), LOGIC-007–008, LOGIC-012, UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
+| **Logic** | LOGIC-004/005/013–015, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
 | **Performance** | LOGIC-009–011, STATE-003, UI-004, IO-002, ARCH-001, PERF-002 |
 | **SoC** | No open violations — keep `logic/` boundary |
 

@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** In progress (Slice 0 complete)  
+**Status:** In progress (Slices 0–1 complete)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -43,7 +43,7 @@ flowchart TD
 | Slice | Theme | Status | Audit IDs |
 |-------|--------|--------|-----------|
 | **0** | ADR / docs sync | **Complete** (2026-07-19) | DOC-001, DOC-002, DOC-003 (+ tear-kind ADR interim note) |
-| **1** | Quality correctness | Execute | TEAR-001, LOGIC-006, LOGIC-025 |
+| **1** | Quality correctness | **Complete** (2026-07-19) | TEAR-001, LOGIC-006 (assert), LOGIC-025 |
 | **2** | Logic DRY foundation | Execute | LOGIC-007, LOGIC-008, LOGIC-012 |
 | **3** | Quality hot-path perf | Execute | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
 | **4** | I/O + seam robustness | Execute | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
@@ -113,10 +113,10 @@ flowchart TD
 
 **Done when:**
 
-- [ ] Tear kinds match ADR 0003 (or ADR amended)
-- [ ] Production tree-size guard or shared walker in place
-- [ ] Warning index === report `islandIndex` / `sourceIslandIndex`
-- [ ] `npm test` green
+- [x] Tear kinds match ADR 0003 (or ADR amended)
+- [x] Production tree-size guard or shared walker in place
+- [x] Warning index === report `islandIndex` / `sourceIslandIndex`
+- [x] `npm test` green
 
 ---
 

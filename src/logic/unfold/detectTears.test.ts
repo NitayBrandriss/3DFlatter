@@ -5,7 +5,7 @@ import { makeEdgeKey } from "../mesh/edgeKey";
 import { partitionIslands } from "../mesh/partitionIslands";
 import { createSeamRegistry, toggleSeam } from "../seams/seamRegistry";
 import { buildUnfoldTreeEdges } from "./buildUnfoldTreeEdges";
-import { detectTears } from "./detectTears";
+import { classifyTearKind, detectTears } from "./detectTears";
 import { unfoldIsland } from "./unfoldIsland";
 
 const CUBE_OBJ = `
@@ -49,6 +49,44 @@ function seamTopFaceFromCube() {
 function largestIsland(islands: number[][]) {
   return islands.reduce((a, b) => (a.length >= b.length ? a : b));
 }
+
+describe("classifyTearKind", () => {
+  it("labels collinear separated segments as gap", () => {
+    expect(
+      classifyTearKind(
+        { x0: 0, y0: 0, x1: 1, y1: 0 },
+        { x0: 2, y0: 0, x1: 3, y1: 0 },
+      ),
+    ).toBe("gap");
+  });
+
+  it("labels collinear overlapping segments as overlap", () => {
+    expect(
+      classifyTearKind(
+        { x0: 0, y0: 0, x1: 2, y1: 0 },
+        { x0: 1, y0: 0, x1: 3, y1: 0 },
+      ),
+    ).toBe("overlap");
+  });
+
+  it("labels parallel offset (non-collinear) as gap, not skew", () => {
+    expect(
+      classifyTearKind(
+        { x0: 0, y0: 0, x1: 1, y1: 0 },
+        { x0: 0, y0: 0.5, x1: 1, y1: 0.5 },
+      ),
+    ).toBe("gap");
+  });
+
+  it("labels angled segments as skew", () => {
+    expect(
+      classifyTearKind(
+        { x0: 0, y0: 0, x1: 1, y1: 0 },
+        { x0: 0, y0: 0, x1: 1, y1: 1 },
+      ),
+    ).toBe("skew");
+  });
+});
 
 describe("detectTears", () => {
   it("reports many non-tree tears for a closed cube island", () => {

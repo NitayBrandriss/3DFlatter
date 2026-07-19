@@ -31,13 +31,23 @@ function segmentEndpointMaxGap(a: Segment2d, b: Segment2d): number {
   return Math.max(direct, swapped);
 }
 
-function classifyTearKind(segmentA: Segment2d, segmentB: Segment2d): EdgeTear2d["kind"] {
+/**
+ * Classify tear geometry per ADR 0003:
+ * - collinear + interval overlap → overlap
+ * - collinear without overlap → gap
+ * - parallel but not collinear (positional offset) → gap
+ * - angled / skewed segments → skew
+ */
+export function classifyTearKind(
+  segmentA: Segment2d,
+  segmentB: Segment2d,
+): EdgeTear2d["kind"] {
   if (areCollinear(segmentA, segmentB)) {
     const overlap = collinearIntervalOverlap(segmentA, segmentB);
     return overlap > SAT_EPS ? "overlap" : "gap";
   }
   if (segmentParallelAngle(segmentA, segmentB) <= ANGLE_EPS) {
-    return "skew";
+    return "gap";
   }
   return "skew";
 }

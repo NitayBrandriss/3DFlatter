@@ -68,11 +68,16 @@ For each **manifold interior edge** (`edgeToFaces.length === 2`) with both faces
 - Seam / boundary edges (`incidents.length !== 2`).
 - **Tree edges** — ADR 0002 invariant #3; disagreement indicates an unfold bug, not re-reported as tears.
 
-**BFS tree** must mirror `unfoldIsland` exactly (root = `islandFaces[0]`, FIFO queue, slot order `[0,1,2]`). See `buildUnfoldTreeEdges`.
+**BFS tree** must mirror `unfoldIsland` exactly (root = `islandFaces[0]`, FIFO queue, slot order `[0,1,2]`). See `buildUnfoldTreeEdges`. Production analysis asserts `treeEdges.size === faces - 1` after a successful unfold (ADR W2 / LOGIC-006).
 
-**Tear kinds (intended taxonomy):** `gap` | `overlap` | `skew` — classified by segment geometry (`ANGLE_EPS` for collinearity).
+**Tear kinds:** `gap` | `overlap` | `skew` — classified by segment geometry (`ANGLE_EPS` for collinearity):
 
-**Interim implementation note (audit TEAR-001 / Slice 1):** As of 2026-07-19, `classifyTearKind` only distinguishes collinear `gap` vs `overlap`; any non-collinear disagreement (including parallel positional offset) is labeled `"skew"`. The intended taxonomy above remains the contract; remediation Slice 1 must either implement meaningful parallel-offset classification or amend this section to match a collapsed taxonomy. Until then, UI must not assume `skew` means “non-parallel only.”
+| Geometry | Kind |
+|----------|------|
+| Collinear, positive 1D interval overlap | `overlap` |
+| Collinear, no interval overlap | `gap` |
+| Parallel but not collinear (positional offset) | `gap` |
+| Non-parallel / angled | `skew` |
 
 #### 3a vs 3b responsibility
 
@@ -127,7 +132,7 @@ Scale-aware helpers: `collisionAreaThreshold(avgEdgeLength2d)`, `tearThreshold(e
 | # | Weak spot | Mitigation |
 |---|-----------|------------|
 | W1 | `O(n²)` narrow phase when all triangles co-locate | Documented; SAT is cheap; area clip only on SAT overlap; acceptable island sizes |
-| W2 | Duplicate BFS tree vs `unfoldIsland` | `buildUnfoldTreeEdges` mirrors queue/slot order. `\|treeEdges\| === \|F\|-1` is **test-enforced** via `expectedTreeEdgeCount` today. A production assert (or shared BFS walker) is planned in remediation Slice 1 (audit DOC-003 / LOGIC-006); until then, drift would silently misclassify tears. |
+| W2 | Duplicate BFS tree vs `unfoldIsland` | `buildUnfoldTreeEdges` mirrors queue/slot order. `analyzeUnfoldedIsland` **asserts** `treeEdges.size === expectedTreeEdgeCount(F)` after a successful unfold; tests also cover `expectedTreeEdgeCount`. |
 | W3 | Floating-point slop on SAT / clip | Central tolerances; `Math.max(0, …)` pattern consistent with hinge math |
 | W4 | Complementary 3a + 3b redundancy | ADR documents orthogonality; UI shows separate counts |
 | W5 | Large collision/tear arrays on closed meshes | UI counts only; complete detect-and-report in v1 |
