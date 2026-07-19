@@ -89,7 +89,7 @@ export type NeighborFaceAcrossEdge = Int32Array;
 export interface Topology {
   edgeToFaces: EdgeToFacesMap;
   neighborFaceAcrossEdge: NeighborFaceAcrossEdge;
-  /** Faces skipped in Pass 1 due to degeneracy (for UI/debug). */
+  /** Faces skipped due to index degeneracy only (ADR 0001 / LOGIC-004). Geometric zero-area with distinct indices is out of scope for v1. */
   skippedDegenerateFaceCount: number;
 }
 

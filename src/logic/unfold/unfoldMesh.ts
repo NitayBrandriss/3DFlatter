@@ -46,11 +46,26 @@ export function unfoldMesh(
 
   const islands = layoutIslands(unfolded);
   const { collisions, tears } = toGlobalQualityReports(localReports, islands);
+  const { segments: seamSegments, skipped: skippedSeams } = listSeamSegments2d(
+    mesh,
+    topology,
+    seams,
+    islands,
+  );
+  if (skippedSeams.length > 0) {
+    const preview = skippedSeams
+      .slice(0, 3)
+      .map((s) => `${s.edgeKey}: ${s.reason}`)
+      .join("; ");
+    const more =
+      skippedSeams.length > 3 ? ` (+${skippedSeams.length - 3} more)` : "";
+    warnings.push(`Skipped ${skippedSeams.length} seam(s) in 2D export — ${preview}${more}`);
+  }
 
   return {
     islands,
     bounds: combinedBounds(islands),
-    seamSegments: listSeamSegments2d(mesh, topology, seams, islands),
+    seamSegments,
     collisions,
     tears,
     warnings: warnings.length > 0 ? warnings : undefined,

@@ -1,5 +1,6 @@
 import type { MeshModel } from "../../mesh/types";
 import { weldVertices } from "../../mesh/weldVertices";
+import { MAX_MESH_TRIANGLES } from "../loadBudgets";
 import { isConcaveNgons } from "./polygonConvexity";
 
 export class ObjParseError extends Error {
@@ -31,6 +32,10 @@ export type ParseObjResult = {
 function parseVertexIndexToken(token: string, line: number): number {
   // OBJ face tokens can be: v, v/vt, v//vn, v/vt/vn
   const first = token.split("/")[0]?.trim() ?? "";
+  // Full-token integer only — reject prefixes like "12abc" (IO-003).
+  if (!/^-?\d+$/.test(first)) {
+    throw new ObjParseError(`Invalid face index token "${token}"`, line);
+  }
   const parsed = Number.parseInt(first, 10);
   if (!Number.isFinite(parsed)) {
     throw new ObjParseError(`Invalid face index token "${token}"`, line);
@@ -123,6 +128,12 @@ export function parseObj(text: string): ParseObjResult {
         const i1 = polygon[k]!;
         const i2 = polygon[k + 1]!;
         faces.push(i0, i1, i2);
+      }
+      if (faces.length / 3 > MAX_MESH_TRIANGLES) {
+        throw new ObjParseError(
+          `too many triangles (${(faces.length / 3).toLocaleString()}). Soft limit is ${MAX_MESH_TRIANGLES.toLocaleString()}.`,
+          lineNumber,
+        );
       }
       continue;
     }

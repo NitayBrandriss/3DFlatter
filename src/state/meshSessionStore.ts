@@ -1,4 +1,8 @@
 import { create } from "zustand";
+import {
+  formatByteLimit,
+  MAX_MESH_FILE_BYTES,
+} from "../logic/io/loadBudgets";
 import { ObjParseError, parseObj } from "../logic/io/obj/parseObj";
 import { parseStl, StlParseError } from "../logic/io/stl/parseStl";
 import { buildTopology } from "../logic/mesh/buildTopology";
@@ -58,6 +62,7 @@ function pushToast(
 function applyLoadWarnings(
   state: MeshSessionState,
   warnings: { kind: string; count?: number }[],
+  skippedDegenerateFaceCount = 0,
 ): Pick<MeshSessionState, "toasts" | "toastSeq"> {
   let next = state;
 
@@ -92,6 +97,19 @@ function applyLoadWarnings(
     };
   }
 
+  if (skippedDegenerateFaceCount > 0) {
+    next = {
+      ...next,
+      ...pushToast(
+        next,
+        skippedDegenerateFaceCount === 1
+          ? "Warning: 1 index-degenerate face skipped in topology."
+          : `Warning: ${skippedDegenerateFaceCount} index-degenerate faces skipped in topology.`,
+        "warning",
+      ),
+    };
+  }
+
   return { toasts: next.toasts, toastSeq: next.toastSeq };
 }
 
@@ -119,6 +137,12 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
     try {
+      if (file.size > MAX_MESH_FILE_BYTES) {
+        throw new Error(
+          `File too large (${formatByteLimit(file.size)}). Soft limit is ${formatByteLimit(MAX_MESH_FILE_BYTES)}.`,
+        );
+      }
+
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
       const buffer = await file.arrayBuffer();
 
@@ -149,15 +173,18 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         seams: createSeamRegistry(),
         fileName: file.name,
       };
-      const hasLoadWarnings = warnings.some(
-        (w) => w.kind === "concave_ngon" || w.kind === "degenerate_triangle",
-      );
+      const hasLoadWarnings =
+        warnings.some(
+          (w) => w.kind === "concave_ngon" || w.kind === "degenerate_triangle",
+        ) || topology.skippedDegenerateFaceCount > 0;
       set((s) => ({
         session,
         meshLoadVersion: s.meshLoadVersion + 1,
         isLoading: false,
         error: null,
-        ...(hasLoadWarnings ? applyLoadWarnings(s, warnings) : {}),
+        ...(hasLoadWarnings
+          ? applyLoadWarnings(s, warnings, topology.skippedDegenerateFaceCount)
+          : {}),
       }));
       return true;
     } catch (e) {

@@ -82,6 +82,23 @@ describe("listSeamSegments2d", () => {
     const result = unfoldMesh(mesh, topo, createSeamRegistry());
     expect(result.seamSegments).toHaveLength(0);
   });
+
+  it("skips ineligible seam keys without inventing segments", () => {
+    const { mesh, topo, seams } = seamTopFaceFromCube();
+    const result = unfoldMesh(mesh, topo, seams);
+    const fakeKey = "900,901" as `${number},${number}`;
+    const withFake = {
+      seams: new Set([...seams.seams, fakeKey]),
+    };
+    const listed = listSeamSegments2d(mesh, topo, withFake, result.islands);
+    expect(listed.segments).toHaveLength(8);
+    expect(listed.skipped).toEqual([
+      expect.objectContaining({
+        edgeKey: fakeKey,
+        reason: expect.stringMatching(/not found/i),
+      }),
+    ]);
+  });
 });
 
 describe("listSeamSegments2d direct", () => {
@@ -89,6 +106,7 @@ describe("listSeamSegments2d direct", () => {
     const { mesh, topo, seams } = seamTopFaceFromCube();
     const result = unfoldMesh(mesh, topo, seams);
     const direct = listSeamSegments2d(mesh, topo, seams, result.islands);
-    expect(direct).toEqual(result.seamSegments);
+    expect(direct.segments).toEqual(result.seamSegments);
+    expect(direct.skipped).toHaveLength(0);
   });
 });

@@ -90,6 +90,27 @@ describe("parseStl", () => {
     expect(mesh.faceCount).toBe(12);
   });
 
+  it("flags near-coincident corners within weld epsilon as degenerate", () => {
+    const eps = 1e-7;
+    const stl = buildAsciiStl("near", [
+      [
+        [0, 0, 0],
+        [eps, 0, 0],
+        [0, 1, 0],
+      ],
+      ...UNIT_CUBE_TRIANGLES,
+    ]);
+    const { warnings } = parseStl(encodeText(stl));
+    expect(warnings.some((w) => w.kind === "degenerate_triangle")).toBe(true);
+  });
+
+  it("rejects binary STL that declares too many triangles", () => {
+    const buffer = new ArrayBuffer(84);
+    const view = new DataView(buffer);
+    view.setUint32(80, 500_001, true);
+    expect(() => parseStl(buffer)).toThrow(/too many triangles/i);
+  });
+
   it("parses binary STL with trailing padding bytes", () => {
     const full = binaryUnitCubeStl();
     const padded = new ArrayBuffer(full.byteLength + 128);
@@ -138,7 +159,9 @@ endsolid bad
   });
 
   it("throws on unrecognized content", () => {
-    const garbage = "not an stl file ".repeat(10);
-    expect(() => parseStl(encodeText(garbage))).toThrow(/unrecognized/i);
+    // Keep header triangle count at 0 so random text is not misread as a huge binary mesh.
+    const bytes = new Uint8Array(200);
+    new TextEncoder().encodeInto("not an stl file", bytes);
+    expect(() => parseStl(bytes.buffer)).toThrow(/no triangles|unrecognized/i);
   });
 });

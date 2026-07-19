@@ -34,10 +34,10 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3) |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3); **LOGIC-004/005/013–015, IO-001/002/003** (Slice 4) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
 | **New Low** | DOC-002 (PERF-002 fixed Slice 3) |
-| **Reconfirmed open** | LOGIC-004–006/013–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
+| **Reconfirmed open** | LOGIC-006, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, ARCH-001, VIEW-001, APP-001 |
 | **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
 
 ---
@@ -63,7 +63,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | XY flatten plane | **Compliant** |
 | Quality orthogonal to unfold; does not set `error` | **Compliant** |
 | `meshLoadVersion` not bumped on seam toggles | **Compliant** |
-| Surface degenerate/non-manifold to user | **Partial** — I/O toasts + sidebar counts; topology skip still `console.warn` (LOGIC-005) |
+| Surface degenerate/non-manifold to user | **Addressed** (Slice 4 — topology skip toasts via load path; sidebar counts remain) |
 | `src/logic/` free of React/Three.js | **Compliant** (grep: zero matches) |
 | ADR 0001 OBJ-only narrative vs STL in product | **Addressed** (DOC-001, Slice 0 — 2026-07-19) |
 | ADR 0002 deferred list vs shipped Step 2/3 | **Addressed** (DOC-002, Slice 0 — 2026-07-19) |
@@ -179,9 +179,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Accepted / documented** (ADR 0001 Slice 0 + code comments Slice 4) — geometric area test deferred |
 | **Files** | `src/logic/mesh/buildTopology.ts`, `faceDegeneracy.ts` |
-| **Description** | Only duplicate **indices** are degenerate. Collinear / zero-area triangles with three distinct indices pass into unfold. **Documented as ADR 0001 v1 out-of-scope** (Slice 0). |
-| **Suggested fix** | Optional geometric test at import/topology (would require ADR amend). Doc portion done. |
+| **Description** | Only duplicate **indices** are degenerate. Collinear / zero-area triangles with three distinct indices pass into unfold. **Documented as ADR 0001 v1 out-of-scope**. |
+| **Suggested fix** | ~~Optional geometric test…~~ Doc + comments done for v1. |
 
 ### LOGIC-005 — Degenerate-face skip uses `console.warn`, not structured warnings
 
@@ -189,9 +190,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / Documentation Alignment |
-| **Files** | `src/logic/mesh/buildTopology.ts` |
-| **Description** | AGENTS.md: surface degenerate issues to users. Topology skip logs to console; UI shows count but load path does not toast like OBJ/STL warnings. Pure logic should not call `console.warn`. |
-| **Suggested fix** | Return warnings from `buildTopology` (or filter at I/O) and thread through session toasts. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — no `console.warn`; load path toasts `skippedDegenerateFaceCount` |
+| **Files** | `buildTopology.ts`, `meshSessionStore.ts` |
+| **Description** | ~~Topology skip logged to console.~~ Count remains on `Topology`; session toasts on load. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-006 — Duplicated BFS tree vs `unfoldIsland` (tear-detection drift risk)
 
@@ -276,9 +278,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
-| **Files** | `src/logic/io/stl/parseStl.ts` (`verticesEqual`) |
-| **Description** | Exact `===` misses near-coincident corners within weld epsilon. |
-| **Suggested fix** | Epsilon compare aligned with `weldVertices` / `SAT_EPS`. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — epsilon compare via `WELD_EPSILON` |
+| **Files** | `src/logic/io/stl/parseStl.ts` |
+| **Description** | ~~Exact `===` missed near-coincident corners.~~ Uses weld epsilon. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-014 — Seam segment export silently drops missing geometry
 
@@ -286,9 +289,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
-| **Files** | `src/logic/unfold/seamSegments2d.ts` |
-| **Description** | Missing incidents / placement / corners → `continue` with no warning. |
-| **Suggested fix** | Structured skipped-seam diagnostics. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — `skipped` diagnostics folded into `unfoldMesh` warnings |
+| **Files** | `seamSegments2d.ts`, `unfoldMesh.ts` |
+| **Description** | ~~Silent `continue`.~~ Skips reported with reasons. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-015 — `listSeamSegments2d` does not validate seam eligibility
 
@@ -296,9 +300,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — filters via `canSelectAsSeam` |
 | **Files** | `seamSegments2d.ts`, `edgeEligibility.ts` |
-| **Description** | Any key in `seams.seams` is drawn; stale/boundary/non-manifold keys yield silent empties. |
-| **Suggested fix** | Filter via `canSelectAsSeam` or `incidents.length === 2`. |
+| **Description** | ~~Any key drawn.~~ Ineligible keys skipped with diagnostics. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-024 — Island order / orphans *(mitigated)*
 
@@ -465,9 +470,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
-| **Files** | `parseStl.ts` (`detectStlFormat`) |
-| **Description** | `solid…` + binary-sized length → `"binary"`. Edge-case ASCII can mis-parse. |
-| **Suggested fix** | Prefer ASCII when `looksLikeAsciiStl` unless binary unmistakable; ASCII fallback on empty/failed binary. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — ASCII-first when `solid…`; binary fallback if ASCII fails and size layout is valid |
+| **Files** | `parseStl.ts` |
+| **Description** | ~~`solid…` + binary-sized length → binary.~~ Prefer ASCII then fall back. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### IO-002 — No max file / triangle budget on client load
 
@@ -475,9 +481,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance / Logic |
-| **Files** | `parseStl.ts`, `meshSessionStore.ts` |
-| **Description** | No soft max bytes/faces → freeze/OOM risk. |
-| **Suggested fix** | Soft limits + clear user error before allocate/decode. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 4) — `loadBudgets.ts`: 50 MiB / 500k tris |
+| **Files** | `loadBudgets.ts`, `parseStl.ts`, `parseObj.ts`, `meshSessionStore.ts` |
+| **Description** | ~~No soft max.~~ Clear errors before heavy allocate/decode. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### VIEW-001 — PickableMesh drag guard can leave stale pointer state
 
@@ -530,7 +537,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **APP-002** | Architecture | demo API, `demoModels.ts` | API imports catalog from `src/ui/` | Move to `src/data/` or `src/config/` | Open |
 | **APP-003** | DRY | `page.tsx`, API | Demo error strings partially duplicated | Shared mapper | Open |
 | **ARCH-002** | Architecture | `page.tsx` | Was imperative `getState()` after load | Largely improved via boolean return; keep returning structured `{ ok }` if more fields needed | Mostly mitigated |
-| **IO-003** | Logic | `parseObj.ts` | `parseInt` accepts prefixes (`"12abc"`) | Full-token integer match | Open |
+| **IO-003** | Logic | `parseObj.ts` | `parseInt` accepts prefixes (`"12abc"`) | Full-token integer match | **Fixed** (Slice 4, 2026-07-19) |
 | **LOGIC-016** | DRY | `types.ts` | `MeshFace` exported unused | Remove or use | Open |
 | **LOGIC-017** | Documentation Alignment | `placeTriangle2d.ts` | `placeRootTriangleCCW` preserves stored winding | Rename | Open |
 | **LOGIC-018** | Architecture | `placeTriangle2d.ts` | `Vec2 & { z }` instead of `Vec3` | Introduce `Vec3` | Open |
@@ -620,9 +627,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 4. ~~**LOGIC-025**~~ — **Done** (Slice 1)
 5. ~~**LOGIC-007 / LOGIC-008 / LOGIC-012**~~ — **Done** (Slice 2, 2026-07-19)
 6. ~~**LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002)~~ — **Done** (Slice 3, 2026-07-19)
-7. **STATE-003 / ARCH-001 / IO-002** — scale readiness (repartition, selectors, file budgets); UI-004 Web Worker deferred per ADR 0004
-8. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
-9. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
+7. ~~**LOGIC-004/005/013–015 + IO-001/002/003**~~ — **Done** (Slice 4, 2026-07-19)
+8. **STATE-003 / ARCH-001** — scale readiness (repartition, selectors); UI-004 Web Worker deferred per ADR 0004
+9. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
+10. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
 
 ---
 
@@ -632,12 +640,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~27 | + DOC-001/003; LOGIC-007–012 (Slices 2–3) |
-| Low | ~16 | + DOC-002 fixed; STATE-004, VIEW-005; PERF-002 (Slice 3) |
+| Medium | ~19 | + Slices 0–4 (LOGIC-004/005/007–015, IO-*, DOC-*) |
+| Low | ~15 | + DOC-002; STATE-004, VIEW-005; PERF-002; IO-003 |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~50** | — |
+| **Open total** | **~41** | — |
 
-*Counts approximate after Slices 0–3.*
+*Counts approximate after Slices 0–4.*
 
 ---
 
@@ -646,10 +654,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | Category | Notable IDs |
 |----------|-------------|
 | **Architecture** | ARCH-001, ARCH-003, UI-002, APP-001, APP-002, LAYOUT-007 |
-| **Documentation Alignment** | LOGIC-005, LOGIC-017 — DOC-*/TEAR-001 addressed Slices 0–1 |
+| **Documentation Alignment** | LOGIC-017 — DOC-*/TEAR-001/LOGIC-005 addressed Slices 0–4 |
 | **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
-| **Logic** | LOGIC-004/005/013–015, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
-| **Performance** | STATE-003, UI-004, IO-002, ARCH-001 |
+| **Logic** | STATE-006, LAYOUT-*, VIEW-001, A11Y-* |
+| **Performance** | STATE-003, UI-004, ARCH-001 |
 | **SoC** | No open violations — keep `logic/` boundary |
 
 ---

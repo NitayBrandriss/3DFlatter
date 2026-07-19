@@ -28,6 +28,9 @@ function registerEdge(
 /**
  * Derive adjacency from a triangulated MeshModel (ADR 0001).
  * Uses a consolidated edge map and a flat Int32Array neighbor buffer.
+ *
+ * Index-degenerate faces are skipped and counted on `skippedDegenerateFaceCount`
+ * for callers to surface (no console.warn — LOGIC-005).
  */
 export function buildTopology(mesh: MeshModel): Topology {
   if (mesh.faceCount === 0) {
@@ -55,12 +58,6 @@ export function buildTopology(mesh: MeshModel): Topology {
     registerEdge(edgeToFaces, makeEdgeKey(v0, v1), faceId, 0);
     registerEdge(edgeToFaces, makeEdgeKey(v1, v2), faceId, 1);
     registerEdge(edgeToFaces, makeEdgeKey(v2, v0), faceId, 2);
-  }
-
-  if (skippedDegenerateFaceCount > 0) {
-    console.warn(
-      `buildTopology: skipped ${skippedDegenerateFaceCount} degenerate face(s)`,
-    );
   }
 
   for (const incidents of edgeToFaces.values()) {
