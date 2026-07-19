@@ -1,6 +1,6 @@
 # 3DFlatter — QA Code Audit
 
-**Date:** 2026-07-19 (Staff/Principal refresh of 2026-07-14 audit)  
+**Date:** 2026-07-19 (Staff/Principal refresh of 2026-07-14 audit; Slice 0 ADR sync applied same day)  
 **Scope:** `src/logic/`, `src/state/`, `src/ui/` (incl. `layout/`), `src/viewer/`, `app/`, `docs/decisions/`, `docs/plans/`  
 **Method:** Deep static review against ADRs 0001–0003, AGENTS.md, plans hub + archives (incl. quality overlay + mobile layout), prior audit IDs. Code read + grep SoC verification + `npm test` / `npm run lint`. **No application code changes** — this file only.  
 **Test baseline:** `npm test` — **29 files, 138 tests, all passing** (was 28 / 122 on 2026-07-14).  
@@ -34,7 +34,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented (was Info / plan-deferred) |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented (was Info / plan-deferred); **DOC-001, DOC-002, DOC-003** (remediation Slice 0) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
 | **New Low** | PERF-002, DOC-002 |
 | **Reconfirmed open** | LOGIC-004–015, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, IO-001/002, ARCH-001, VIEW-001, APP-001 |
@@ -65,9 +65,9 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | `meshLoadVersion` not bumped on seam toggles | **Compliant** |
 | Surface degenerate/non-manifold to user | **Partial** — I/O toasts + sidebar counts; topology skip still `console.warn` (LOGIC-005) |
 | `src/logic/` free of React/Three.js | **Compliant** (grep: zero matches) |
-| ADR 0001 OBJ-only narrative vs STL in product | **Doc drift** (DOC-001) |
-| ADR 0002 deferred list vs shipped Step 2/3 | **Doc drift** (DOC-002) |
-| ADR 0003 tear taxonomy + W2 assertion | **Doc/code mismatch** (TEAR-001, DOC-003) |
+| ADR 0001 OBJ-only narrative vs STL in product | **Addressed** (DOC-001, Slice 0 — 2026-07-19) |
+| ADR 0002 deferred list vs shipped Step 2/3 | **Addressed** (DOC-002, Slice 0 — 2026-07-19) |
+| ADR 0003 tear taxonomy + W2 assertion | **Partial** — W2 wording fixed (DOC-003); tear-kind code still TEAR-001 / Slice 1 |
 
 ### State management (Zustand vs local hooks)
 
@@ -145,9 +145,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Documentation Alignment |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 0) — ADR 0001 documents peer OBJ/STL I/O, weld-on-load, index-only degeneracy |
 | **Files** | `docs/decisions/0001-mesh-model-and-topology.md`, `src/logic/io/stl/parseStl.ts`, AGENTS.md |
-| **Description** | Product and AGENTS treat OBJ + STL as peer I/O. ADR 0001’s decision text is still “OBJ import scope (v1)” only. Agents and humans can under-weight STL contracts (format heuristic, weld-on-load, degenerate warnings). |
-| **Suggested fix** | Amend ADR 0001 with an STL import subsection (ASCII/binary, weld, warning kinds) pointing at `parseStl`. |
+| **Description** | ~~Product and AGENTS treat OBJ + STL as peer I/O…~~ Addressed by ADR amend. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### DOC-003 — ADR 0003 W2 overstates production tree-size assertion *(new)*
 
@@ -155,9 +156,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Documentation Alignment / Logic |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 0) — W2 now states test-enforced; production assert deferred to Slice 1 (LOGIC-006) |
 | **Files** | `docs/decisions/0003-unfold-quality-detection.md` (W2), `buildUnfoldTreeEdges.ts` |
-| **Description** | W2 lists `\|treeEdges\| === \|F\|-1` as mitigation. `expectedTreeEdgeCount` exists and tests use it; **production** `buildUnfoldTreeEdges` / `analyzeUnfoldedIsland` do not assert. Drift still silently misclassifies tears (ties to LOGIC-006). |
-| **Suggested fix** | Assert in analysis after successful unfold, or soften W2 wording to “test-enforced”. |
+| **Description** | ~~W2 listed production `\|treeEdges\| === \|F\|-1`…~~ Doc corrected; code assert still Slice 1. |
+| **Suggested fix** | ~~…~~ Doc done. Follow-up: LOGIC-006 in Slice 1. |
 
 ### ARCH-003 — Flatten/session dual state without shared selector strategy *(new)*
 
@@ -176,8 +178,8 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **Severity** | Medium |
 | **Category** | Logic |
 | **Files** | `src/logic/mesh/buildTopology.ts`, `faceDegeneracy.ts` |
-| **Description** | Only duplicate **indices** are degenerate. Collinear / zero-area triangles with three distinct indices pass into unfold. |
-| **Suggested fix** | Optional geometric test at import/topology; or explicitly document as ADR 0001 out-of-scope (pairs with DOC-001 amend). |
+| **Description** | Only duplicate **indices** are degenerate. Collinear / zero-area triangles with three distinct indices pass into unfold. **Documented as ADR 0001 v1 out-of-scope** (Slice 0). |
+| **Suggested fix** | Optional geometric test at import/topology (would require ADR amend). Doc portion done. |
 
 ### LOGIC-005 — Degenerate-face skip uses `console.warn`, not structured warnings
 
@@ -505,7 +507,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | ID | Category | Files | Description | Suggested fix | Status |
 |----|----------|-------|-------------|---------------|--------|
 | **PERF-002** *(new)* | Performance | `spatialGrid.ts` | Per-call rebuild of index map + string-keyed `seen` (`${lo},${hi}`) on dense meshes | Index by soup position; numeric pair keys | Open |
-| **DOC-002** *(new)* | Documentation Alignment | ADR 0002 | “Deferred to Step 2+” lists shipped features | Mark superseded / point at plans + ADR 0003 | Open |
+| **DOC-002** *(new)* | Documentation Alignment | ADR 0002 | “Deferred to Step 2+” lists shipped features | Mark superseded / point at plans + ADR 0003 | **Fixed** (Slice 0, 2026-07-19) |
 | **STATE-005** | Logic | `meshSessionStore.ts` | Undocumented double `rAF` before parse | Worker / `startTransition` / document intent | Open |
 | **UI-005** | Logic | `ToastStack.tsx` | `ToastItem` effect depends on `onDismiss` | Stable ref or omit from deps | Open |
 | **UI-007** | DRY | `AppSidebar.tsx` | Redundant nested `stats ?` / `session ?` | Simplify | Open |
@@ -584,7 +586,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | `meshLoadVersion` not bumped on seam toggles | Compliant |
 | Surface degenerate/non-manifold limits to user | **Partial** — counts + I/O toasts; topology `console.warn` weak spot |
 | `src/logic/` free of React/Three.js | Compliant |
-| ADR docs match shipped I/O + Step 2/3 scope | **Partial** — DOC-001/002/003 |
+| ADR docs match shipped I/O + Step 2/3 scope | **Compliant** (Slice 0) — tear-kind *code* still TEAR-001 |
 
 ---
 
@@ -604,12 +606,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 ## Recommended fix priority
 
 1. ~~Critical/High from 2026-07-14~~ — **Done**
-2. **DOC-001 / DOC-002 / DOC-003** — cheap ADR amends so agents/humans stop drifting from reality
+2. ~~**DOC-001 / DOC-002 / DOC-003**~~ — **Done** (Slice 0, 2026-07-19)
 3. **TEAR-001 + LOGIC-006** — tear taxonomy + shared BFS / production tree assert (correctness of quality UX)
 4. **LOGIC-025** — stable island indices across warnings vs reports
 5. **LOGIC-011 / LOGIC-010 / LOGIC-009** — collision/tear hot-path performance
 6. **LOGIC-007 / LOGIC-008 / LOGIC-012** — DRY face/edge/key/tolerance helpers
-7. **STATE-003 / ARCH-001 / UI-004 / IO-002** — scale readiness (repartition, selectors, flatten thread, file budgets)
+7. **STATE-003 / ARCH-001 / IO-002** — scale readiness (repartition, selectors, file budgets); UI-004 Web Worker deferred per ADR 0004
 8. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
 9. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
 
@@ -621,12 +623,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | 36 | — |
-| Low | 18 | 2 (STATE-004, VIEW-005) |
+| Medium | ~33 | + DOC-001, DOC-003 fixed |
+| Low | ~17 | + DOC-002 fixed; STATE-004, VIEW-005 |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~61** | — |
+| **Open total** | **~57** | — |
 
-*Counts are approximate: Medium includes reconfirmed backlog + 5 new (TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003). Low includes PERF-002 + DOC-002.*
+*Counts approximate after Slice 0 doc fixes (DOC-001/002/003).*
 
 ---
 
@@ -635,7 +637,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | Category | Notable IDs |
 |----------|-------------|
 | **Architecture** | ARCH-001, ARCH-003, UI-002, APP-001, APP-002, LAYOUT-007 |
-| **Documentation Alignment** | DOC-001, DOC-002, DOC-003, TEAR-001 (ADR tear kinds), LOGIC-005, LOGIC-017 |
+| **Documentation Alignment** | TEAR-001 (ADR tear kinds vs code), LOGIC-005, LOGIC-017 — DOC-001/002/003 fixed Slice 0 |
 | **DRY** | LOGIC-006–008, LOGIC-012, UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
 | **Logic** | TEAR-001, LOGIC-004/005/013–015/025, STATE-006, LAYOUT-*, VIEW-001, IO-001/003, A11Y-* |
 | **Performance** | LOGIC-009–011, STATE-003, UI-004, IO-002, ARCH-001, PERF-002 |

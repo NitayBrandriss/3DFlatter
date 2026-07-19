@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** Planned  
+**Status:** In progress (Slice 0 complete)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -42,7 +42,7 @@ flowchart TD
 
 | Slice | Theme | Status | Audit IDs |
 |-------|--------|--------|-----------|
-| **0** | ADR / docs sync | Execute | DOC-001, DOC-002, DOC-003 (+ tear-kind ADR text) |
+| **0** | ADR / docs sync | **Complete** (2026-07-19) | DOC-001, DOC-002, DOC-003 (+ tear-kind ADR interim note) |
 | **1** | Quality correctness | Execute | TEAR-001, LOGIC-006, LOGIC-025 |
 | **2** | Logic DRY foundation | Execute | LOGIC-007, LOGIC-008, LOGIC-012 |
 | **3** | Quality hot-path perf | Execute | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
@@ -78,9 +78,9 @@ flowchart TD
 
 **Done when:**
 
-- [ ] ADR text matches AGENTS.md I/O and shipped Step 2/3
-- [ ] Hub / audit DOC-* marked addressed
-- [ ] No `src/` changes required for this slice
+- [x] ADR text matches AGENTS.md I/O and shipped Step 2/3
+- [x] Hub / audit DOC-* marked addressed
+- [x] No `src/` changes required for this slice
 
 ---
 
