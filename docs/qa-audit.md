@@ -37,7 +37,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3); **LOGIC-004/005/013–015, IO-001/002/003** (Slice 4) |
 | **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
 | **New Low** | DOC-002 (PERF-002 fixed Slice 3) |
-| **Reconfirmed open** | LOGIC-006, STATE-003/006, UI-001–004/008, LAYOUT-*, A11Y-002/003, ARCH-001, VIEW-001, APP-001 |
+| **Reconfirmed open** | STATE-006, UI-001–004, LAYOUT-*, A11Y-002/003, VIEW-001, APP-001 |
 | **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
 
 ---
@@ -79,9 +79,8 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 **What to improve (not blockers)**
 
-- Broad `useShallow` of whole `session` + `computeSessionStats` → full `partitionIslands` on every seam toggle (ARCH-001, STATE-003). Fine for PoC meshes; will hurt at scale.
-- Dual ownership of “pattern validity” (session seams vs flatten snapshot) is intentional but easy to misuse when adding derived flags — keep documenting the version contract.
-- **Suggestion (optional, ask first):** a thin `useFlattenStore` or session selectors (`meshIdentity` vs `seams`) if flatten/export/overlay keep growing. Do **not** collapse everything into one god store.
+- Granular Zustand selectors (mesh identity vs seams vs chrome) + `seamsContentKey` memoization for session stats (ARCH-001, STATE-003 — Slice 5). Flatten snapshot remains hook-local with documented version contract (ARCH-003).
+- Dual ownership of “pattern validity” (session seams vs flatten snapshot) is intentional — see `useFlattenExport` ARCH-003 comment.
 
 ### Separation of concerns
 
@@ -169,9 +168,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Architecture |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 5) — documented dual-ownership in `useFlattenExport`; page selects mesh identity vs seams; flatten snapshot stays hook-local |
 | **Files** | `app/page.tsx`, `src/ui/useFlattenExport.ts`, `src/state/meshSessionStore.ts` |
-| **Description** | Session (Zustand) and flatten snapshot (hook) are correctly version-gated, but the page still selects the entire session and re-derives expensive stats. As features accrete (quality overlay already did), the orchestrator becomes the bottleneck rather than the store design itself. |
-| **Suggested fix** | Split Zustand selectors (mesh identity vs seams); memoize islands by seams content hash; keep flatten local unless remount survival becomes a requirement. |
+| **Description** | ~~Session and flatten snapshot dual ownership undocumented / page selected whole session.~~ Contract documented; selectors split; no separate flatten store. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LOGIC-004 — Topology degeneracy check is index-only, not geometric
 
@@ -320,9 +320,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
-| **Files** | `meshSessionStore.ts` (`computeSessionStats`), `app/page.tsx` |
-| **Description** | `useMemo([session])` + new session object on each toggle → `partitionIslands` every pick. |
-| **Suggested fix** | Memoize on seams hash; or cheap counters vs full partition. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 5) — `seamsContentKey` + page memo deps on mesh/topology/seams content; empty `clearAllSeams` is a no-op |
+| **Files** | `meshSessionStore.ts` (`computeSessionStats`, `seamsContentKey`), `app/page.tsx` |
+| **Description** | ~~`useMemo([session])` re-partitioned on every new session object.~~ Partition runs only when mesh, topology, or seam *contents* change. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### STATE-006 — Escape key collapses sidebar on desktop
 
@@ -380,9 +381,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / UX |
-| **Files** | `UnfoldViewer2D.tsx`, `useFlattenExport.ts` |
-| **Description** | Preview always maps `seamSegments`; export respects `includeSeamsInExport`. |
-| **Suggested fix** | Share the flag in the viewer. |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 5) — `UnfoldViewer2D` `showSeams` shares `includeSeamsInExport` |
+| **Files** | `UnfoldViewer2D.tsx`, `useFlattenExport.ts`, `app/page.tsx` |
+| **Description** | ~~Preview always mapped seams; export had a separate toggle.~~ Same flag drives preview and SVG export. |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LAYOUT-001 — Layout constants duplicated in TS and CSS
 
@@ -512,9 +514,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance / Architecture |
+| **Status** | **Fixed** (2026-07-19, remediation Slice 5) — page splits mesh identity / seams / chrome / actions; `UnfoldViewer2D` memoized |
 | **Files** | `app/page.tsx` |
-| **Description** | Wholesale `session` selection invalidates sidebar/chrome/overlays on every seam pick. |
-| **Suggested fix** | Split selectors: mesh-only vs seams/stats. |
+| **Description** | ~~Wholesale `session` selection.~~ Granular selectors; further AppSidebar decomposition remains Optional Slice 7. |
+| **Suggested fix** | ~~…~~ Done at page level. |
 
 ---
 
@@ -628,7 +631,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 5. ~~**LOGIC-007 / LOGIC-008 / LOGIC-012**~~ — **Done** (Slice 2, 2026-07-19)
 6. ~~**LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002)~~ — **Done** (Slice 3, 2026-07-19)
 7. ~~**LOGIC-004/005/013–015 + IO-001/002/003**~~ — **Done** (Slice 4, 2026-07-19)
-8. **STATE-003 / ARCH-001** — scale readiness (repartition, selectors); UI-004 Web Worker deferred per ADR 0004
+8. ~~**STATE-003 / ARCH-001** — scale readiness~~ — Slice 5; UI-004 Web Worker still deferred per ADR 0004
 9. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
 10. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
 
@@ -640,12 +643,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~19 | + Slices 0–4 (LOGIC-004/005/007–015, IO-*, DOC-*) |
+| Medium | ~15 | + Slices 0–5 (LOGIC-*, IO-*, DOC-*, STATE-003, ARCH-001/003, UI-008) |
 | Low | ~15 | + DOC-002; STATE-004, VIEW-005; PERF-002; IO-003 |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~41** | — |
+| **Open total** | **~37** | — |
 
-*Counts approximate after Slices 0–4.*
+*Counts approximate after Slices 0–5.*
 
 ---
 
@@ -653,11 +656,11 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 | Category | Notable IDs |
 |----------|-------------|
-| **Architecture** | ARCH-001, ARCH-003, UI-002, APP-001, APP-002, LAYOUT-007 |
+| **Architecture** | UI-002, APP-001, APP-002, LAYOUT-007 — ARCH-001/003 addressed Slice 5 |
 | **Documentation Alignment** | LOGIC-017 — DOC-*/TEAR-001/LOGIC-005 addressed Slices 0–4 |
 | **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
 | **Logic** | STATE-006, LAYOUT-*, VIEW-001, A11Y-* |
-| **Performance** | STATE-003, UI-004, ARCH-001 |
+| **Performance** | UI-004 — STATE-003/ARCH-001 addressed Slice 5 |
 | **SoC** | No open violations — keep `logic/` boundary |
 
 ---

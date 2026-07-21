@@ -117,6 +117,16 @@ function computeIslands(session: MeshSession) {
   return partitionIslands(session.mesh, session.topology, session.seams);
 }
 
+/**
+ * Stable fingerprint of seam set contents (order-independent).
+ * Use for memo deps so a new `SeamRegistry`/`Set` with the same keys does not
+ * re-run `partitionIslands` (STATE-003).
+ */
+export function seamsContentKey(seams: SeamRegistry): string {
+  if (seams.seams.size === 0) return "";
+  return [...seams.seams].sort().join("\0");
+}
+
 /** Monotonic load generation — module-scoped so overlapping async loads stay ordered.
  * Only the latest load may commit session / clear isLoading (STATE-001 / STATE-008). */
 let loadSeq = 0;
@@ -226,7 +236,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
 
   clearAllSeams: () => {
     const { session } = get();
-    if (!session) return;
+    if (!session || session.seams.seams.size === 0) return;
     set({
       session: { ...session, seams: clearSeams(session.seams) },
     });
@@ -253,7 +263,12 @@ export type SessionStats = {
   islandFaceCounts: number[];
 };
 
-/** Pure derived stats — call from useMemo keyed on `session`, not as a Zustand selector. */
+/**
+ * Pure derived stats — call from useMemo keyed on mesh identity + `seamsContentKey`,
+ * not whole `session` object identity (STATE-003). Do not use as a Zustand selector.
+ *
+ * Island partition runs only when mesh, topology, or seam *contents* change.
+ */
 export function computeSessionStats(
   session: MeshSession | null,
 ): SessionStats | null {

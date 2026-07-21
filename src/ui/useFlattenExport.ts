@@ -32,7 +32,16 @@ function resolveQualityOverlayState(
 }
 
 /**
- * Flatten/export UI state.
+ * Flatten/export UI state (ARCH-003 dual-ownership contract):
+ *
+ * - **Session (Zustand)** owns mesh, topology, and live seams. Seam toggles update
+ *   session only — they must not bump `meshLoadVersion` (AGENTS.md invariant).
+ * - **Flatten snapshot (this hook)** owns the last successful `unfoldMesh` result,
+ *   gated by `meshLoadVersion`. Seam edits keep the prior pattern visible until the
+ *   user re-flattens; identity matching is version equality, not seams equality.
+ * - No separate flatten Zustand store: the snapshot is page-local UI state.
+ *   Revisit only if remount survival or cross-route access becomes a requirement.
+ *
  * Result is tied to `meshLoadVersion` so seam toggles do not clear it (STATE-002).
  * After seam edits, re-flatten for an accurate pattern.
  */

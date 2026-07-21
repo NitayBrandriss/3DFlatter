@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** In progress (Slices 0–4 complete)  
+**Status:** Complete (Slices 0–5; 6–7 remain Optional / Backlog)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -47,7 +47,7 @@ flowchart TD
 | **2** | Logic DRY foundation | **Complete** (2026-07-19) | LOGIC-007, LOGIC-008, LOGIC-012 |
 | **3** | Quality hot-path perf | **Complete** (2026-07-19) | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
 | **4** | I/O + seam robustness | **Complete** (2026-07-19) | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
-| **5** | Zustand session scale | Execute | STATE-003, ARCH-001, ARCH-003, UI-008 |
+| **5** | Zustand session scale | **Complete** (2026-07-19) | STATE-003, ARCH-001, ARCH-003, UI-008 |
 | **6** | Layout + a11y | **Optional / Backlog** | LAYOUT-*, A11Y-002/003, STATE-006, VIEW-001 |
 | **7** | UI structure / DRY | **Optional / Backlog** | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
@@ -246,11 +246,11 @@ flowchart TD
 
 **Done when:**
 
-- [ ] Seam toggle does not re-partition unless seams changed
-- [ ] Page no longer selects entire `session` wholesale for unrelated subtrees
-- [ ] Preview seam visibility matches export toggle
-- [ ] `npm test` + `npm run lint` green
-- [ ] Manual: rapid seam picks remain responsive on a mid-size mesh
+- [x] Seam toggle does not re-partition unless seams changed — `seamsContentKey` + page `useMemo` deps
+- [x] Page no longer selects entire `session` wholesale for unrelated subtrees — split mesh identity / seams / chrome / actions
+- [x] Preview seam visibility matches export toggle — `UnfoldViewer2D` `showSeams={includeSeamsInExport}`
+- [x] `npm test` + `npm run lint` green
+- [ ] Manual: rapid seam picks remain responsive on a mid-size mesh — **pending user verify** (see notes after ship)
 
 ---
 

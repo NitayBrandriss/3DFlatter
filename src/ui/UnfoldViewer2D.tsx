@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { UnfoldMeshResult } from "../logic/mesh/types";
 import {
   TIER1_BACKGROUND,
@@ -28,12 +29,15 @@ import { polygonPointsString } from "../logic/unfold/soupBounds";
 
 type UnfoldViewer2DProps = {
   result: UnfoldMeshResult | null;
+  /** When false, seam overlay segments are omitted (shared with SVG export). */
+  showSeams?: boolean;
   showQualityOverlay?: boolean;
   qualityCounts?: QualityIssueCounts | null;
 };
 
-export function UnfoldViewer2D({
+export const UnfoldViewer2D = memo(function UnfoldViewer2D({
   result,
+  showSeams = true,
   showQualityOverlay = false,
   qualityCounts = null,
 }: UnfoldViewer2DProps) {
@@ -123,18 +127,20 @@ export function UnfoldViewer2D({
               />
             )),
           )}
-          {result.seamSegments.map((seg, i) => (
-            <line
-              key={`seam-${i}`}
-              x1={seg.x0}
-              y1={seg.y0}
-              x2={seg.x1}
-              y2={seg.y1}
-              stroke={TIER1_SEAM_STROKE}
-              strokeWidth={2}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+          {showSeams
+            ? result.seamSegments.map((seg, i) => (
+                <line
+                  key={`seam-${i}`}
+                  x1={seg.x0}
+                  y1={seg.y0}
+                  x2={seg.x1}
+                  y2={seg.y1}
+                  stroke={TIER1_SEAM_STROKE}
+                  strokeWidth={2}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))
+            : null}
           {showOverlay ? (
             <g id="quality-overlay">
               {cappedCollisions.visible.map((collision, i) => (
@@ -178,4 +184,4 @@ export function UnfoldViewer2D({
       </svg>
     </div>
   );
-}
+});

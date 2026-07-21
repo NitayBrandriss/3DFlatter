@@ -306,10 +306,11 @@ export function AppSidebar({
           <div className="card">
             <div className="card-heading">Export</div>
             <p className="muted card-copy">
-              Download the flattened pattern as SVG (preview).
+              Download the flattened pattern as SVG (preview). Seam overlay
+              visibility matches the 2D viewer.
             </p>
             <label className="toggle">
-              <span className="muted">Include seam overlay</span>
+              <span className="muted">Show seam overlay</span>
               <input
                 type="checkbox"
                 checked={includeSeamsInExport}

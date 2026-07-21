@@ -4,7 +4,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   computeSessionStats,
+  seamsContentKey,
   useMeshSessionStore,
+  type MeshSession,
 } from "@/state/meshSessionStore";
 import { AppSidebar } from "@/ui/layout/AppSidebar";
 import { usePeekThrough } from "@/ui/layout/usePeekThrough";
@@ -19,27 +21,27 @@ import { MeshViewport } from "@/viewer/MeshViewport";
 import { DEMO_MODELS } from "@/ui/demoModels";
 
 export default function HomePage() {
-  const {
-    session,
-    meshLoadVersion,
-    isLoading,
-    error,
-    seamMode,
-    toasts,
-    loadMeshFile,
-    toggleSeamAt,
-    clearAllSeams,
-    setSeamMode,
-    dismissToast,
-    notifyToast,
-  } = useMeshSessionStore(
+  // ARCH-001: mesh identity vs seams vs chrome vs actions — seam toggles do not
+  // invalidate meshLoadVersion / mesh / topology subscriptions.
+  const meshIdentity = useMeshSessionStore(
     useShallow((s) => ({
-      session: s.session,
+      mesh: s.session?.mesh ?? null,
+      topology: s.session?.topology ?? null,
+      fileName: s.session?.fileName ?? null,
       meshLoadVersion: s.meshLoadVersion,
+    })),
+  );
+  const seams = useMeshSessionStore((s) => s.session?.seams ?? null);
+  const chrome = useMeshSessionStore(
+    useShallow((s) => ({
       isLoading: s.isLoading,
       error: s.error,
       seamMode: s.seamMode,
       toasts: s.toasts,
+    })),
+  );
+  const actions = useMeshSessionStore(
+    useShallow((s) => ({
       loadMeshFile: s.loadMeshFile,
       toggleSeamAt: s.toggleSeamAt,
       clearAllSeams: s.clearAllSeams,
@@ -49,7 +51,31 @@ export default function HomePage() {
     })),
   );
 
-  const stats = useMemo(() => computeSessionStats(session), [session]);
+  const { mesh, topology, fileName, meshLoadVersion } = meshIdentity;
+  const { isLoading, error, seamMode, toasts } = chrome;
+  const {
+    loadMeshFile,
+    toggleSeamAt,
+    clearAllSeams,
+    setSeamMode,
+    dismissToast,
+    notifyToast,
+  } = actions;
+
+  const session = useMemo((): MeshSession | null => {
+    if (!mesh || !topology || !seams || fileName == null) return null;
+    return { mesh, topology, seams, fileName };
+  }, [mesh, topology, seams, fileName]);
+
+  // STATE-003: partition only when mesh/topology or seam *contents* change —
+  // not when a new SeamRegistry/`Set` has the same keys.
+  const seamsKey = seams ? seamsContentKey(seams) : null;
+  const stats = useMemo(() => {
+    if (!mesh || !topology || !seams || fileName == null) return null;
+    return computeSessionStats({ mesh, topology, seams, fileName });
+    // `seams` omitted on purpose: `seamsKey` is the content equality gate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- STATE-003
+  }, [mesh, topology, seamsKey, fileName]);
 
   const {
     flattenResult,
@@ -200,8 +226,8 @@ export default function HomePage() {
         viewport3d={
           <>
             <MeshViewport
-              mesh={session?.mesh ?? null}
-              seams={session?.seams ?? null}
+              mesh={mesh}
+              seams={seams}
               meshLoadVersion={meshLoadVersion}
               wireframe={wireframe}
               showGrid={showGrid}
@@ -223,6 +249,7 @@ export default function HomePage() {
         viewport2d={
           <UnfoldViewer2D
             result={flattenResult}
+            showSeams={includeSeamsInExport}
             showQualityOverlay={showQualityOverlay}
             qualityCounts={qualityCounts}
           />
