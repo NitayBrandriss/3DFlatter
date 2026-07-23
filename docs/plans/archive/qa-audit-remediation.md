@@ -48,7 +48,7 @@ flowchart TD
 | **3** | Quality hot-path perf | **Complete** (2026-07-19) | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
 | **4** | I/O + seam robustness | **Complete** (2026-07-19) | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
 | **5** | Zustand session scale | **Complete** (2026-07-19) | STATE-003, ARCH-001, ARCH-003, UI-008 |
-| **6** | Layout + a11y | **Optional / Backlog** | LAYOUT-*, A11Y-002/003, STATE-006, VIEW-001 |
+| **6** | Layout + a11y | **Optional / Backlog** | LAYOUT-*, A11Y-002/003, STATE-006, VIEW-001, **VIEW-006** |
 | **7** | UI structure / DRY | **Optional / Backlog** | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
 
@@ -250,7 +250,7 @@ flowchart TD
 - [x] Page no longer selects entire `session` wholesale for unrelated subtrees — split mesh identity / seams / chrome / actions
 - [x] Preview seam visibility matches export toggle — `UnfoldViewer2D` `showSeams={includeSeamsInExport}`
 - [x] `npm test` + `npm run lint` green
-- [ ] Manual: rapid seam picks remain responsive on a mid-size mesh — **pending user verify** (see notes after ship)
+- [x] Manual: rapid seam picks remain responsive on a mid-size mesh — **Pass** (2026-07-23): Pokeball_Obj — rapid seam picks responsive; Show seam overlay matches 2D preview + SVG export; flatten snapshot survives seam edits until re-Flatten
 
 ---
 
@@ -258,11 +258,13 @@ flowchart TD
 
 **Status:** Optional / Backlog — do not block product work on this slice.
 
-**Audit IDs:** LAYOUT-001, LAYOUT-002, LAYOUT-004, LAYOUT-008, LAYOUT-009, LAYOUT-010, A11Y-002, A11Y-003, STATE-006, VIEW-001.
+**Audit IDs:** LAYOUT-001, LAYOUT-002, LAYOUT-004, LAYOUT-008, LAYOUT-009, LAYOUT-010, A11Y-002, A11Y-003, STATE-006, VIEW-001, **VIEW-006**.
 
 **When to pull forward:** Mobile/desktop shell bugs blocking users, or a dedicated a11y pass.
 
-**Primary files:** `src/ui/layout/*`, `PickableMesh.tsx`, `globals.css`.
+**Next QA session (2026-07-23):** **VIEW-006** — after mobile Flatten, 3D OrbitControls feel stuck until full refresh (Canvas at 0×0 under `display:none`; `mobilePanel` not reset on model load). Confirmed during Slice 5 Pokeball manual QA. Prefer fixing VIEW-006 first if Slice 6 is pulled. See [qa-audit.md](../../qa-audit.md) VIEW-006.
+
+**Primary files:** `src/ui/layout/*`, `PickableMesh.tsx`, `MeshViewport.tsx`, `app/page.tsx`, `globals.css`.
 
 ---
 

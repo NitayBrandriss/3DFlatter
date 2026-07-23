@@ -34,10 +34,10 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 
 | Status | Notes |
 |--------|--------|
-| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3); **LOGIC-004/005/013–015, IO-001/002/003** (Slice 4) |
-| **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003 |
+| **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3); **LOGIC-004/005/013–015, IO-001/002/003** (Slice 4); **STATE-003, ARCH-001, ARCH-003, UI-008** (Slice 5) |
+| **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003; **VIEW-006** (2026-07-23 — post-Flatten mobile orbit lock) |
 | **New Low** | DOC-002 (PERF-002 fixed Slice 3) |
-| **Reconfirmed open** | STATE-006, UI-001–004, LAYOUT-*, A11Y-002/003, VIEW-001, APP-001 |
+| **Reconfirmed open** | STATE-006, UI-001–004, LAYOUT-*, A11Y-002/003, VIEW-001, APP-001, **VIEW-006** |
 | **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
 
 ---
@@ -519,9 +519,17 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **Description** | ~~Wholesale `session` selection.~~ Granular selectors; further AppSidebar decomposition remains Optional Slice 7. |
 | **Suggested fix** | ~~…~~ Done at page level. |
 
----
+### VIEW-006 — OrbitControls stuck after mobile Flatten → 2D tab *(new)*
 
-## Low
+| Field | Detail |
+|-------|--------|
+| **Severity** | Medium |
+| **Category** | Logic / UX |
+| **Status** | **Open** — filed 2026-07-23 for next QA / Slice 6 pull-forward |
+| **Files** | `app/page.tsx` (`handleFlatten` → `setMobilePanel("2d")`), `ViewportChrome.tsx` (`hidden` on inactive tab), `MeshViewport.tsx`, `globals.css` (`.viewport-3d[hidden] { display: none }`) |
+| **Description** | After successful Flatten on mobile (≤768px), UI-006 switches to the 2D tab and hides the 3D panel with `display: none`. The R3F Canvas stays mounted at **0×0**; OrbitControls sensitivity divides by `clientHeight` and feels stuck / tiny. Loading another model does **not** reset `mobilePanel` (still `"2d"`), so remount can still happen while hidden. Full page refresh resets `mobilePanel` to `"3d"` and orbit works again. Confirmed during Slice 5 manual QA (Pokeball); desktop split is OK. |
+| **Suggested fix** | ResizeObserver / sync `gl.setSize` + camera aspect when `#viewport-panel-3d` gains non-zero size; reset `mobilePanel` to `"3d"` on successful mesh load. Optional: avoid remounting Canvas while panel is `display: none`. |
+| **Repro** | Narrow viewport → load mid-size mesh → orbit OK → Flatten → 2D tab → tap 3D (or load another model) → orbit broken until refresh. |
 
 | ID | Category | Files | Description | Suggested fix | Status |
 |----|----------|-------|-------------|---------------|--------|
@@ -632,8 +640,9 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 6. ~~**LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002)~~ — **Done** (Slice 3, 2026-07-19)
 7. ~~**LOGIC-004/005/013–015 + IO-001/002/003**~~ — **Done** (Slice 4, 2026-07-19)
 8. ~~**STATE-003 / ARCH-001** — scale readiness~~ — Slice 5; UI-004 Web Worker still deferred per ADR 0004
-9. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
-10. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
+9. **VIEW-006** — mobile post-Flatten orbit lock (UI-006 side effect; pull with Slice 6 or hotfix)
+10. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
+11. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
 
 ---
 
@@ -643,12 +652,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~15 | + Slices 0–5 (LOGIC-*, IO-*, DOC-*, STATE-003, ARCH-001/003, UI-008) |
+| Medium | ~16 | + Slices 0–5 (LOGIC-*, IO-*, DOC-*, STATE-003, ARCH-001/003, UI-008); +VIEW-006 open |
 | Low | ~15 | + DOC-002; STATE-004, VIEW-005; PERF-002; IO-003 |
 | Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~37** | — |
+| **Open total** | **~38** | — |
 
-*Counts approximate after Slices 0–5.*
+*Counts approximate after Slices 0–5; VIEW-006 filed 2026-07-23.*
 
 ---
 
@@ -659,7 +668,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **Architecture** | UI-002, APP-001, APP-002, LAYOUT-007 — ARCH-001/003 addressed Slice 5 |
 | **Documentation Alignment** | LOGIC-017 — DOC-*/TEAR-001/LOGIC-005 addressed Slices 0–4 |
 | **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
-| **Logic** | STATE-006, LAYOUT-*, VIEW-001, A11Y-* |
+| **Logic** | STATE-006, LAYOUT-*, VIEW-001, VIEW-006, A11Y-* |
 | **Performance** | UI-004 — STATE-003/ARCH-001 addressed Slice 5 |
 | **SoC** | No open violations — keep `logic/` boundary |
 
