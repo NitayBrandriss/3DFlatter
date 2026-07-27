@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseObj } from "./obj/parseObj";
 import { parseStl } from "./stl/parseStl";
 import { getBundledDemoMesh } from "./demoMeshes";
-import { DEMO_MODELS } from "@/ui/demoModels";
+import { DEMO_MODELS } from "@/data/demoModels";
 
 function encodeText(text: string): ArrayBuffer {
   return new TextEncoder().encode(text).buffer;

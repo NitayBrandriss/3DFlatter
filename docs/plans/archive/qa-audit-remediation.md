@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** Complete (Slices 0–6; Slice 7 Optional / Backlog)  
+**Status:** Complete (Slices 0–7)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -49,7 +49,7 @@ flowchart TD
 | **4** | I/O + seam robustness | **Complete** (2026-07-19) | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
 | **5** | Zustand session scale | **Complete** (2026-07-19) | STATE-003, ARCH-001, ARCH-003, UI-008 |
 | **6** | Layout + a11y | **Complete** (2026-07-27) | LAYOUT-001/002/004/008/009/010, A11Y-002/003, STATE-006, VIEW-001, VIEW-006 |
-| **7** | UI structure / DRY | **Optional / Backlog** | UI-001–003, APP-001–003, LAYOUT-007 |
+| **7** | UI structure / DRY | **Complete** (2026-07-27) | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
 
 **Dependency rules:** Slice 2 before 3. Slice 0 can ship alone. One slice per Agent pass. Run `npm test` after each slice; also `npm run lint` when touching TypeScript/React. Update [qa-audit.md](../../qa-audit.md) statuses when a slice ships.
@@ -282,13 +282,24 @@ flowchart TD
 
 ## Slice 7 — UI structure / DRY *(Optional / Backlog)*
 
-**Status:** Optional / Backlog — do not halt momentum for orchestrator/prop-drilling refactors.
+**Status:** **Complete** (2026-07-27)
 
 **Audit IDs:** UI-001, UI-002, UI-003, APP-001, APP-002, APP-003, LAYOUT-007.
 
 **When to pull forward:** Before a large UI feature that would otherwise multiply prop drilling, or when preview/export drift becomes a bug.
 
-**Primary files:** `app/page.tsx`, `AppSidebar.tsx`, `UnfoldViewer2D.tsx`, `tier1Preview.ts`, demo API / `demoModels.ts`.
+**Done when:**
+
+- [x] UI-001 / APP-003 — `useMeshLoadHandlers` + `loadMeshFromFile` / `loadSelectedDemo` + `demoLoadFailureMessage`
+- [x] UI-002 — `AppSidebar` accepts grouped props (`layout`, `session`, `flatten`, `view`, `demo`)
+- [x] UI-003 — `listTier1Faces` / `listTier1Seams` shared by export + `UnfoldViewer2D`
+- [x] APP-001 — `useHomeSession` + `AppLayout` + slimmer `page.tsx`
+- [x] APP-002 — demo catalog in `src/data/demoModels.ts`
+- [x] LAYOUT-007 — mobile backdrop in `AppLayout`
+- [x] `npm test` + `npm run lint` green
+- [x] Manual smoke: file load, demo load, Flatten, export — **Pass** (2026-07-27); export toast repositioned bottom-right (was top due to CSS `position` conflict)
+
+**Primary files:** `app/page.tsx`, `AppLayout.tsx`, `AppSidebar.tsx`, `appSidebarProps.ts`, `useHomeSession.ts`, `useMeshLoadHandlers.ts`, `useViewportPreferences.ts`, `UnfoldViewer2D.tsx`, `tier1Preview.ts`, `src/data/demoModels.ts`.
 
 ---
 

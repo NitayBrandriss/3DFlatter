@@ -2,7 +2,7 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { getBundledDemoMesh } from "@/logic/io/demoMeshes";
-import { getDemoModelById } from "@/ui/demoModels";
+import { getDemoModelById } from "@/data/demoModels";
 
 export async function GET(
   _request: Request,

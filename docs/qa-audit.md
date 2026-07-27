@@ -90,7 +90,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | `src/viewer/` | Correct Three/R3F boundary; pick math delegated to `resolvePick`; display normalization stays out of topology |
 | `src/state/` | Thin orchestration over logic; appropriate |
 | `src/ui/` | Mostly thin; `AppSidebar` prop surface and `page.tsx` orchestration remain the main maintainability costs (UI-002, APP-001) |
-| `app/` | Routes + demo API; APP-002 still notes demo catalog living under `ui/` |
+| `app/` | Routes + demo API; demo catalog in `src/data/` (APP-002, Slice 7) |
 
 No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logic) while rendering caps apply in UI — acceptable and tested.
 
@@ -342,9 +342,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY |
-| **Files** | `app/page.tsx` (`onPickFile`, `onLoadDemo`) |
-| **Description** | Both paths `setModelScale(1)` then `loadMeshFile`. Success plumbing improved; scale reset still duplicated. |
-| **Suggested fix** | Single `loadMeshFromFile` helper that resets view prefs. |
+| **Status** | **Fixed** (2026-07-27, Slice 7) — `useMeshLoadHandlers` + `onBeforeMeshLoad` |
+| **Files** | `useMeshLoadHandlers.ts`, `useViewportPreferences.ts`, `app/page.tsx` |
+| **Description** | ~~Duplicate scale reset in pick vs demo paths.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### UI-002 — `AppSidebar` prop drilling (~40 props)
 
@@ -352,9 +353,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Architecture |
-| **Files** | `app/page.tsx`, `AppSidebar.tsx` |
-| **Description** | God-component wiring; new controls touch multiple files. |
-| **Suggested fix** | Sidebar context or card components reading store/hooks. |
+| **Status** | **Mitigated** (2026-07-27, Slice 7) — five grouped prop objects; card-level context still optional |
+| **Files** | `app/page.tsx`, `AppSidebar.tsx`, `appSidebarProps.ts` |
+| **Description** | ~~~40 flat props from page.~~ Grouped `layout` / `session` / `flatten` / `view` / `demo`. |
+| **Suggested fix** | Further split into sidebar cards + hooks if prop groups grow again. |
 
 ### UI-003 — 2D preview duplicates export SVG structure
 
@@ -362,9 +364,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY |
+| **Status** | **Fixed** (2026-07-27, Slice 7) — `listTier1Faces` / `listTier1Seams` in `tier1Preview.ts` |
 | **Files** | `UnfoldViewer2D.tsx`, `tier1Preview.ts` |
-| **Description** | React viewer mirrors tier-1 preview; colors shared, structure can still drift. Quality markers added in both places carefully — still duplicated render paths. |
-| **Suggested fix** | Shared preview content builder or component. |
+| **Description** | ~~Face/seam iteration duplicated.~~ Quality overlay remains viewer-only by design. |
+| **Suggested fix** | ~~…~~ Done for tier-1 faces/seams. |
 
 ### UI-004 — Synchronous flatten blocks UI thread
 
@@ -514,9 +517,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Architecture |
-| **Files** | `app/page.tsx` |
-| **Description** | Wires store, flatten, viewport prefs, demo, layout, both viewports. Improved vs pre-layout monolith; still hard to test. |
-| **Suggested fix** | `HomePageShell`, `useViewportPreferences`, `useDemoLoader`. |
+| **Status** | **Mitigated** (2026-07-27, Slice 7) — `useHomeSession`, `AppLayout`, load/view hooks |
+| **Files** | `app/page.tsx`, `useHomeSession.ts`, `AppLayout.tsx` |
+| **Description** | ~~Monolithic wiring.~~ Page composes hooks + layout shell + viewport. |
+| **Suggested fix** | Further card extraction if page grows again. |
 
 ### ARCH-001 — Broad Zustand selector re-renders entire page on seam toggle
 
@@ -549,14 +553,14 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **UI-005** | Logic | `ToastStack.tsx` | `ToastItem` effect depends on `onDismiss` | Stable ref or omit from deps | Open |
 | **UI-007** | DRY | `AppSidebar.tsx` | Redundant nested `stats ?` / `session ?` | Simplify | Open |
 | **LAYOUT-005** | DRY | `ViewportChrome.tsx` | Dead re-export `SPLIT_2D_MIN` | Remove | Open |
-| **LAYOUT-006** | Performance | `usePeekThrough.ts` | Bind object new every render | Memoize | Open |
-| **LAYOUT-007** | Architecture | `page.tsx` | Mobile backdrop in page; sidebar in hook | Move into shell/sidebar | Open |
+| **LAYOUT-006** | Performance | `usePeekThrough.ts` | Bind object new every render | Memoize | **Fixed** (Slice 6) |
+| **LAYOUT-007** | Architecture | `AppLayout.tsx` | Mobile backdrop in page | Move into shell | **Fixed** (Slice 7) |
 | **VIEW-002** | Logic | `MeshViewport.tsx` | Camera refit may miss control target first frame | `useLayoutEffect` / ref callback | Open |
 | **VIEW-003** | DRY | `MeshViewport.tsx` | Empty vs loaded OrbitControls diverge | Share config | Open |
 | **VIEW-004** | Logic | `SeamOverlay.tsx` | `linewidth={2}` ignored on most WebGL | Document or mesh-line | Open |
 | **VIEW-005** | Logic | `page.tsx` | Toasts were inside `viewport3d` (hidden on mobile 2D tab) | **Fixed** — `ToastStack` is now a page sibling of `ViewportChrome` | **Fixed** |
-| **APP-002** | Architecture | demo API, `demoModels.ts` | API imports catalog from `src/ui/` | Move to `src/data/` or `src/config/` | Open |
-| **APP-003** | DRY | `page.tsx`, API | Demo error strings partially duplicated | Shared mapper | Open |
+| **APP-002** | Architecture | demo API, `src/data/demoModels.ts` | Catalog under `src/data/` | Move from `src/ui/` | **Fixed** (Slice 7) |
+| **APP-003** | DRY | `demoLoadMessages.ts` | Demo error strings duplicated | Shared mapper | **Fixed** (Slice 7) |
 | **ARCH-002** | Architecture | `page.tsx` | Was imperative `getState()` after load | Largely improved via boolean return; keep returning structured `{ ok }` if more fields needed | Mostly mitigated |
 | **IO-003** | Logic | `parseObj.ts` | `parseInt` accepts prefixes (`"12abc"`) | Full-token integer match | **Fixed** (Slice 4, 2026-07-19) |
 | **LOGIC-016** | DRY | `types.ts` | `MeshFace` exported unused | Remove or use | Open |
@@ -652,7 +656,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 8. ~~**STATE-003 / ARCH-001** — scale readiness~~ — Slice 5; UI-004 Web Worker still deferred per ADR 0004
 9. ~~**VIEW-006** — mobile post-Flatten orbit lock~~ — Slice 6 (2026-07-27)
 10. ~~**LAYOUT-009/008/010 + A11Y-002/003**~~ — Slice 6 (2026-07-27)
-11. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down (Slice 7)
+11. ~~**UI-003 / UI-002 / APP-001**~~ — Slice 7 (2026-07-27)
 
 ---
 
@@ -675,9 +679,9 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 | Category | Notable IDs |
 |----------|-------------|
-| **Architecture** | UI-002, APP-001, APP-002, LAYOUT-007 — ARCH-001/003 addressed Slice 5 |
+| **Architecture** | UI-002 mitigated, APP-001 mitigated — Slice 7; APP-002 fixed |
 | **Documentation Alignment** | LOGIC-017 — DOC-*/TEAR-001/LOGIC-005 addressed Slices 0–4 |
-| **DRY** | LOGIC-006 (BFS walker optional), UI-001, UI-003, LAYOUT-001, LOGIC-016/019 |
+| **DRY** | LOGIC-006 (BFS walker optional), UI-001/003 fixed Slice 7, LAYOUT-001, LOGIC-016/019 |
 | **Logic** | STATE-006, LAYOUT-*, VIEW-001, VIEW-006, A11Y-* |
 | **Performance** | UI-004 — STATE-003/ARCH-001 addressed Slice 5 |
 | **SoC** | No open violations — keep `logic/` boundary |
