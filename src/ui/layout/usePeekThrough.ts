@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 
 export function usePeekThrough() {
@@ -23,22 +23,25 @@ export function usePeekThroughBind(
     }
   }, [enabled, onPeekChange]);
 
-  return {
-    onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!enabled) {
-        return;
-      }
-      event.currentTarget.setPointerCapture(event.pointerId);
-      onPeekChange(true);
-    },
-    onPointerUp: () => {
-      endPeek();
-    },
-    onPointerCancel: () => {
-      endPeek();
-    },
-    onLostPointerCapture: () => {
-      endPeek();
-    },
-  };
+  // LAYOUT-009: no pointer capture — avoids stealing moves from nested range inputs.
+  return useMemo(
+    () => ({
+      onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (!enabled) {
+          return;
+        }
+        if (event.button !== 0) {
+          return;
+        }
+        onPeekChange(true);
+      },
+      onPointerUp: () => {
+        endPeek();
+      },
+      onPointerCancel: () => {
+        endPeek();
+      },
+    }),
+    [enabled, endPeek, onPeekChange],
+  );
 }

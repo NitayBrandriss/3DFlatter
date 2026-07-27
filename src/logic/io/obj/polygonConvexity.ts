@@ -1,4 +1,4 @@
-const EPS = 1e-6;
+import { CONVEXITY_EPS } from "../../geom2d/tolerances";
 
 function readVertex3(
   vertices: Float32Array | number[],
@@ -60,7 +60,7 @@ export function isConcaveNgons(
 
   const [nx, ny, nz] = newellNormal(vertices, polygon);
   const normalLen = Math.hypot(nx, ny, nz);
-  if (normalLen < EPS) return false;
+  if (normalLen < CONVEXITY_EPS) return false;
 
   let sign = 0;
 
@@ -82,7 +82,7 @@ export function isConcaveNgons(
 
     const [cxp, cyp, czp] = cross3(e1x, e1y, e1z, e2x, e2y, e2z);
     const d = dot3(cxp, cyp, czp, nx, ny, nz);
-    if (Math.abs(d) < EPS) continue;
+    if (Math.abs(d) < CONVEXITY_EPS) continue;
 
     const s = d > 0 ? 1 : -1;
     if (sign === 0) {

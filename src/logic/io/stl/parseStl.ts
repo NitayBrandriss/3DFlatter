@@ -1,5 +1,7 @@
+import { WELD_EPSILON } from "../../geom2d/tolerances";
 import type { MeshModel } from "../../mesh/types";
 import { weldVertices } from "../../mesh/weldVertices";
+import { formatByteLimit, MAX_MESH_FILE_BYTES, MAX_MESH_TRIANGLES } from "../loadBudgets";
 
 export class StlParseError extends Error {
   readonly offset?: number;
@@ -33,7 +35,7 @@ export type ParseStlResult = {
 type RawSoup = {
   vertices: Float32Array;
   faces: Uint32Array;
-  /** Geometric collapses detected before weld (exact coincident corners). */
+  /** Geometric collapses detected before weld (epsilon-near coincident corners). */
   preWeldDegenerateCount: number;
 };
 const TRIANGLE_RECORD_SIZE = 50;
@@ -41,12 +43,18 @@ const COUNT_OFFSET = 80;
 
 type Vec3 = readonly [number, number, number];
 
-function verticesEqual(a: Vec3, b: Vec3): boolean {
-  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+function verticesNearEqual(a: Vec3, b: Vec3, eps = WELD_EPSILON): boolean {
+  return (
+    Math.abs(a[0] - b[0]) <= eps &&
+    Math.abs(a[1] - b[1]) <= eps &&
+    Math.abs(a[2] - b[2]) <= eps
+  );
 }
 
 function isDegenerateTrianglePositions(a: Vec3, b: Vec3, c: Vec3): boolean {
-  return verticesEqual(a, b) || verticesEqual(b, c) || verticesEqual(a, c);
+  return (
+    verticesNearEqual(a, b) || verticesNearEqual(b, c) || verticesNearEqual(a, c)
+  );
 }
 
 function readFiniteFloat(
@@ -71,7 +79,14 @@ function looksLikeAsciiStl(buffer: ArrayBuffer): boolean {
   return prefix.startsWith("solid");
 }
 
-function detectStlFormat(buffer: ArrayBuffer): "binary" | "ascii" {
+type BinaryLayout = {
+  triCount: number;
+  binarySize: number;
+  isValidBinarySize: boolean;
+  isEmptyBinary: boolean;
+};
+
+function inspectBinaryLayout(buffer: ArrayBuffer): BinaryLayout {
   if (buffer.byteLength < COUNT_OFFSET + 4) {
     throw new StlParseError("file too small to be a valid STL");
   }
@@ -81,42 +96,32 @@ function detectStlFormat(buffer: ArrayBuffer): "binary" | "ascii" {
   const binarySize = COUNT_OFFSET + 4 + triCount * TRIANGLE_RECORD_SIZE;
   const isValidBinarySize = buffer.byteLength >= binarySize && triCount > 0;
   const isEmptyBinary = buffer.byteLength >= binarySize && triCount === 0;
+  return { triCount, binarySize, isValidBinarySize, isEmptyBinary };
+}
 
-  if (isEmptyBinary) {
-    return "binary";
+function assertTriangleBudget(triCount: number): void {
+  if (triCount > MAX_MESH_TRIANGLES) {
+    throw new StlParseError(
+      `too many triangles (${triCount.toLocaleString()}). Soft limit is ${MAX_MESH_TRIANGLES.toLocaleString()}.`,
+    );
   }
-
-  const looksAscii = looksLikeAsciiStl(buffer);
-
-  if (looksAscii) {
-    if (isValidBinarySize) {
-      return "binary";
-    }
-    return "ascii";
-  }
-
-  if (isValidBinarySize) {
-    return "binary";
-  }
-
-  throw new StlParseError("unrecognized STL format");
 }
 
 function parseStlBinary(buffer: ArrayBuffer): RawSoup {
-  const view = new DataView(buffer);
-  const triCount = view.getUint32(COUNT_OFFSET, true);
-  const expectedSize = COUNT_OFFSET + 4 + triCount * TRIANGLE_RECORD_SIZE;
+  const { triCount, binarySize } = inspectBinaryLayout(buffer);
+  assertTriangleBudget(triCount);
 
   if (triCount === 0) {
     throw new StlParseError("no triangles found");
   }
 
-  if (buffer.byteLength < expectedSize) {
+  if (buffer.byteLength < binarySize) {
     throw new StlParseError(
-      `binary size mismatch: expected at least ${expectedSize} bytes for ${triCount} triangles, got ${buffer.byteLength}`,
+      `binary size mismatch: expected at least ${binarySize} bytes for ${triCount} triangles, got ${buffer.byteLength}`,
     );
   }
 
+  const view = new DataView(buffer);
   const vertices = new Float32Array(triCount * 9);
   const faces = new Uint32Array(triCount * 3);
   let preWeldDegenerateCount = 0;
@@ -148,6 +153,7 @@ function parseStlBinary(buffer: ArrayBuffer): RawSoup {
 
   return { vertices, faces, preWeldDegenerateCount };
 }
+
 function parseVertexLine(parts: string[], lineNumber: number): [number, number, number] {
   if (parts.length < 4 || parts[0]?.toLowerCase() !== "vertex") {
     throw new StlParseError(`expected "vertex x y z"`, { line: lineNumber });
@@ -252,6 +258,7 @@ function parseStlAscii(text: string): RawSoup {
       if (pushAsciiFacet(facetVerts, vertices, faces, lineNumber)) {
         preWeldDegenerateCount++;
       }
+      assertTriangleBudget(faces.length / 3);
       sawFacet = true;
       inFacet = false;
       facetVerts = [];
@@ -303,16 +310,44 @@ function finalizeMesh(raw: RawSoup): ParseStlResult {
 }
 
 /**
- * Parse STL (ASCII or binary) into canonical MeshModel (ADR 0001):
- * - Detects format via binary size heuristic, then ASCII keyword fallback
- * - Emits triangle soup, then welds coincident vertex positions
+ * Parse STL (ASCII or binary) into canonical MeshModel (ADR 0001).
+ * Prefers ASCII when the buffer looks ASCII; falls back to binary when ASCII
+ * fails and the binary size layout is valid (IO-001).
  */
 export function parseStl(buffer: ArrayBuffer): ParseStlResult {
-  const format = detectStlFormat(buffer);
-  const raw =
-    format === "binary"
-      ? parseStlBinary(buffer)
-      : parseStlAscii(new TextDecoder("utf-8").decode(buffer));
+  if (buffer.byteLength > MAX_MESH_FILE_BYTES) {
+    throw new StlParseError(
+      `file too large (${formatByteLimit(buffer.byteLength)}). Soft limit is ${formatByteLimit(MAX_MESH_FILE_BYTES)}.`,
+    );
+  }
 
-  return finalizeMesh(raw);
+  const layout = inspectBinaryLayout(buffer);
+  const tryAscii = looksLikeAsciiStl(buffer);
+
+  if (tryAscii) {
+    try {
+      return finalizeMesh(parseStlAscii(new TextDecoder("utf-8").decode(buffer)));
+    } catch (asciiErr) {
+      if (layout.isValidBinarySize) {
+        try {
+          return finalizeMesh(parseStlBinary(buffer));
+        } catch {
+          throw asciiErr instanceof Error ? asciiErr : new StlParseError(String(asciiErr));
+        }
+      }
+      throw asciiErr;
+    }
+  }
+
+  if (layout.triCount > MAX_MESH_TRIANGLES) {
+    throw new StlParseError(
+      `too many triangles (${layout.triCount.toLocaleString()}). Soft limit is ${MAX_MESH_TRIANGLES.toLocaleString()}.`,
+    );
+  }
+
+  if (layout.isValidBinarySize || layout.isEmptyBinary) {
+    return finalizeMesh(parseStlBinary(buffer));
+  }
+
+  throw new StlParseError("unrecognized STL format");
 }

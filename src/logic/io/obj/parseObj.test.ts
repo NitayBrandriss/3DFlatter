@@ -47,4 +47,14 @@ f 1 2 3 4
     expect(warnings).toHaveLength(0);
     expect(mesh.faceCount).toBe(2);
   });
+
+  it("rejects face index tokens that are not full integers", () => {
+    const obj = `
+v 0 0 0
+v 1 0 0
+v 0 1 0
+f 1 2 12abc
+`;
+    expect(() => parseObj(obj)).toThrow(/Invalid face index token/);
+  });
 });

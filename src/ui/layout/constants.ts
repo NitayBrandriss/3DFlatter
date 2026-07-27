@@ -1,4 +1,7 @@
-export const DESKTOP_MEDIA_QUERY = "(min-width: 769px)";
+/** Keep @media rules in globals.css in sync (769px / 768px). */
+export const LAYOUT_BREAKPOINT_PX = 769;
+
+export const DESKTOP_MEDIA_QUERY = `(min-width: ${LAYOUT_BREAKPOINT_PX}px)`;
 
 export const SIDEBAR_OPEN_WIDTH = 360;
 export const SIDEBAR_RAIL_WIDTH = 80;

@@ -11,6 +11,45 @@ export const TIER1_TEAR_STROKE_A = "#fbbf24";
 export const TIER1_TEAR_STROKE_B = "#fbbf24";
 export const TIER1_BACKGROUND = "#0a1628";
 
+export type Tier1FaceDraw = {
+  key: string;
+  points: string;
+};
+
+export type Tier1SeamDraw = {
+  key: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+};
+
+/** Shared face list for SVG export and UnfoldViewer2D (UI-003). */
+export function listTier1Faces(result: UnfoldMeshResult): Tier1FaceDraw[] {
+  const faces: Tier1FaceDraw[] = [];
+  for (const island of result.islands) {
+    for (let faceIdx = 0; faceIdx < island.faces.length; faceIdx++) {
+      const faceId = island.faces[faceIdx]!;
+      faces.push({
+        key: `${island.islandIndex}-${faceId}`,
+        points: polygonPointsString(island.positions2d, faceIdx),
+      });
+    }
+  }
+  return faces;
+}
+
+/** Shared seam list for SVG export and UnfoldViewer2D (UI-003). */
+export function listTier1Seams(result: UnfoldMeshResult): Tier1SeamDraw[] {
+  return result.seamSegments.map((seg, i) => ({
+    key: `seam-${i}`,
+    x0: seg.x0,
+    y0: seg.y0,
+    x1: seg.x1,
+    y1: seg.y1,
+  }));
+}
+
 function seamLineElement(seg: SeamSegment2d, index: number): string {
   return `<line x1="${seg.x0}" y1="${seg.y0}" x2="${seg.x1}" y2="${seg.y1}" stroke="${TIER1_SEAM_STROKE}" stroke-width="2" vector-effect="non-scaling-stroke" data-seam-index="${index}"/>`;
 }
@@ -25,19 +64,13 @@ export function buildTier1PreviewContent(
   result: UnfoldMeshResult,
   includeSeams: boolean,
 ): Tier1PreviewContent {
-  const polygonParts: string[] = [];
-  let facePolygonCount = 0;
+  const faceDraws = listTier1Faces(result);
+  const polygonParts = faceDraws.map(
+    (face) =>
+      `<polygon points="${face.points}" fill="${TIER1_FACE_FILL}" stroke="${TIER1_FACE_STROKE}" stroke-width="1" vector-effect="non-scaling-stroke"/>`,
+  );
 
-  for (const island of result.islands) {
-    for (let faceIdx = 0; faceIdx < island.faces.length; faceIdx++) {
-      const points = polygonPointsString(island.positions2d, faceIdx);
-      polygonParts.push(
-        `<polygon points="${points}" fill="${TIER1_FACE_FILL}" stroke="${TIER1_FACE_STROKE}" stroke-width="1" vector-effect="non-scaling-stroke"/>`,
-      );
-      facePolygonCount++;
-    }
-  }
-
+  const seamDraws = includeSeams ? listTier1Seams(result) : [];
   const seamParts = includeSeams
     ? result.seamSegments.map((seg, i) => seamLineElement(seg, i))
     : [];
@@ -50,8 +83,8 @@ export function buildTier1PreviewContent(
   return {
     innerSvg,
     stats: {
-      facePolygonCount,
-      seamLineCount: seamParts.length,
+      facePolygonCount: faceDraws.length,
+      seamLineCount: seamDraws.length,
     },
   };
 }

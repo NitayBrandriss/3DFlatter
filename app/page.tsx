@@ -1,27 +1,28 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
-import {
-  computeSessionStats,
-  useMeshSessionStore,
-} from "@/state/meshSessionStore";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { applyLayoutTokensToDocument } from "@/ui/layout/applyLayoutTokens";
+import { AppLayout } from "@/ui/layout/AppLayout";
 import { AppSidebar } from "@/ui/layout/AppSidebar";
 import { usePeekThrough } from "@/ui/layout/usePeekThrough";
 import { useResizableSplit } from "@/ui/layout/useResizableSplit";
 import { useSidebarState } from "@/ui/layout/useSidebarState";
 import { ViewportChrome } from "@/ui/layout/ViewportChrome";
 import type { MobilePanel } from "@/ui/layout/ViewportChrome";
-import { ToastStack } from "@/ui/ToastStack";
 import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
 import { useFlattenExport } from "@/ui/useFlattenExport";
+import { useHomeSession } from "@/ui/hooks/useHomeSession";
+import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
+import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
 import { MeshViewport } from "@/viewer/MeshViewport";
-import { DEMO_MODELS } from "@/ui/demoModels";
 
 export default function HomePage() {
   const {
-    session,
+    mesh,
+    seams,
     meshLoadVersion,
+    session,
+    stats,
     isLoading,
     error,
     seamMode,
@@ -32,24 +33,7 @@ export default function HomePage() {
     setSeamMode,
     dismissToast,
     notifyToast,
-  } = useMeshSessionStore(
-    useShallow((s) => ({
-      session: s.session,
-      meshLoadVersion: s.meshLoadVersion,
-      isLoading: s.isLoading,
-      error: s.error,
-      seamMode: s.seamMode,
-      toasts: s.toasts,
-      loadMeshFile: s.loadMeshFile,
-      toggleSeamAt: s.toggleSeamAt,
-      clearAllSeams: s.clearAllSeams,
-      setSeamMode: s.setSeamMode,
-      dismissToast: s.dismissToast,
-      notifyToast: s.notifyToast,
-    })),
-  );
-
-  const stats = useMemo(() => computeSessionStats(session), [session]);
+  } = useHomeSession();
 
   const {
     flattenResult,
@@ -63,11 +47,17 @@ export default function HomePage() {
     onExportSvg,
   } = useFlattenExport(session, meshLoadVersion, notifyToast);
 
-  const [wireframe, setWireframe] = useState(true);
-  const [showGrid, setShowGrid] = useState(true);
-  const [showAxes, setShowAxes] = useState(false);
-  const [modelScale, setModelScale] = useState(1);
-  const [selectedDemoId, setSelectedDemoId] = useState(DEMO_MODELS[0]?.id ?? "");
+  const {
+    wireframe,
+    setWireframe,
+    showGrid,
+    setShowGrid,
+    showAxes,
+    setShowAxes,
+    modelScale,
+    setModelScale,
+    resetModelScale,
+  } = useViewportPreferences();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
 
   const {
@@ -82,38 +72,20 @@ export default function HomePage() {
 
   const { isPeeking, onPeekChange } = usePeekThrough();
 
+  useEffect(() => {
+    applyLayoutTokensToDocument();
+  }, []);
+
   const viewportRef = useRef<HTMLElement | null>(null);
+  const viewport3dPanelRef = useRef<HTMLDivElement | null>(null);
   const { split2dPx, isDragging, splitHandleProps } = useResizableSplit(viewportRef);
 
-  const onPickFile = useCallback(
-    async (file: File | null): Promise<boolean> => {
-      if (!file) return false;
-      setModelScale(1);
-      return loadMeshFile(file);
-    },
-    [loadMeshFile],
-  );
+  const onBeforeMeshLoad = useCallback(() => {
+    resetModelScale();
+    setMobilePanel("3d");
+  }, [resetModelScale]);
 
-  const onLoadDemo = useCallback(async (): Promise<boolean> => {
-    const demo = DEMO_MODELS.find((model) => model.id === selectedDemoId);
-    if (!demo) return false;
-
-    setModelScale(1);
-    const response = await fetch(`/api/demo-models/${demo.id}`);
-    if (!response.ok) {
-      notifyToast(
-        response.status === 404
-          ? `Demo model "${demo.label}" not found. Add it under 3d_models/.`
-          : `Failed to load demo model "${demo.label}".`,
-        "warning",
-      );
-      return false;
-    }
-
-    const blob = await response.blob();
-    const file = new File([blob], demo.fileName, { type: blob.type });
-    return loadMeshFile(file);
-  }, [loadMeshFile, notifyToast, selectedDemoId]);
+  const demo = useMeshLoadHandlers(loadMeshFile, notifyToast, onBeforeMeshLoad);
 
   const onEdgePick = useCallback(
     (edgeKey: Parameters<typeof toggleSeamAt>[0]) => {
@@ -130,67 +102,69 @@ export default function HomePage() {
     return ok;
   }, [isDesktop, onFlatten]);
 
-  const showMobileBackdrop = !isDesktop && sidebarOpen && !isPeeking;
-
   return (
-    <div
-      className="page"
-      data-sidebar={sidebarOpen ? "open" : "collapsed"}
-      data-sidebar-peek={isPeeking ? "true" : "false"}
-    >
-      {showMobileBackdrop ? (
-        <button
-          type="button"
-          className="sidebar-backdrop"
-          aria-label="Close menu"
-          onClick={closeSidebar}
+    <AppLayout
+      sidebarOpen={sidebarOpen}
+      isDesktop={isDesktop}
+      isPeeking={isPeeking}
+      onCloseSidebar={closeSidebar}
+      toasts={toasts}
+      onDismissToast={dismissToast}
+      sidebar={
+        <AppSidebar
+          layout={{
+            sidebarOpen,
+            sidebarDrawerId,
+            openButtonRef,
+            onToggleSidebar: toggleSidebar,
+            onCloseSidebar: closeSidebar,
+            closeIfMobile,
+            peekEnabled: !isDesktop && sidebarOpen,
+            isPeeking,
+            onPeekChange,
+          }}
+          session={{
+            session,
+            stats,
+            isLoading,
+            error,
+            seamMode,
+            setSeamMode,
+            clearAllSeams,
+          }}
+          flatten={{
+            flattening,
+            flattenResult,
+            qualityCounts,
+            showQualityOverlay,
+            setShowQualityOverlay,
+            includeSeamsInExport,
+            setIncludeSeamsInExport,
+            onFlatten: handleFlatten,
+            onExportSvg,
+          }}
+          view={{
+            wireframe,
+            setWireframe,
+            showGrid,
+            setShowGrid,
+            showAxes,
+            setShowAxes,
+            modelScale,
+            setModelScale,
+          }}
+          demo={{
+            selectedDemoId: demo.selectedDemoId,
+            setSelectedDemoId: demo.setSelectedDemoId,
+            onPickFile: demo.loadMeshFromFile,
+            onLoadDemo: demo.loadSelectedDemo,
+          }}
         />
-      ) : null}
-
-      <AppSidebar
-        sidebarOpen={sidebarOpen}
-        sidebarDrawerId={sidebarDrawerId}
-        openButtonRef={openButtonRef}
-        onToggleSidebar={toggleSidebar}
-        onCloseSidebar={closeSidebar}
-        closeIfMobile={closeIfMobile}
-        peekEnabled={!isDesktop && sidebarOpen}
-        isPeeking={isPeeking}
-        onPeekChange={onPeekChange}
-        session={session}
-        stats={stats}
-        isLoading={isLoading}
-        error={error}
-        seamMode={seamMode}
-        setSeamMode={setSeamMode}
-        clearAllSeams={clearAllSeams}
-        flattening={flattening}
-        flattenResult={flattenResult}
-        qualityCounts={qualityCounts}
-        showQualityOverlay={showQualityOverlay}
-        setShowQualityOverlay={setShowQualityOverlay}
-        includeSeamsInExport={includeSeamsInExport}
-        setIncludeSeamsInExport={setIncludeSeamsInExport}
-        onPickFile={onPickFile}
-        onLoadDemo={onLoadDemo}
-        onFlatten={handleFlatten}
-        onExportSvg={onExportSvg}
-        wireframe={wireframe}
-        setWireframe={setWireframe}
-        showGrid={showGrid}
-        setShowGrid={setShowGrid}
-        showAxes={showAxes}
-        setShowAxes={setShowAxes}
-        modelScale={modelScale}
-        setModelScale={setModelScale}
-        selectedDemoId={selectedDemoId}
-        setSelectedDemoId={setSelectedDemoId}
-      />
-
-      <ToastStack toasts={toasts} onDismiss={dismissToast} />
-
+      }
+    >
       <ViewportChrome
         containerRef={viewportRef}
+        viewport3dPanelRef={viewport3dPanelRef}
         isDesktop={isDesktop}
         mobilePanel={mobilePanel}
         onMobilePanelChange={setMobilePanel}
@@ -200,9 +174,10 @@ export default function HomePage() {
         viewport3d={
           <>
             <MeshViewport
-              mesh={session?.mesh ?? null}
-              seams={session?.seams ?? null}
+              mesh={mesh}
+              seams={seams}
               meshLoadVersion={meshLoadVersion}
+              viewportPanelRef={viewport3dPanelRef}
               wireframe={wireframe}
               showGrid={showGrid}
               showAxes={showAxes}
@@ -223,11 +198,12 @@ export default function HomePage() {
         viewport2d={
           <UnfoldViewer2D
             result={flattenResult}
+            showSeams={includeSeamsInExport}
             showQualityOverlay={showQualityOverlay}
             qualityCounts={qualityCounts}
           />
         }
       />
-    </div>
+    </AppLayout>
   );
 }

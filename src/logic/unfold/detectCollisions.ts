@@ -4,16 +4,20 @@
   forEachCandidatePair,
 } from "../geom2d/spatialGrid";
 import {
-  clipTriangleArea,
-  clipTriangleIntersection,
+  clipOverlappingTriangles,
   isEdgeOnlyContact,
+  polygonArea,
   polygonCentroid,
   satOverlap,
   triangleAvgEdgeLength,
 } from "../geom2d/triangle2d";
 import { collisionAreaThreshold } from "../geom2d/tolerances";
 import type { MeshModel, Topology, TriangleCollision2d, UnfoldIslandResult } from "../mesh/types";
-import { segment2dForFaceSlot, sharedEdgeSlots } from "./unfoldEdge2d";
+import {
+  buildFaceSoupIndexMap,
+  segment2dForFaceSlot,
+  sharedEdgeSlots,
+} from "./unfoldEdge2d";
 import { soupToTriangles } from "./soupToTriangles";
 
 /** 3a — intra-island triangle interior collisions in local island XY. */
@@ -30,6 +34,7 @@ export function detectCollisions(
   const items = buildSoupItems(triangles);
   if (items.length < 2) return [];
 
+  const faceSoupIndex = buildFaceSoupIndexMap(result);
   const grid = buildUniformGrid(items);
   const collisions: TriangleCollision2d[] = [];
 
@@ -41,14 +46,21 @@ export function detectCollisions(
 
     if (!satOverlap(triA, triB)) return;
 
-    const overlapPoly = clipTriangleIntersection(triA, triB);
-    const overlapArea = clipTriangleArea(triA, triB);
+    // One clip after SAT — derive area + centroid from the same polygon (LOGIC-011).
+    const overlapPoly = clipOverlappingTriangles(triA, triB);
+    const overlapArea = polygonArea(overlapPoly);
     const avgLen = (triangleAvgEdgeLength(triA) + triangleAvgEdgeLength(triB)) / 2;
     const threshold = collisionAreaThreshold(avgLen);
 
     const slots = sharedEdgeSlots(topology, faceA, faceB);
     if (slots) {
-      const sharedSegment = segment2dForFaceSlot(mesh, result, faceA, slots.slotA);
+      const sharedSegment = segment2dForFaceSlot(
+        mesh,
+        result,
+        faceA,
+        slots.slotA,
+        faceSoupIndex,
+      );
       if (
         sharedSegment &&
         isEdgeOnlyContact(overlapPoly, sharedSegment, overlapArea, threshold)

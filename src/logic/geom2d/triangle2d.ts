@@ -185,15 +185,24 @@ export function clipPolygonByTriangle(subject: Vec2[], clip: Triangle2d): Vec2[]
   return output;
 }
 
-/** Intersection polygon of two triangles (may be empty). */
+/** Intersection polygon of two triangles (may be empty). Re-runs SAT. */
 export function clipTriangleIntersection(t1: Triangle2d, t2: Triangle2d): Vec2[] {
   if (!satOverlap(t1, t2)) return [];
+  return clipOverlappingTriangles(t1, t2);
+}
+
+/**
+ * Sutherland–Hodgman intersection polygon without a SAT re-check.
+ * Caller must have already established overlap (e.g. via `satOverlap`).
+ */
+export function clipOverlappingTriangles(t1: Triangle2d, t2: Triangle2d): Vec2[] {
   const subject = normalizeTriangleCCW(t1);
   const clip = normalizeTriangleCCW(t2);
   return clipPolygonByTriangle([...subject], clip);
 }
 
-function polygonArea(verts: Vec2[]): number {
+/** Absolute area of a simple polygon (shoelace). */
+export function polygonArea(verts: Vec2[]): number {
   if (verts.length < 3) return 0;
   let sum = 0;
   for (let i = 0; i < verts.length; i++) {

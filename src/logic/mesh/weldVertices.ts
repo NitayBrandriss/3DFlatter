@@ -1,7 +1,6 @@
-import type { MeshModel } from "./types";
+import { WELD_EPSILON } from "../geom2d/tolerances";
 import { isIndexDegenerateFace } from "./faceDegeneracy";
-
-const WELD_EPSILON = 1e-6;
+import type { MeshModel } from "./types";
 
 export type WeldVerticesResult = {
   mesh: MeshModel;

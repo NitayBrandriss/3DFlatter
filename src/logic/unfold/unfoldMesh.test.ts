@@ -143,6 +143,27 @@ describe("unfoldMesh", () => {
     expect(result.islands).toHaveLength(1);
     expect(result.warnings?.length).toBe(1);
     expect(result.warnings![0]).toMatch(/Island 1/);
+    expect(result.islands[0]!.islandIndex).toBe(0);
+  });
+
+  it("keeps partition islandIndex on reports when an earlier island fails (LOGIC-025)", () => {
+    // Bad facet first so partition island 0 fails and island 1 succeeds.
+    const mesh = {
+      vertices: new Float32Array([
+        0, 0, 0, 1, 0, 0, 0, 1, 0,
+        5, 0, 0, 5, 0, 0, 5, 1, 0,
+      ]),
+      faces: new Uint32Array([3, 4, 5, 0, 1, 2]),
+      vertexCount: 6,
+      faceCount: 2,
+    };
+    const topo = buildTopology(mesh);
+    const result = unfoldMesh(mesh, topo, createSeamRegistry());
+
+    expect(result.error).toBeUndefined();
+    expect(result.islands).toHaveLength(1);
+    expect(result.warnings?.[0]).toMatch(/Island 0/);
+    expect(result.islands[0]!.islandIndex).toBe(1);
   });
 
   it("returns error when every island fails", () => {

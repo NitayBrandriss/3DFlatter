@@ -1,23 +1,39 @@
 ﻿import type { Segment2d } from "../geom2d/segment2d";
-import type { EdgeSlot, FaceIndex, MeshModel, Topology, UnfoldIslandResult } from "../mesh/types";
+import { EDGE_SLOTS, directedEdgeForSlot, faceVertices } from "../mesh/faceUtils";
+import type {
+  EdgeSlot,
+  FaceIndex,
+  MeshModel,
+  Topology,
+  UnfoldIslandResult,
+} from "../mesh/types";
 import { getNeighborAcrossEdge } from "../mesh/types";
 
-const EDGE_SLOTS: EdgeSlot[] = [0, 1, 2];
+/** Face id → index in `result.faces` / soup slice (build once per island analysis). */
+export function buildFaceSoupIndexMap(result: UnfoldIslandResult): Map<FaceIndex, number> {
+  const map = new Map<FaceIndex, number>();
+  for (let i = 0; i < result.faces.length; i++) {
+    map.set(result.faces[i]!, i);
+  }
+  return map;
+}
 
 export function segment2dForFaceSlot(
   mesh: MeshModel,
   result: UnfoldIslandResult,
   faceId: FaceIndex,
   slot: EdgeSlot,
+  faceSoupIndex?: ReadonlyMap<FaceIndex, number>,
 ): Segment2d | null {
-  const soupIndex = result.faces.indexOf(faceId);
-  if (soupIndex < 0) return null;
+  const soupIndex = faceSoupIndex
+    ? faceSoupIndex.get(faceId)
+    : result.faces.indexOf(faceId);
+  if (soupIndex === undefined || soupIndex < 0) return null;
 
   const off = 6 * soupIndex;
   const base = 3 * faceId;
-  const verts = [mesh.faces[base]!, mesh.faces[base + 1]!, mesh.faces[base + 2]!];
-  const [va, vb] =
-    slot === 0 ? [verts[0]!, verts[1]!] : slot === 1 ? [verts[1]!, verts[2]!] : [verts[2]!, verts[0]!];
+  const verts = faceVertices(mesh, faceId);
+  const [va, vb] = directedEdgeForSlot(verts, slot);
 
   const corner = (vi: number): { x: number; y: number } | null => {
     for (let i = 0; i < 3; i++) {

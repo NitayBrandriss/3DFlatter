@@ -110,21 +110,33 @@ export function forEachCandidatePair(
   visit: (i: number, j: number) => void,
   aabbReject = true,
 ): void {
-  const bySoupIndex = new Map(items.map((item) => [item.soupIndex, item]));
-  const seen = new Set<string>();
+  if (items.length < 2) return;
+
+  let maxSoupIndex = -1;
+  for (const item of items) {
+    if (item.soupIndex > maxSoupIndex) maxSoupIndex = item.soupIndex;
+  }
+  const stride = maxSoupIndex + 1;
+  const bySoupIndex: (TriangleSoupItem | undefined)[] = new Array(stride);
+  for (const item of items) {
+    bySoupIndex[item.soupIndex] = item;
+  }
+
+  // Numeric pair keys (lo * stride + hi) — avoids per-pair string alloc (PERF-002).
+  const seen = new Set<number>();
   for (const indices of grid.cells.values()) {
     for (let a = 0; a < indices.length; a++) {
       for (let b = a + 1; b < indices.length; b++) {
         const i = indices[a]!;
         const j = indices[b]!;
-        const lo = Math.min(i, j);
-        const hi = Math.max(i, j);
-        const key = `${lo},${hi}`;
+        const lo = i < j ? i : j;
+        const hi = i < j ? j : i;
+        const key = lo * stride + hi;
         if (seen.has(key)) continue;
         seen.add(key);
         if (aabbReject) {
-          const itemI = bySoupIndex.get(lo);
-          const itemJ = bySoupIndex.get(hi);
+          const itemI = bySoupIndex[lo];
+          const itemJ = bySoupIndex[hi];
           if (!itemI || !itemJ) continue;
           if (aabbsSeparated(itemI.aabb, itemJ.aabb)) continue;
         }

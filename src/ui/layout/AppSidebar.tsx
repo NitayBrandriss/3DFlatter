@@ -1,97 +1,67 @@
 "use client";
 
-import type { RefObject } from "react";
-import type { UnfoldMeshResult } from "@/logic/mesh/types";
 import {
   formatQualityIssueSummary,
-  type QualityIssueCounts,
 } from "@/logic/unfold/qualitySummary";
-import type { MeshSession } from "@/state/meshSessionStore";
-import type { computeSessionStats } from "@/state/meshSessionStore";
-import { DEMO_MODELS } from "@/ui/demoModels";
+import { DEMO_MODELS } from "@/data/demoModels";
 import { PeekThroughControl } from "./PeekThroughControl";
+import type { AppSidebarProps } from "./appSidebarProps";
 
-type SessionStats = ReturnType<typeof computeSessionStats>;
+export type { AppSidebarProps } from "./appSidebarProps";
 
-export type AppSidebarProps = {
-  sidebarOpen: boolean;
-  sidebarDrawerId: string;
-  openButtonRef: RefObject<HTMLButtonElement | null>;
-  onToggleSidebar: () => void;
-  onCloseSidebar: () => void;
-  closeIfMobile: () => void;
-  peekEnabled: boolean;
-  isPeeking: boolean;
-  onPeekChange: (next: boolean) => void;
-  session: MeshSession | null;
-  stats: SessionStats;
-  isLoading: boolean;
-  error: string | null;
-  seamMode: boolean;
-  setSeamMode: (enabled: boolean) => void;
-  clearAllSeams: () => void;
-  flattening: boolean;
-  flattenResult: UnfoldMeshResult | null;
-  qualityCounts: QualityIssueCounts | null;
-  showQualityOverlay: boolean;
-  setShowQualityOverlay: (value: boolean) => void;
-  includeSeamsInExport: boolean;
-  setIncludeSeamsInExport: (value: boolean) => void;
-  onPickFile: (file: File | null) => Promise<boolean>;
-  onLoadDemo: () => Promise<boolean>;
-  onFlatten: () => boolean;
-  onExportSvg: () => void;
-  wireframe: boolean;
-  setWireframe: (value: boolean) => void;
-  showGrid: boolean;
-  setShowGrid: (value: boolean) => void;
-  showAxes: boolean;
-  setShowAxes: (value: boolean) => void;
-  modelScale: number;
-  setModelScale: (value: number) => void;
-  selectedDemoId: string;
-  setSelectedDemoId: (value: string) => void;
-};
+export function AppSidebar({ layout, session: sessionProps, flatten, view, demo }: AppSidebarProps) {
+  const {
+    sidebarOpen,
+    sidebarDrawerId,
+    openButtonRef,
+    onToggleSidebar,
+    onCloseSidebar,
+    closeIfMobile,
+    peekEnabled,
+    isPeeking,
+    onPeekChange,
+  } = layout;
 
-export function AppSidebar({
-  sidebarOpen,
-  sidebarDrawerId,
-  openButtonRef,
-  onToggleSidebar,
-  onCloseSidebar,
-  closeIfMobile,
-  peekEnabled,
-  isPeeking,
-  onPeekChange,
-  session,
-  stats,
-  isLoading,
-  error,
-  seamMode,
-  setSeamMode,
-  clearAllSeams,
-  flattening,
-  flattenResult,
-  qualityCounts,
-  showQualityOverlay,
-  setShowQualityOverlay,
-  includeSeamsInExport,
-  setIncludeSeamsInExport,
-  onPickFile,
-  onLoadDemo,
-  onFlatten,
-  onExportSvg,
-  wireframe,
-  setWireframe,
-  showGrid,
-  setShowGrid,
-  showAxes,
-  setShowAxes,
-  modelScale,
-  setModelScale,
-  selectedDemoId,
-  setSelectedDemoId,
-}: AppSidebarProps) {
+  const {
+    session,
+    stats,
+    isLoading,
+    error,
+    seamMode,
+    setSeamMode,
+    clearAllSeams,
+  } = sessionProps;
+
+  const {
+    flattening,
+    flattenResult,
+    qualityCounts,
+    showQualityOverlay,
+    setShowQualityOverlay,
+    includeSeamsInExport,
+    setIncludeSeamsInExport,
+    onFlatten,
+    onExportSvg,
+  } = flatten;
+
+  const {
+    wireframe,
+    setWireframe,
+    showGrid,
+    setShowGrid,
+    showAxes,
+    setShowAxes,
+    modelScale,
+    setModelScale,
+  } = view;
+
+  const {
+    selectedDemoId,
+    setSelectedDemoId,
+    onPickFile,
+    onLoadDemo,
+  } = demo;
+
   const handlePickFile = async (file: File | null) => {
     const ok = await onPickFile(file);
     if (ok) {
@@ -306,10 +276,11 @@ export function AppSidebar({
           <div className="card">
             <div className="card-heading">Export</div>
             <p className="muted card-copy">
-              Download the flattened pattern as SVG (preview).
+              Download the flattened pattern as SVG (preview). Seam overlay
+              visibility matches the 2D viewer.
             </p>
             <label className="toggle">
-              <span className="muted">Include seam overlay</span>
+              <span className="muted">Show seam overlay</span>
               <input
                 type="checkbox"
                 checked={includeSeamsInExport}

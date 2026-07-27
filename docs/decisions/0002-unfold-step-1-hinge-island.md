@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-06-09
+last_updated: 2026-07-19
 depends_on: 0001
 ---
 
@@ -104,13 +105,19 @@ flowchart TD
 - SVG renders soup polygons directly; seam edges are a separate overlay concern.
 - Do not reintroduce per-vertex 2D maps without a new ADR.
 
-### Deferred to Step 2+
+### Downstream status (was “Deferred to Step 2+”)
 
-- `unfoldMesh()` multi-island orchestrator + island XY packing
-- `UnfoldViewer2D` / SVG export UI
-- Collision / overlap detection within an island
-- Intra-island slits without island partition
-- 2D corner re-welding across non-tree shared edges
+The following items were deferred when this ADR shipped. **They are no longer open deferrals** except where noted:
+
+| Item | Status |
+|------|--------|
+| `unfoldMesh()` multi-island orchestrator + island XY packing | **Shipped** — [step-2-flattening](../plans/archive/step-2-flattening.md) |
+| `UnfoldViewer2D` / SVG export UI | **Shipped** — Step 2 + [export/svg](../../src/logic/export/svg/) |
+| Collision / overlap detection within an island | **Shipped** — [ADR 0003](0003-unfold-quality-detection.md) |
+| Intra-island slits without island partition | **Still deferred** — future feature |
+| 2D corner re-welding across non-tree shared edges | **Still deferred** — future feature / auto-fix |
+
+Do not reintroduce per-vertex 2D maps without a new ADR. Mesh-level orchestration contracts live in implementation + ADR 0003; tech-debt sequencing in [ADR 0004](0004-tech-debt-remediation-strategy.md).
 
 ### Implementation files
 
@@ -125,4 +132,5 @@ flowchart TD
 ### References
 
 - [ADR 0001](0001-mesh-model-and-topology.md) — mesh, topology, XY plane
-- [Plans & roadmap](../plans/README.md) — Step 2 orchestration + 2D viewer (archive: [step-2-flattening.md](../plans/archive/step-2-flattening.md))
+- [ADR 0003](0003-unfold-quality-detection.md) — quality detection (shipped Step 3)
+- [Plans & roadmap](../plans/README.md) — Step 2+ archive specs

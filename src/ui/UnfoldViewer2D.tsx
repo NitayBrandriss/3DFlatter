@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { UnfoldMeshResult } from "../logic/mesh/types";
 import {
   TIER1_BACKGROUND,
@@ -10,6 +11,8 @@ import {
   TIER1_SEAM_STROKE,
   TIER1_TEAR_STROKE_A,
   TIER1_TEAR_STROKE_B,
+  listTier1Faces,
+  listTier1Seams,
 } from "../logic/export/svg/tier1Preview";
 import {
   computeSvgViewBox,
@@ -24,16 +27,18 @@ import {
   formatOverlayTruncationHints,
   formatQualityIssueSummary,
 } from "../logic/unfold/qualitySummary";
-import { polygonPointsString } from "../logic/unfold/soupBounds";
 
 type UnfoldViewer2DProps = {
   result: UnfoldMeshResult | null;
+  /** When false, seam overlay segments are omitted (shared with SVG export). */
+  showSeams?: boolean;
   showQualityOverlay?: boolean;
   qualityCounts?: QualityIssueCounts | null;
 };
 
-export function UnfoldViewer2D({
+export const UnfoldViewer2D = memo(function UnfoldViewer2D({
   result,
+  showSeams = true,
   showQualityOverlay = false,
   qualityCounts = null,
 }: UnfoldViewer2DProps) {
@@ -65,6 +70,8 @@ export function UnfoldViewer2D({
   };
   const truncationHints = showOverlay ? formatOverlayTruncationHints(counts) : [];
   const summary = showOverlay ? formatQualityIssueSummary(counts) : null;
+  const tier1Faces = listTier1Faces(result);
+  const tier1Seams = showSeams ? listTier1Seams(result) : [];
 
   return (
     <div className="flatten-panel">
@@ -111,21 +118,19 @@ export function UnfoldViewer2D({
           fill={TIER1_BACKGROUND}
         />
         <g transform={flipTransform}>
-          {result.islands.map((island) =>
-            island.faces.map((faceId, faceIdx) => (
-              <polygon
-                key={`${island.islandIndex}-${faceId}`}
-                points={polygonPointsString(island.positions2d, faceIdx)}
-                fill={TIER1_FACE_FILL}
-                stroke={TIER1_FACE_STROKE}
-                strokeWidth={1}
-                vectorEffect="non-scaling-stroke"
-              />
-            )),
-          )}
-          {result.seamSegments.map((seg, i) => (
+          {tier1Faces.map((face) => (
+            <polygon
+              key={face.key}
+              points={face.points}
+              fill={TIER1_FACE_FILL}
+              stroke={TIER1_FACE_STROKE}
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {tier1Seams.map((seg) => (
             <line
-              key={`seam-${i}`}
+              key={seg.key}
               x1={seg.x0}
               y1={seg.y0}
               x2={seg.x1}
@@ -178,4 +183,4 @@ export function UnfoldViewer2D({
       </svg>
     </div>
   );
-}
+});

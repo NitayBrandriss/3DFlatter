@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
 import { buildDisplayMeshAssets } from "./meshModelToGeometry";
@@ -14,6 +14,7 @@ import {
   SCENE_GRID_DIVISIONS,
   SCENE_GRID_SIZE,
 } from "./sceneScale";
+import { SyncGlToPanel } from "./syncGlToPanel";
 
 function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
   const { camera } = useThree();
@@ -65,6 +66,7 @@ export function MeshViewport({
   mesh,
   seams,
   meshLoadVersion,
+  viewportPanelRef,
   wireframe,
   showGrid,
   showAxes,
@@ -76,6 +78,8 @@ export function MeshViewport({
   seams: SeamRegistry | null;
   /** Passed so React re-mounts the canvas scene on a new load if mesh ref is reused. */
   meshLoadVersion: number;
+  /** Host `.viewport-3d` element — VIEW-006 resize sync when tab visibility changes. */
+  viewportPanelRef: RefObject<HTMLElement | null>;
   wireframe: boolean;
   showGrid: boolean;
   showAxes: boolean;
@@ -99,6 +103,7 @@ export function MeshViewport({
 
   return (
     <Canvas key={sceneKey} camera={{ fov: 50, position: [2, 2, 2] }}>
+      <SyncGlToPanel panelRef={viewportPanelRef} />
       <color attach="background" args={["#070912"]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[3, 5, 4]} intensity={1.05} />

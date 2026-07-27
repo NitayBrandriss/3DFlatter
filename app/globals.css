@@ -1,5 +1,7 @@
 :root {
   color-scheme: dark;
+  /* Defaults — client applies TS tokens via applyLayoutTokensToDocument (LAYOUT-001). */
+  /* @media breakpoints: sync with LAYOUT_BREAKPOINT_PX in src/ui/layout/constants.ts */
   --layout-breakpoint: 769px;
   --sidebar-open-width: 360px;
   --sidebar-rail-width: 80px;
@@ -64,10 +66,17 @@ body.is-resizing {
 .page > .toast-stack {
   grid-column: 2;
   grid-row: 1;
-  position: relative;
   z-index: var(--z-toast);
   align-self: stretch;
   justify-self: stretch;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
 }
 
@@ -317,6 +326,11 @@ body.is-resizing {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.viewport-split-handle:focus-visible {
+  outline: 2px solid #7c9cff;
+  outline-offset: 1px;
+}
+
 .flatten-panel-host {
   min-height: 0;
   overflow: hidden;
@@ -489,14 +503,8 @@ body.is-resizing {
 }
 
 .toast-stack {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   max-width: min(360px, calc(100% - 32px));
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .toast {

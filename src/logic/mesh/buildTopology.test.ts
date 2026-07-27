@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseObj } from "../io/obj/parseObj";
 import { buildTopology } from "./buildTopology";
 import { makeEdgeKey } from "./edgeKey";
@@ -97,13 +97,16 @@ describe("buildTopology", () => {
         0, 0, 1, // degenerate (v0 === v1)
       ],
     );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const topo = buildTopology(mesh);
 
     expect(topo.skippedDegenerateFaceCount).toBe(1);
+    expect(warnSpy).not.toHaveBeenCalled();
     for (const key of topo.edgeToFaces.keys()) {
       expect(key).not.toMatch(/^(\d+),\1$/);
     }
     expect(() => buildTopology(mesh)).not.toThrow();
+    warnSpy.mockRestore();
   });
 
   it("throws on empty face count", () => {
