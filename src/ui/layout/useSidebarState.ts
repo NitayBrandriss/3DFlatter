@@ -14,13 +14,18 @@ import { useMediaQuery } from "./useMediaQuery";
 
 export function useSidebarState() {
   const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
-  const [userOverride, setUserOverride] = useState<boolean | null>(() =>
-    readStoredBoolean(STORAGE_KEY_SIDEBAR),
-  );
+  // LAYOUT-004 / LAYOUT-010: defer localStorage until after mount.
+  const [userOverride, setUserOverride] = useState<boolean | null>(null);
   const openButtonRef = useRef<HTMLButtonElement | null>(null);
   const prevOpenRef = useRef<boolean | null>(null);
 
-  // First visit: desktop open, mobile closed. Persist wins after explicit toggle.
+  // LAYOUT-004 / LAYOUT-010: hydrate persisted sidebar preference after mount.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only storage read
+    setUserOverride(readStoredBoolean(STORAGE_KEY_SIDEBAR));
+  }, []);
+
+  // First visit after hydrate: desktop open, mobile closed. Persist wins when set.
   const sidebarOpen = userOverride ?? isDesktop;
 
   const persistOverride = useCallback((open: boolean) => {
@@ -43,7 +48,7 @@ export function useSidebarState() {
   }, [isDesktop, persistOverride]);
 
   useEffect(() => {
-    if (!sidebarOpen) {
+    if (!sidebarOpen || isDesktop) {
       return;
     }
 
@@ -57,9 +62,8 @@ export function useSidebarState() {
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [persistOverride, sidebarOpen]);
+  }, [isDesktop, persistOverride, sidebarOpen]);
 
-  // Focus open control after close (button mounts only when collapsed — A11Y-001).
   useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = sidebarOpen;

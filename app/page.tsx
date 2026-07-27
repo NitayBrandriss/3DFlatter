@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   computeSessionStats,
@@ -8,6 +8,7 @@ import {
   useMeshSessionStore,
   type MeshSession,
 } from "@/state/meshSessionStore";
+import { applyLayoutTokensToDocument } from "@/ui/layout/applyLayoutTokens";
 import { AppSidebar } from "@/ui/layout/AppSidebar";
 import { usePeekThrough } from "@/ui/layout/usePeekThrough";
 import { useResizableSplit } from "@/ui/layout/useResizableSplit";
@@ -108,23 +109,33 @@ export default function HomePage() {
 
   const { isPeeking, onPeekChange } = usePeekThrough();
 
+  useEffect(() => {
+    applyLayoutTokensToDocument();
+  }, []);
+
   const viewportRef = useRef<HTMLElement | null>(null);
+  const viewport3dPanelRef = useRef<HTMLDivElement | null>(null);
   const { split2dPx, isDragging, splitHandleProps } = useResizableSplit(viewportRef);
+
+  const resetViewAfterMeshLoad = useCallback(() => {
+    setModelScale(1);
+    setMobilePanel("3d");
+  }, []);
 
   const onPickFile = useCallback(
     async (file: File | null): Promise<boolean> => {
       if (!file) return false;
-      setModelScale(1);
+      resetViewAfterMeshLoad();
       return loadMeshFile(file);
     },
-    [loadMeshFile],
+    [loadMeshFile, resetViewAfterMeshLoad],
   );
 
   const onLoadDemo = useCallback(async (): Promise<boolean> => {
     const demo = DEMO_MODELS.find((model) => model.id === selectedDemoId);
     if (!demo) return false;
 
-    setModelScale(1);
+    resetViewAfterMeshLoad();
     const response = await fetch(`/api/demo-models/${demo.id}`);
     if (!response.ok) {
       notifyToast(
@@ -139,7 +150,7 @@ export default function HomePage() {
     const blob = await response.blob();
     const file = new File([blob], demo.fileName, { type: blob.type });
     return loadMeshFile(file);
-  }, [loadMeshFile, notifyToast, selectedDemoId]);
+  }, [loadMeshFile, notifyToast, resetViewAfterMeshLoad, selectedDemoId]);
 
   const onEdgePick = useCallback(
     (edgeKey: Parameters<typeof toggleSeamAt>[0]) => {
@@ -217,6 +228,7 @@ export default function HomePage() {
 
       <ViewportChrome
         containerRef={viewportRef}
+        viewport3dPanelRef={viewport3dPanelRef}
         isDesktop={isDesktop}
         mobilePanel={mobilePanel}
         onMobilePanelChange={setMobilePanel}
@@ -229,6 +241,7 @@ export default function HomePage() {
               mesh={mesh}
               seams={seams}
               meshLoadVersion={meshLoadVersion}
+              viewportPanelRef={viewport3dPanelRef}
               wireframe={wireframe}
               showGrid={showGrid}
               showAxes={showAxes}

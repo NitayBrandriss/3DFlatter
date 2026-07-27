@@ -31,6 +31,10 @@ export function PickableMesh({
     displayMeshRef.current = displayMesh;
   }, [displayMesh]);
 
+  const clearPointerDown = useCallback(() => {
+    pointerDown.current = null;
+  }, []);
+
   const onPointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (!seamMode) return;
@@ -45,13 +49,13 @@ export function PickableMesh({
   const onPointerUp = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (!seamMode || !pointerDown.current) {
-        pointerDown.current = null;
+        clearPointerDown();
         return;
       }
 
       const dx = e.nativeEvent.clientX - pointerDown.current.x;
       const dy = e.nativeEvent.clientY - pointerDown.current.y;
-      pointerDown.current = null;
+      clearPointerDown();
 
       if (dx * dx + dy * dy > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) {
         return;
@@ -72,8 +76,27 @@ export function PickableMesh({
         onEdgePick(resolved.edgeKey);
       }
     },
-    [onEdgePick, seamMode],
+    [clearPointerDown, onEdgePick, seamMode],
   );
+
+  // VIEW-001: clear drag guard when pointer leaves mesh or is cancelled.
+  useEffect(() => {
+    if (!seamMode) {
+      clearPointerDown();
+      return;
+    }
+
+    const onDocumentPointerUp = () => {
+      clearPointerDown();
+    };
+
+    document.addEventListener("pointerup", onDocumentPointerUp);
+    document.addEventListener("pointercancel", onDocumentPointerUp);
+    return () => {
+      document.removeEventListener("pointerup", onDocumentPointerUp);
+      document.removeEventListener("pointercancel", onDocumentPointerUp);
+    };
+  }, [clearPointerDown, seamMode]);
 
   return (
     <mesh
@@ -81,6 +104,8 @@ export function PickableMesh({
       scale={modelScale}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
+      onPointerCancel={clearPointerDown}
+      onPointerLeave={clearPointerDown}
     >
       <meshStandardMaterial
         color="#cbd5e1"

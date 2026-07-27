@@ -1,6 +1,6 @@
 # QA audit remediation
 
-**Status:** Complete (Slices 0–5; 6–7 remain Optional / Backlog)  
+**Status:** Complete (Slices 0–6; Slice 7 Optional / Backlog)  
 **Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
@@ -48,7 +48,7 @@ flowchart TD
 | **3** | Quality hot-path perf | **Complete** (2026-07-19) | LOGIC-009, LOGIC-010, LOGIC-011, PERF-002 |
 | **4** | I/O + seam robustness | **Complete** (2026-07-19) | LOGIC-004, LOGIC-005, LOGIC-013–015, IO-001, IO-002, IO-003 |
 | **5** | Zustand session scale | **Complete** (2026-07-19) | STATE-003, ARCH-001, ARCH-003, UI-008 |
-| **6** | Layout + a11y | **Optional / Backlog** | LAYOUT-*, A11Y-002/003, STATE-006, VIEW-001, **VIEW-006** |
+| **6** | Layout + a11y | **Complete** (2026-07-27) | LAYOUT-001/002/004/008/009/010, A11Y-002/003, STATE-006, VIEW-001, VIEW-006 |
 | **7** | UI structure / DRY | **Optional / Backlog** | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
 
@@ -256,15 +256,27 @@ flowchart TD
 
 ## Slice 6 — Layout + a11y *(Optional / Backlog)*
 
-**Status:** Optional / Backlog — do not block product work on this slice.
+**Status:** **Complete** (2026-07-27)
 
 **Audit IDs:** LAYOUT-001, LAYOUT-002, LAYOUT-004, LAYOUT-008, LAYOUT-009, LAYOUT-010, A11Y-002, A11Y-003, STATE-006, VIEW-001, **VIEW-006**.
 
 **When to pull forward:** Mobile/desktop shell bugs blocking users, or a dedicated a11y pass.
 
-**Next QA session (2026-07-23):** **VIEW-006** — after mobile Flatten, 3D OrbitControls feel stuck until full refresh (Canvas at 0×0 under `display:none`; `mobilePanel` not reset on model load). Confirmed during Slice 5 Pokeball manual QA. Prefer fixing VIEW-006 first if Slice 6 is pulled. See [qa-audit.md](../../qa-audit.md) VIEW-006.
+**Done when:**
 
-**Primary files:** `src/ui/layout/*`, `PickableMesh.tsx`, `MeshViewport.tsx`, `app/page.tsx`, `globals.css`.
+- [x] VIEW-006 — `SyncGlToPanel` + reset `mobilePanel` on mesh load
+- [x] LAYOUT-002 / LAYOUT-008 / LAYOUT-010 — `ResizeObserver` on viewport; deferred split storage clamp
+- [x] LAYOUT-004 — mobile-first SSR `useMediaQuery`; sidebar storage in `useEffect`
+- [x] STATE-006 — Escape closes sidebar on mobile overlay only
+- [x] LAYOUT-009 — peek without pointer capture; memoized bind
+- [x] LAYOUT-001 — `applyLayoutTokensToDocument` + `LAYOUT_BREAKPOINT_PX` (CSS `@media` literals documented)
+- [x] A11Y-002 — mobile tab roving `tabIndex` + ArrowLeft/Right
+- [x] A11Y-003 — split separator keyboard resize + focus ring
+- [x] VIEW-001 — PickableMesh pointer cancel/leave/document cleanup
+- [x] `npm test` + `npm run lint` green
+- [x] Manual: mobile Flatten → 3D tab orbit OK without refresh — **Pass** (2026-07-27)
+
+**Primary files:** `src/ui/layout/*`, `PickableMesh.tsx`, `MeshViewport.tsx`, `syncGlToPanel.ts`, `app/page.tsx`, `globals.css`.
 
 ---
 

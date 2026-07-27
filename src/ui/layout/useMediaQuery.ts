@@ -12,8 +12,9 @@ function getSnapshot(query: string): boolean {
   return window.matchMedia(query).matches;
 }
 
+/** LAYOUT-004: mobile-first — matches closed mobile sidebar until client hydrates. */
 function getServerSnapshot(): boolean {
-  return true;
+  return false;
 }
 
 export function useMediaQuery(query: string): boolean {

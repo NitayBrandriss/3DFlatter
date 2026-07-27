@@ -1,12 +1,19 @@
 "use client";
 
-import type { CSSProperties, ReactNode, RefObject } from "react";
+import {
+  useCallback,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { SPLIT_2D_MIN } from "./constants";
 
 type MobilePanel = "3d" | "2d";
 
 type ViewportChromeProps = {
   containerRef: RefObject<HTMLElement | null>;
+  viewport3dPanelRef: RefObject<HTMLDivElement | null>;
   isDesktop: boolean;
   mobilePanel: MobilePanel;
   onMobilePanelChange: (panel: MobilePanel) => void;
@@ -14,6 +21,8 @@ type ViewportChromeProps = {
   isDragging: boolean;
   splitHandleProps: {
     onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+    onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+    tabIndex?: number;
     "aria-valuemin": number;
     "aria-valuemax": number;
     "aria-valuenow": number;
@@ -24,6 +33,7 @@ type ViewportChromeProps = {
 
 export function ViewportChrome({
   containerRef,
+  viewport3dPanelRef,
   isDesktop,
   mobilePanel,
   onMobilePanelChange,
@@ -37,6 +47,17 @@ export function ViewportChrome({
     "--split-2d-height": `${split2dPx}px`,
   } as CSSProperties;
 
+  const onTabListKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") {
+        return;
+      }
+      event.preventDefault();
+      onMobilePanelChange(mobilePanel === "3d" ? "2d" : "3d");
+    },
+    [mobilePanel, onMobilePanelChange],
+  );
+
   return (
     <main
       ref={containerRef}
@@ -45,7 +66,12 @@ export function ViewportChrome({
       data-mobile-panel={isDesktop ? undefined : mobilePanel}
     >
       {!isDesktop ? (
-        <div className="viewport-tabs" role="tablist" aria-label="Viewport mode">
+        <div
+          className="viewport-tabs"
+          role="tablist"
+          aria-label="Viewport mode"
+          onKeyDown={onTabListKeyDown}
+        >
           <button
             type="button"
             role="tab"
@@ -53,6 +79,7 @@ export function ViewportChrome({
             className="viewport-tab"
             aria-selected={mobilePanel === "3d"}
             aria-controls="viewport-panel-3d"
+            tabIndex={mobilePanel === "3d" ? 0 : -1}
             onClick={() => onMobilePanelChange("3d")}
           >
             3D
@@ -64,6 +91,7 @@ export function ViewportChrome({
             className="viewport-tab"
             aria-selected={mobilePanel === "2d"}
             aria-controls="viewport-panel-2d"
+            tabIndex={mobilePanel === "2d" ? 0 : -1}
             onClick={() => onMobilePanelChange("2d")}
           >
             2D Pattern
@@ -72,6 +100,7 @@ export function ViewportChrome({
       ) : null}
 
       <div
+        ref={viewport3dPanelRef}
         id="viewport-panel-3d"
         className="viewport-3d"
         role={isDesktop ? undefined : "tabpanel"}
@@ -106,5 +135,4 @@ export function ViewportChrome({
 
 export type { MobilePanel };
 
-// Re-export min for aria in parent if needed
 export { SPLIT_2D_MIN };

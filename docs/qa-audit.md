@@ -331,9 +331,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / UX |
+| **Status** | **Fixed** (2026-07-27, remediation Slice 6) — Escape closes sidebar on mobile overlay only |
 | **Files** | `src/ui/layout/useSidebarState.ts` |
-| **Description** | Escape closes whenever open, including desktop in-flow sidebar. |
-| **Suggested fix** | Gate with `!isDesktop` / overlay-only (product decision). |
+| **Description** | ~~Escape closed whenever open, including desktop in-flow sidebar.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### UI-001 — Duplicated post-load scale reset
 
@@ -392,9 +393,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | DRY |
-| **Files** | `src/ui/layout/constants.ts`, `app/globals.css` |
-| **Description** | Breakpoint / widths / split values duplicated; `--layout-breakpoint` unused by `@media`. |
-| **Suggested fix** | Single source of truth. |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — `applyLayoutTokensToDocument` + `LAYOUT_BREAKPOINT_PX`; CSS `@media` literals documented |
+| **Files** | `src/ui/layout/constants.ts`, `applyLayoutTokens.ts`, `app/globals.css` |
+| **Description** | ~~Breakpoint / widths duplicated.~~ TS pushes token values on mount. |
+| **Suggested fix** | ~~…~~ Done (media queries still use px literals — CSS limitation). |
 
 ### LAYOUT-002 — Stale `containerHeight` for split aria max
 
@@ -402,9 +404,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — `ResizeObserver` on viewport container |
 | **Files** | `useResizableSplit.ts` |
-| **Description** | Height read during render without `ResizeObserver`. |
-| **Suggested fix** | Subscribe to container resize. |
+| **Description** | ~~Height read during render without ResizeObserver.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LAYOUT-004 — SSR/hydration sidebar flash
 
@@ -412,9 +415,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — mobile-first SSR snapshot; sidebar storage deferred to `useEffect` |
 | **Files** | `useMediaQuery.ts`, `useSidebarState.ts` |
-| **Description** | SSR desktop default → mobile hydrate can flash open→closed; storage in `useState` init worsens mismatch. |
-| **Suggested fix** | Mobile-first SSR default; defer storage to `useEffect`. |
+| **Description** | ~~SSR desktop default + storage in `useState` init.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LAYOUT-008 — Stored split height not clamped on init
 
@@ -422,9 +426,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — clamp stored split after container measure |
 | **Files** | `useResizableSplit.ts`, `readLayoutStorage.ts` |
-| **Description** | Corrupt/huge storage applies until drag. |
-| **Suggested fix** | Clamp once container is measurable. |
+| **Description** | ~~Corrupt/huge storage until drag.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LAYOUT-009 — Peek `setPointerCapture` may starve range slider
 
@@ -432,9 +437,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — peek without pointer capture |
 | **Files** | `usePeekThrough.ts`, `PeekThroughControl.tsx` |
-| **Description** | Wrapper capture can retarget moves away from `<input type="range">` mid-drag. |
-| **Suggested fix** | Capture on the range, or skip capture + rely on CSS/`lostpointercapture`. |
+| **Description** | ~~Wrapper capture stole range drags.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### LAYOUT-010 — Layout storage read during `useState` init
 
@@ -442,9 +448,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — sidebar/split storage after mount |
 | **Files** | `readLayoutStorage.ts`, layout hooks |
-| **Description** | Feeds hydration mismatch (LAYOUT-004/008). |
-| **Suggested fix** | Read storage after mount; clamp split after measure. |
+| **Description** | ~~Hydration mismatch from sync storage read.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### A11Y-002 — Mobile tabs lack keyboard tab pattern
 
@@ -452,9 +459,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / a11y |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — roving `tabIndex` + ArrowLeft/Right on tablist |
 | **Files** | `ViewportChrome.tsx` |
-| **Description** | Roles present; missing ArrowLeft/Right + roving tabindex. |
-| **Suggested fix** | WAI-ARIA tabs keyboard pattern. |
+| **Description** | ~~Missing keyboard pattern.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### A11Y-003 — Split separator not keyboard-resizable
 
@@ -462,9 +470,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / a11y |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — ArrowUp/Down on separator + focus ring |
 | **Files** | `ViewportChrome.tsx`, `useResizableSplit.ts` |
-| **Description** | `role="separator"` + aria values without ArrowUp/Down. |
-| **Suggested fix** | Key adjust + clamp + persist. |
+| **Description** | ~~No keyboard resize.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### IO-001 — STL format heuristic can prefer binary over ASCII
 
@@ -494,9 +503,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — cancel/leave + document pointer cleanup |
 | **Files** | `PickableMesh.tsx` |
-| **Description** | Clears `pointerDown` only on mesh `pointerUp`; cancel/leave/lost capture can leave stale state. |
-| **Suggested fix** | `onPointerCancel` / leave / document `pointerup` cleanup. |
+| **Description** | ~~Stale `pointerDown` on cancel/leave.~~ |
+| **Suggested fix** | ~~…~~ Done. |
 
 ### APP-001 — `page.tsx` is a large orchestrator
 
@@ -525,11 +535,11 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Logic / UX |
-| **Status** | **Open** — filed 2026-07-23 for next QA / Slice 6 pull-forward |
-| **Files** | `app/page.tsx` (`handleFlatten` → `setMobilePanel("2d")`), `ViewportChrome.tsx` (`hidden` on inactive tab), `MeshViewport.tsx`, `globals.css` (`.viewport-3d[hidden] { display: none }`) |
-| **Description** | After successful Flatten on mobile (≤768px), UI-006 switches to the 2D tab and hides the 3D panel with `display: none`. The R3F Canvas stays mounted at **0×0**; OrbitControls sensitivity divides by `clientHeight` and feels stuck / tiny. Loading another model does **not** reset `mobilePanel` (still `"2d"`), so remount can still happen while hidden. Full page refresh resets `mobilePanel` to `"3d"` and orbit works again. Confirmed during Slice 5 manual QA (Pokeball); desktop split is OK. |
-| **Suggested fix** | ResizeObserver / sync `gl.setSize` + camera aspect when `#viewport-panel-3d` gains non-zero size; reset `mobilePanel` to `"3d"` on successful mesh load. Optional: avoid remounting Canvas while panel is `display: none`. |
-| **Repro** | Narrow viewport → load mid-size mesh → orbit OK → Flatten → 2D tab → tap 3D (or load another model) → orbit broken until refresh. |
+| **Status** | **Fixed** (2026-07-27, Slice 6) — `SyncGlToPanel` ResizeObserver; `mobilePanel` → `"3d"` on mesh load |
+| **Files** | `app/page.tsx`, `ViewportChrome.tsx`, `MeshViewport.tsx`, `syncGlToPanel.ts`, `globals.css` |
+| **Description** | ~~Canvas 0×0 when 3D tab hidden after Flatten.~~ |
+| **Suggested fix** | ~~…~~ Done. |
+| **Repro** | Narrow viewport → load mesh → Flatten → 2D tab → 3D tab — orbit should work without refresh. |
 
 | ID | Category | Files | Description | Suggested fix | Status |
 |----|----------|-------|-------------|---------------|--------|
@@ -640,9 +650,9 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 6. ~~**LOGIC-011 / LOGIC-010 / LOGIC-009** (+ PERF-002)~~ — **Done** (Slice 3, 2026-07-19)
 7. ~~**LOGIC-004/005/013–015 + IO-001/002/003**~~ — **Done** (Slice 4, 2026-07-19)
 8. ~~**STATE-003 / ARCH-001** — scale readiness~~ — Slice 5; UI-004 Web Worker still deferred per ADR 0004
-9. **VIEW-006** — mobile post-Flatten orbit lock (UI-006 side effect; pull with Slice 6 or hotfix)
-10. **LAYOUT-009/008/010 + A11Y-002/003** — layout hardening + keyboard a11y
-11. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down
+9. ~~**VIEW-006** — mobile post-Flatten orbit lock~~ — Slice 6 (2026-07-27)
+10. ~~**LAYOUT-009/008/010 + A11Y-002/003**~~ — Slice 6 (2026-07-27)
+11. **UI-003 / UI-002 / APP-001** — preview/export DRY and orchestrator slim-down (Slice 7)
 
 ---
 

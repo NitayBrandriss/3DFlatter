@@ -1,5 +1,7 @@
 :root {
   color-scheme: dark;
+  /* Defaults — client applies TS tokens via applyLayoutTokensToDocument (LAYOUT-001). */
+  /* @media breakpoints: sync with LAYOUT_BREAKPOINT_PX in src/ui/layout/constants.ts */
   --layout-breakpoint: 769px;
   --sidebar-open-width: 360px;
   --sidebar-rail-width: 80px;
@@ -315,6 +317,11 @@ body.is-resizing {
 .viewport-split-handle:hover,
 .viewport-split-handle.is-dragging {
   background: rgba(255, 255, 255, 0.12);
+}
+
+.viewport-split-handle:focus-visible {
+  outline: 2px solid #7c9cff;
+  outline-offset: 1px;
 }
 
 .flatten-panel-host {
