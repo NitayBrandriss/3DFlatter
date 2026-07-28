@@ -97,7 +97,9 @@ export function barycentric(
   const d20 = dot(v2, v0);
   const d21 = dot(v2, v1);
   const denom = d00 * d11 - d01 * d01;
-  if (Math.abs(denom) < WELD_EPSILON * WELD_EPSILON) return null;
+  // Relative degeneracy: absolute WELD² rejects valid tiny triangles
+  const scale = Math.max(d00 * d11, d00 * d00, d11 * d11, Number.EPSILON);
+  if (Math.abs(denom) <= Math.max(Number.EPSILON * scale, 1e-300)) return null;
   const v = (d11 * d20 - d01 * d21) / denom;
   const w = (d00 * d21 - d01 * d20) / denom;
   const u = 1 - v - w;
@@ -128,7 +130,25 @@ export function meshBBoxDiagonal(mesh: MeshModel): number {
   return Math.hypot(maxX - minX, maxY - minY, maxZ - minZ);
 }
 
-/** Scale-aware snap epsilon (ADR 0100). */
+/** Scale-aware snap epsilon (ADR 0100). Floor only when bbox is degenerate. */
 export function snapEpsilonForMesh(mesh: MeshModel): number {
-  return Math.max(WELD_EPSILON, meshBBoxDiagonal(mesh) * 1e-4);
+  const d = meshBBoxDiagonal(mesh);
+  if (d <= WELD_EPSILON) return WELD_EPSILON;
+  return d * 1e-4;
 }
+
+/**
+ * On-surface / plane-distance gate (tighter than snap).
+ * Relative to bbox so large meshes reject far off-plane samples.
+ */
+export function surfaceEpsilonForMesh(mesh: MeshModel): number {
+  const d = meshBBoxDiagonal(mesh);
+  if (d <= WELD_EPSILON) return WELD_EPSILON;
+  return Math.max(WELD_EPSILON * 1e-2, d * 1e-6);
+}
+
+/** Dimensionless barycentric boundary slack (scale-invariant). */
+export const BARY_SLACK = 1e-4;
+
+/** Dimensionless open-interval epsilon for edge split parameters. */
+export const PARAM_EPS = 1e-9;

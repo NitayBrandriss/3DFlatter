@@ -1,6 +1,6 @@
 # 3DFlatter — QA Code Audit
 
-> **How to use this doc (2026-07-28):** Static audit snapshot from **2026-07-19**; **[QA remediation Slices 0–7](plans/poc/archive/qa-audit-remediation.md) is complete** (2026-07-27). For product roadmap, see [PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md) and [plans/product/README.md](plans/product/README.md). For **what is still open vs deferred**, see [Findings count](#findings-count) and [Low](#low) — not the 2026-07-19 executive bullets alone.
+> **How to use this doc (2026-07-28):** Static audit snapshot from **2026-07-19**; **[QA remediation Slices 0–7](archive/qa-audit-remediation.md) is complete** (2026-07-27). For product roadmap, see [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md) and [plans/product/README.md](../product/README.md). For **what is still open vs deferred**, see [Findings count](#findings-count) and [Low](#low) — not the 2026-07-19 executive bullets alone.
 
 **Date:** 2026-07-19 (Staff/Principal refresh of 2026-07-14 audit; Slice 0 ADR sync applied same day)  
 **Scope:** `src/logic/`, `src/state/`, `src/ui/` (incl. `layout/`), `src/viewer/`, `app/`, `docs/decisions/`, `docs/plans/`  
@@ -27,7 +27,7 @@
 
 Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `EdgeKey` seam identity, and a clean `src/logic/` boundary (zero React/Three.js imports — verified). Prior Critical/High lifecycle bugs stay fixed (`loadSeq`, weld/orphan skips, partial unfold, flatten keyed to `meshLoadVersion`).
 
-**Post-remediation (2026-07-27):** Slices 0–7 addressed the Medium/High remediation backlog from this audit (docs sync, quality correctness, logic DRY/perf, I/O budgets, Zustand selectors, layout/a11y, UI structure). **No open Critical or High items.** Remaining work is **Low polish**, **Info** PoC limits, and **UI-004** (Web Worker flatten) **deferred** per [ADR 0004](decisions/poc/0004-tech-debt-remediation-strategy.md).
+**Post-remediation (2026-07-27):** Slices 0–7 addressed the Medium/High remediation backlog from this audit (docs sync, quality correctness, logic DRY/perf, I/O budgets, Zustand selectors, layout/a11y, UI structure). **No open Critical or High items.** Remaining work is **Low polish**, **Info** PoC limits, and **UI-004** (Web Worker flatten) **deferred** per [ADR 0004](../../decisions/poc/0004-tech-debt-remediation-strategy.md).
 
 **Original 2026-07-19 focus:** ADR validity + doc drift, SoC, DRY, performance, and edge-case logic. ADRs 0001–0003 remain the right foundation; doc gaps called out here were largely addressed in Slices 0–1.
 
@@ -43,7 +43,7 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | **Resolved (Slice 6–7, 2026-07-27)** | STATE-006, VIEW-001, VIEW-006, LAYOUT-001/002/004/008/009/010, A11Y-002/003; UI-001/003, UI-002 mitigated, APP-001 mitigated, APP-002/003, LAYOUT-007 |
 | **New Medium (2026-07-19 audit)** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003; VIEW-006 (filed 2026-07-23, fixed Slice 6) |
 | **New Low (2026-07-19 audit)** | DOC-002 (PERF-002 fixed Slice 3) |
-| **Deferred (not blocking PoC)** | **UI-004** Web Worker flatten — [remediation Deferred](plans/poc/archive/qa-audit-remediation.md#deferred) |
+| **Deferred (not blocking PoC)** | **UI-004** Web Worker flatten — [remediation Deferred](archive/qa-audit-remediation.md#deferred) |
 | **Still open** | Low-priority IDs in [Low](#low) table (~11); optional LOGIC-006 BFS walker share |
 | **Baseline** | Quality overlay + mobile layout shipped; remediation plan complete |
 
@@ -382,7 +382,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
-| **Status** | **Deferred** (PoC) — per [ADR 0004](decisions/poc/0004-tech-debt-remediation-strategy.md) Decision 1; [remediation Deferred](plans/poc/archive/qa-audit-remediation.md#deferred) |
+| **Status** | **Deferred** (PoC) — per [ADR 0004](../../decisions/poc/0004-tech-debt-remediation-strategy.md) Decision 1; [remediation Deferred](archive/qa-audit-remediation.md#deferred) |
 | **Files** | `src/ui/useFlattenExport.ts` |
 | **Description** | `unfoldMesh` (+ quality) runs sync in `try/finally`. Loading overlay covers parse only. |
 | **Suggested fix** | Worker, chunked yield, or explicit flatten progress UI — revisit when real meshes block the main thread. |
@@ -598,7 +598,7 @@ Consolidated Low-severity items (includes fixed rows for history). **Open** rows
 
 ---
 
-## Layout slice health check ([mobile-responsive-layout](plans/poc/archive/mobile-responsive-layout.md))
+## Layout slice health check ([mobile-responsive-layout](archive/mobile-responsive-layout.md))
 
 | Expectation | QA verdict |
 |-------------|------------|
@@ -616,7 +616,7 @@ Consolidated Low-severity items (includes fixed rows for history). **Open** rows
 
 ---
 
-## Quality overlay slice ([step-3-quality-overlay](plans/poc/archive/step-3-quality-overlay.md))
+## Quality overlay slice ([step-3-quality-overlay](archive/step-3-quality-overlay.md))
 
 | Expectation | QA verdict |
 |-------------|------------|
@@ -694,7 +694,7 @@ Consolidated Low-severity items (includes fixed rows for history). **Open** rows
 
 | Category | Notable IDs |
 |----------|-------------|
-| **Performance** | **UI-004** — deferred Web Worker flatten ([ADR 0004](decisions/poc/0004-tech-debt-remediation-strategy.md)) |
+| **Performance** | **UI-004** — deferred Web Worker flatten ([ADR 0004](../../decisions/poc/0004-tech-debt-remediation-strategy.md)) |
 | **DRY / polish (Low)** | LOGIC-016–019, LAYOUT-005, VIEW-003, UI-007 |
 | **Logic / UX (Low)** | STATE-005, UI-005, VIEW-002, VIEW-004 |
 | **Architecture** | UI-002, APP-001 — mitigated Slice 7; further card split optional |

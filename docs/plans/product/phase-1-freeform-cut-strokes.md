@@ -16,7 +16,7 @@ Non-destructive **cut strokes** on the 3D mesh (overlay in Zustand); **lazy** `m
 | Editing | `cutStrokes` in canonical 3D; base `session.mesh` unchanged until Flatten |
 | Commit | `materializeCutStrokes` → derived mesh + topology + seam union → `unfoldMesh` |
 | Open loops | Warn on Flatten; user may proceed |
-| Geometry | Segment–triangle cuts, interior Steiner points + fan triangulation, vertex/edge snap |
+| Geometry | Segment–triangle clip walk, interior Steiner + fan, scale-aware snap/surface eps; whole-stroke self-intersect reject |
 | Versioning | `meshLoadVersion` on load only; `patternRevision` (or flatten fingerprint) for stroke edits |
 
 ## Implementation slices

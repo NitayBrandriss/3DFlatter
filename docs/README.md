@@ -11,11 +11,11 @@
 
 ```text
 docs/
-  qa-audit.md            PoC-era audit
   plans/
     README.md            Index → poc/ vs product/
     poc/
       PROJECT_SUMMARY.md PoC phase summary (frozen)
+      qa-audit.md        PoC-era QA audit (frozen)
       README.md          PoC shipped table
       archive/           PoC implementation specs
     product/             Phase 2+ active plans

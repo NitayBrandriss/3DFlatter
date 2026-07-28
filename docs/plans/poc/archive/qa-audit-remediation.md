@@ -1,7 +1,7 @@
 # QA audit remediation
 
 **Status:** Complete (Slices 0–7)  
-**Source audit:** [qa-audit.md](../../../qa-audit.md) (2026-07-19 Staff refresh)  
+**Source audit:** [qa-audit.md](../qa-audit.md) (2026-07-19 Staff refresh)  
 **ADR:** [0004 — Tech-debt remediation strategy](../../../decisions/poc/0004-tech-debt-remediation-strategy.md)  
 **Depends on:** ADRs [0001](../../../decisions/poc/0001-mesh-model-and-topology.md)–[0003](../../../decisions/poc/0003-unfold-quality-detection.md)  
 **Hub:** [Plans & roadmap](../README.md)
@@ -52,7 +52,7 @@ flowchart TD
 | **7** | UI structure / DRY | **Complete** (2026-07-27) | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
 
-**Dependency rules:** Slice 2 before 3. Slice 0 can ship alone. One slice per Agent pass. Run `npm test` after each slice; also `npm run lint` when touching TypeScript/React. Update [qa-audit.md](../../../qa-audit.md) statuses when a slice ships.
+**Dependency rules:** Slice 2 before 3. Slice 0 can ship alone. One slice per Agent pass. Run `npm test` after each slice; also `npm run lint` when touching TypeScript/React. Update [qa-audit.md](../qa-audit.md) statuses when a slice ships.
 
 ---
 
@@ -319,13 +319,13 @@ flowchart TD
 2. Implement minimal diff; extend existing modules; ask before new dependencies or public type shape changes beyond this plan.
 3. `npm test`; `npm run lint` if TS/React touched.
 4. For Slices **2** and **3**: complete **Manual visual QA with a complex seamed model**.
-5. Mark audit IDs fixed in [qa-audit.md](../../../qa-audit.md); tick Done-when boxes here.
+5. Mark audit IDs fixed in [qa-audit.md](../qa-audit.md); tick Done-when boxes here.
 6. One slice per PR / Agent pass preferred.
 
 ---
 
 ## References
 
-- [qa-audit.md](../../../qa-audit.md)
+- [qa-audit.md](../qa-audit.md)
 - [ADR 0004 — Tech-debt remediation strategy](../../../decisions/poc/0004-tech-debt-remediation-strategy.md)
 - [AGENTS.md](../../../../AGENTS.md)

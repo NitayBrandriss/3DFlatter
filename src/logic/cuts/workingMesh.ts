@@ -2,6 +2,7 @@ import { makeEdgeKey } from "../mesh/edgeKey";
 import type { EdgeKey, MeshModel } from "../mesh/types";
 import type { Vec3 } from "./types";
 import {
+  BARY_SLACK,
   barycentric,
   closestOnSegment,
   distSq,
@@ -28,8 +29,17 @@ export class WorkingMesh {
   seams: Set<EdgeKey>;
   readonly eps: number;
   readonly epsSq: number;
+  readonly surfaceEps: number;
+  readonly surfaceEpsSq: number;
+  /** vertex index → incident face indices (rebuilt on topology edits). */
+  private vertexFaces: number[][] = [];
 
-  constructor(mesh: MeshModel, seams: Iterable<EdgeKey>, eps: number) {
+  constructor(
+    mesh: MeshModel,
+    seams: Iterable<EdgeKey>,
+    eps: number,
+    surfaceEps: number = eps,
+  ) {
     this.positions = Array.from(mesh.vertices);
     this.faces = [];
     for (let fi = 0; fi < mesh.faceCount; fi++) {
@@ -43,6 +53,9 @@ export class WorkingMesh {
     this.seams = new Set(seams);
     this.eps = eps;
     this.epsSq = eps * eps;
+    this.surfaceEps = surfaceEps;
+    this.surfaceEpsSq = surfaceEps * surfaceEps;
+    this.rebuildVertexFaces();
   }
 
   vertexCount(): number {
@@ -56,7 +69,23 @@ export class WorkingMesh {
   addVertex(p: Vec3): number {
     const vi = this.vertexCount();
     this.positions.push(p.x, p.y, p.z);
+    this.vertexFaces.push([]);
     return vi;
+  }
+
+  facesOfVertex(vi: number): readonly number[] {
+    return this.vertexFaces[vi] ?? [];
+  }
+
+  private rebuildVertexFaces(): void {
+    const n = this.vertexCount();
+    this.vertexFaces = Array.from({ length: n }, () => []);
+    for (let fi = 0; fi < this.faces.length; fi++) {
+      const [a, b, c] = this.faces[fi]!;
+      this.vertexFaces[a]!.push(fi);
+      this.vertexFaces[b]!.push(fi);
+      this.vertexFaces[c]!.push(fi);
+    }
   }
 
   /** Unique undirected edges as sorted endpoint pairs. */
@@ -80,7 +109,11 @@ export class WorkingMesh {
 
   faceIndicesWithEdge(a: number, b: number): number[] {
     const out: number[] = [];
-    for (let fi = 0; fi < this.faces.length; fi++) {
+    const candidates = new Set<number>([
+      ...this.facesOfVertex(a),
+      ...this.facesOfVertex(b),
+    ]);
+    for (const fi of candidates) {
       const [x, y, z] = this.faces[fi]!;
       if (
         (x === a && y === b) ||
@@ -122,15 +155,12 @@ export class WorkingMesh {
         if (distSq(this.getVertex(vi), point) > this.epsSq) continue;
         const { distSq: d } = closestOnSegment(this.getVertex(vi), pa, pb);
         if (d <= this.epsSq) {
-          // Near target and on the chord — if ab still present, keep splitting with new mid
-          // unless vi already bridges a–vi–b
           if (this.hasEdge(a, vi) && this.hasEdge(vi, b)) {
             return vi;
           }
         }
       }
     } else {
-      // Edge already subdivided: find existing bridge vertex nearest to t
       let best = -1;
       let bestD = this.epsSq;
       for (let vi = 0; vi < this.vertexCount(); vi++) {
@@ -160,7 +190,6 @@ export class WorkingMesh {
       this.seams.add(childB);
     }
 
-    // Split faces from high index to low so splice indices stay valid
     const incident = this.faceIndicesWithEdge(a, b).sort((x, y) => y - x);
     for (const fi of incident) {
       const [x, y, z] = this.faces[fi]!;
@@ -169,17 +198,16 @@ export class WorkingMesh {
       else if ((y === a || y === b) && (z === a || z === b)) third = x;
       else third = y;
 
-      // Preserve winding of directed edge a→b or b→a as in the face
       const replacement = splitTriWinding([x, y, z], a, b, mid, third);
       this.faces.splice(fi, 1, ...replacement);
     }
+    this.rebuildVertexFaces();
 
     return mid;
   }
 
   /** Fan-split a face around an interior Steiner point. */
   insertInterior(faceIndex: number, p: Vec3): number {
-    // Reuse nearby vertex
     for (let vi = 0; vi < this.vertexCount(); vi++) {
       if (distSq(this.getVertex(vi), p) <= this.epsSq) {
         return vi;
@@ -188,6 +216,7 @@ export class WorkingMesh {
     const [a, b, c] = this.faces[faceIndex]!;
     const v = this.addVertex(p);
     this.faces.splice(faceIndex, 1, [a, b, v], [b, c, v], [c, a, v]);
+    this.rebuildVertexFaces();
     return v;
   }
 
@@ -221,10 +250,11 @@ export class WorkingMesh {
       return { kind: "edge", a: bestEdge.a, b: bestEdge.b, t: bestEdge.t };
     }
 
-    // Face interior: near plane + barycentric inside
+    // Face interior: near plane + barycentric inside (surfaceEps plane gate)
     let bestFace = -1;
-    let bestFaceD = this.epsSq * 100; // slightly looser plane distance
+    let bestFaceD = this.surfaceEpsSq;
     let bestPoint = p;
+    const slack = BARY_SLACK;
     for (let fi = 0; fi < this.faces.length; fi++) {
       const [ia, ib, ic] = this.faces[fi]!;
       const a = this.getVertex(ia);
@@ -239,16 +269,13 @@ export class WorkingMesh {
         u * a.z + v * b.z + w * c.z,
       );
       const dPlane = distSq(p, planePoint);
-      // Inside or on boundary (with small slack)
-      const slack = 1e-4;
+      if (dPlane > this.surfaceEpsSq) continue;
       if (u >= -slack && v >= -slack && w >= -slack && dPlane <= bestFaceD) {
-        // Prefer strict interior for face kind; boundary should have been edge/vertex
         if (u > slack && v > slack && w > slack) {
           bestFaceD = dPlane;
           bestFace = fi;
           bestPoint = planePoint;
         } else if (bestFace < 0 && dPlane <= this.epsSq) {
-          // On boundary but missed edge snap — treat via bary → edge
           bestFaceD = dPlane;
           bestFace = fi;
           bestPoint = planePoint;
@@ -262,8 +289,6 @@ export class WorkingMesh {
       const c = this.getVertex(ic);
       const bary = barycentric(bestPoint, a, b, c);
       if (bary) {
-        const slack = 1e-4;
-        // Degenerate to edge if nearly on boundary
         if (bary.u <= slack) {
           const { t } = closestOnSegment(bestPoint, b, c);
           return { kind: "edge", a: ib, b: ic, t };
@@ -309,22 +334,24 @@ export class WorkingMesh {
   /** True if vertex lies on some boundary edge (incident count === 1). */
   isBoundaryVertex(vi: number): boolean {
     const edgeCount = new Map<string, number>();
-    for (const [a, b, c] of this.faces) {
+    for (const fi of this.facesOfVertex(vi)) {
+      const [a, b, c] = this.faces[fi]!;
       for (const [u, v] of [
         [a, b],
         [b, c],
         [c, a],
       ] as const) {
+        if (u !== vi && v !== vi) continue;
         const key = makeEdgeKey(u, v);
         edgeCount.set(key, (edgeCount.get(key) ?? 0) + 1);
       }
     }
-    for (const [key, count] of edgeCount) {
-      if (count !== 1) continue;
+    // Re-count full incidence for those candidate edges (star-local may undercount)
+    for (const key of edgeCount.keys()) {
       const comma = key.indexOf(",");
       const a = Number(key.slice(0, comma));
       const b = Number(key.slice(comma + 1));
-      if (a === vi || b === vi) return true;
+      if (this.faceIndicesWithEdge(a, b).length === 1) return true;
     }
     return false;
   }
@@ -339,7 +366,6 @@ function splitTriWinding(
   third: number,
 ): Tri[] {
   const [x, y, z] = tri;
-  // Walk corners; when we see directed edge a→b or b→a, insert mid
   const verts = [x, y, z];
   for (let i = 0; i < 3; i++) {
     const u = verts[i]!;
@@ -357,7 +383,6 @@ function splitTriWinding(
       ];
     }
   }
-  // Fallback: undirected match
   return [
     [a, mid, third],
     [mid, b, third],

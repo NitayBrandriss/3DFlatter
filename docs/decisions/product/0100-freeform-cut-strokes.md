@@ -33,20 +33,21 @@ PoC seam editing is limited to toggling existing mesh edges (`EdgeKey` / [ADR 00
 
 #### Snapping
 
-- Before inserting vertices, snap stroke samples to existing vertices, then to edge chords, using a **scale-aware** epsilon:
-  - `max(WELD_EPSILON, bboxDiagonal * 1e-4)` (same order as weld / `SAT_EPS`).
-- Snapping prevents sliver triangles at near-miss endpoints.
+- Before inserting vertices, snap stroke samples to existing vertices, then to edge chords, using a **scale-aware** snap epsilon:
+  - `bboxDiagonal * 1e-4` when the bbox diagonal is meaningful; floor at `WELD_EPSILON` only when the diagonal is degenerate.
+- **On-surface** gate (plane distance for face locate) uses a tighter relative epsilon (`~bboxDiagonal * 1e-6`), separate from snap.
+- Snapping prevents sliver triangles at near-miss endpoints; segments that collapse under snap emit a warning.
 
 #### Subdivision rules
 
-- Segment–triangle surface cuts: edge chord splits propagate to all incident faces; interior Steiner points use **fan triangulation** from the interior point (or ordered face-local polyline splits).
+- Segment–triangle surface cuts: walk the chord face-to-face, splitting crossed edge chords so cuts may span many triangles in one segment; interior Steiner points use **fan triangulation**.
 - Output remains strict triangles, manifold where the input was, non-degenerate indices.
-- Reject **self-intersecting** stroke polylines **per face** (warning; skip that stroke or face cut). Concave fan risk matches OBJ fan limits ([ADR 0001](../poc/0001-mesh-model-and-topology.md)).
+- Reject **self-intersecting** stroke polylines via **whole-stroke** proper 3D segment intersection (warning; skip that stroke). First↔last segment exclusion applies only when the stroke is geometrically closed (first ≈ last within snap eps). **Per-face** 2D self-intersection is deferred. Concave fan risk matches OBJ fan limits ([ADR 0001](../poc/0001-mesh-model-and-topology.md)).
 
 #### Open-loop validation
 
 - A stroke is an **open loop** when it is not closed (first ≉ last within snap eps) **and** at least one endpoint is **not** on a boundary edge of the derived mesh (interior Steiner or interior-face endpoint).
-- Semantics: open loops **subdivide** and mark cut edges as seams, but may **not** disconnect islands the way a closed seam cycle would ([`partitionIslands`](../../../src/logic/mesh/partitionIslands.ts) only cuts adjacency on seams).
+- Semantics: open loops **subdivide** and mark cut edges as seams, but may **not** disconnect islands the way a closed seam cycle would ([`partitionIslands`](../../../src/logic/mesh/partitionIslands.ts) only cuts adjacency on seams). On closed solids (no free boundary), edge-to-edge face cuts still warn — messaging notes they may not split a closed shell.
 - Flatten **warns** (toast) and **continues** — user may proceed. Triangle-soup unfold supports duplicate 2D corners along slit paths in principle ([ADR 0002](../poc/0002-unfold-step-1-hinge-island.md)).
 
 #### CutManifest (hooks only in Phase 1)

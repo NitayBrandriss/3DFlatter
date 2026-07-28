@@ -68,12 +68,13 @@ describe("materializeCutStrokes", () => {
 
   it("zigzag (valid): multi-segment cut on one face without self-intersection", () => {
     const mesh = unitTriangle();
+    // Non-crossing polyline (previous fixture crossed seg0 vs seg2)
     const cuts = [
       stroke("zz", [
-        v(0.2, 0, 0),
-        v(0.3, 0.2, 0),
-        v(0.5, 0.05, 0),
-        v(0.15, 0.15, 0),
+        v(0.15, 0),
+        v(0.25, 0.15),
+        v(0.4, 0.08),
+        v(0.55, 0.2),
       ]),
     ];
     const result = materializeCutStrokes(mesh, cuts, new Set());

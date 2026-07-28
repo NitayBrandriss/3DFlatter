@@ -8,7 +8,7 @@ depends_on: 0001, 0002, 0003
 
 ### Context
 
-The project has a large, prioritized QA audit ([docs/qa-audit.md](../../qa-audit.md)) covering architecture, DRY geometry helpers, quality-detection performance, session/state scaling, layout/a11y, and UI structure. Remediating every finding in one push would stall feature velocity. We need an explicit strategy for **what to fix now**, **what to defer**, and **how to verify** algorithmic refactors without relying solely on unit tests.
+The project has a large, prioritized QA audit ([docs/plans/poc/qa-audit.md](../plans/poc/qa-audit.md)) covering architecture, DRY geometry helpers, quality-detection performance, session/state scaling, layout/a11y, and UI structure. Remediating every finding in one push would stall feature velocity. We need an explicit strategy for **what to fix now**, **what to defer**, and **how to verify** algorithmic refactors without relying solely on unit tests.
 
 The remediation plan lives at [docs/plans/poc/archive/qa-audit-remediation.md](../../plans/poc/archive/qa-audit-remediation.md). This ADR records the architectural policy that plan must follow.
 
@@ -53,7 +53,7 @@ The remediation plan lives at [docs/plans/poc/archive/qa-audit-remediation.md](.
 | File | Role |
 |------|------|
 | [docs/plans/poc/archive/qa-audit-remediation.md](../../plans/poc/archive/qa-audit-remediation.md) | Sliced execution plan bound by this ADR |
-| [docs/qa-audit.md](../../qa-audit.md) | Finding source of truth; update statuses as slices ship |
+| [docs/plans/poc/qa-audit.md](../plans/poc/qa-audit.md) | Finding source of truth; update statuses as slices ship |
 
 ### References
 

@@ -2,7 +2,8 @@
 
 **PoC delivery is complete.** The **Shipped** table below is the historical record. Do not add product features here.
 
-**PoC phase summary:** [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)
+**PoC phase summary:** [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)  
+**PoC QA audit:** [qa-audit.md](qa-audit.md)
 
 **Product work:** [product/README.md](../product/README.md) and [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md).
 
@@ -39,7 +40,7 @@ flowchart LR
 | Step 3 | Unfold quality detection (3a + 3b) | **Complete** | [ADR 0003](../../decisions/poc/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
 | Step 3 stretch | Quality overlay in 2D viewer | **Complete** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
-| QA | Audit remediation (Slices 0–7) | **Complete** | [ADR 0004](../../decisions/poc/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](../../qa-audit.md) |
+| QA | Audit remediation (Slices 0–7) | **Complete** | [ADR 0004](../../decisions/poc/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](qa-audit.md) |
 
 ---
 
@@ -69,7 +70,7 @@ Manual regression (Step 2): load cube → seam top face → Flatten → two sepa
 | [step-3-quality-detection.md](archive/step-3-quality-detection.md) | ADR 0003 wiring: collision + tear detection |
 | [step-3-quality-overlay.md](archive/step-3-quality-overlay.md) | 2D viewer overlay + toast + Flatten card toggle |
 | [mobile-responsive-layout.md](archive/mobile-responsive-layout.md) | Collapsible sidebar, 2D split, mobile tabs, peek-through |
-| [qa-audit-remediation.md](archive/qa-audit-remediation.md) | Sliced tech-debt fixes from [qa-audit.md](../../qa-audit.md) |
+| [qa-audit-remediation.md](archive/qa-audit-remediation.md) | Sliced tech-debt fixes from [qa-audit.md](qa-audit.md) |
 
 ---
 

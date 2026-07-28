@@ -1,5 +1,4 @@
 import { buildTopology } from "../mesh/buildTopology";
-import { makeEdgeKey } from "../mesh/edgeKey";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../mesh/types";
 import type {
   CutManifestEntry,
@@ -8,7 +7,12 @@ import type {
   OpenLoopInfo,
   Vec3,
 } from "./types";
-import { distSq, snapEpsilonForMesh } from "./vec3";
+import {
+  distSq,
+  PARAM_EPS,
+  snapEpsilonForMesh,
+  surfaceEpsilonForMesh,
+} from "./vec3";
 import { WorkingMesh, type PointLocation } from "./workingMesh";
 export type { CutStroke, MaterializeCutStrokesResult, Vec3 } from "./types";
 
@@ -26,7 +30,8 @@ export function materializeCutStrokes(
   const seamSet =
     manualSeams instanceof Set ? manualSeams : manualSeams.seams;
   const eps = snapEpsilonForMesh(mesh);
-  const working = new WorkingMesh(mesh, seamSet, eps);
+  const surfaceEps = surfaceEpsilonForMesh(mesh);
+  const working = new WorkingMesh(mesh, seamSet, eps, surfaceEps);
   const warnings: string[] = [];
   const manifest: CutManifestEntry[] = [];
   const openLoops: OpenLoopInfo[] = [];
@@ -52,7 +57,7 @@ export function materializeCutStrokes(
       const keys = cutSegment(working, p0, p1, warnings, stroke.id);
       manifest.push({ strokeId: stroke.id, segmentIndex: seg, edgeKeys: keys });
 
-      if (seg === 0 && keys.length >= 0) {
+      if (seg === 0) {
         endpointVerts[0] = resolveEndpointVertex(working, p0);
       }
       if (seg === stroke.points.length - 2) {
@@ -75,7 +80,7 @@ export function materializeCutStrokes(
       if (interiorEndpoints.length > 0) {
         openLoops.push({ strokeId: stroke.id, interiorEndpoints });
         warnings.push(
-          `Cut stroke "${stroke.id}" is an open loop (interior endpoint); unfold may not split islands`,
+          `Cut stroke "${stroke.id}" is an open loop (endpoint not on a free boundary); may not split a closed shell`,
         );
       }
     }
@@ -100,7 +105,6 @@ export function materializeCutStrokes(
 function resolveEndpointVertex(working: WorkingMesh, p: Vec3): number | null {
   const loc = working.locate(p);
   if (loc.kind === "vertex") return loc.vi;
-  // After cuts, endpoint should snap to a vertex
   let best = -1;
   let bestD = working.epsSq;
   for (let vi = 0; vi < working.vertexCount(); vi++) {
@@ -124,6 +128,9 @@ function cutSegment(
   strokeId: string,
 ): EdgeKey[] {
   if (distSq(p0, p1) <= working.epsSq) {
+    warnings.push(
+      `Cut stroke "${strokeId}": segment collapsed under snap; skipped`,
+    );
     return [];
   }
 
@@ -159,9 +166,14 @@ function cutSegment(
 
   const v0 = firstPoint === p0 ? vFirst : vSecond;
   const v1 = firstPoint === p0 ? vSecond : vFirst;
-  if (v0 === v1) return [];
+  if (v0 === v1) {
+    warnings.push(
+      `Cut stroke "${strokeId}": segment collapsed under snap; skipped`,
+    );
+    return [];
+  }
 
-  return connectCut(working, v0, v1, p0, p1, warnings, strokeId);
+  return connectCut(working, v0, v1, warnings, strokeId);
 }
 
 function locationPriority(loc: PointLocation): number {
@@ -171,12 +183,14 @@ function locationPriority(loc: PointLocation): number {
   return 3;
 }
 
+/**
+ * Connect two existing vertices with a seam chain by walking face-to-face
+ * along the chord, splitting crossed mesh edges (CUT-003).
+ */
 function connectCut(
   working: WorkingMesh,
   v0: number,
   v1: number,
-  p0: Vec3,
-  p1: Vec3,
   warnings: string[],
   strokeId: string,
 ): EdgeKey[] {
@@ -184,130 +198,170 @@ function connectCut(
     return [working.markSeam(v0, v1)];
   }
 
-  // Shared triangle without existing... impossible for two corners.
-  // Adjacent-face bridge via shared edge.
-  const faces0 = facesIncidentToVertex(working, v0);
-  const faces1 = new Set(facesIncidentToVertex(working, v1));
+  const keys: EdgeKey[] = [];
+  let current = v0;
+  const target = v1;
+  const goal = working.getVertex(target);
+  const maxHops = Math.max(8, working.faces.length * 2 + 4);
+  let prev: number | null = null;
 
-  for (const fi of faces0) {
-    if (!faces1.has(fi)) continue;
-    // Same face but missing edge — should not happen for a triangle
-    const tri = working.faces[fi]!;
-    if (tri.includes(v0) && tri.includes(v1)) {
-      return [working.markSeam(v0, v1)];
+  for (let hop = 0; hop < maxHops; hop++) {
+    if (working.hasEdge(current, target)) {
+      keys.push(working.markSeam(current, target));
+      return keys;
     }
-  }
 
-  // Find neighboring face pair with a shared edge between the two vertex stars
-  const bridge = findBridgeEdge(working, v0, v1);
-  if (bridge) {
-    const { a, b } = bridge;
-    const pa = working.getVertex(a);
-    const pb = working.getVertex(b);
-    // Parameter of closest point on ab to midpoint of segment (surface approximation)
-    const mid = {
-      x: (p0.x + p1.x) * 0.5,
-      y: (p0.y + p1.y) * 0.5,
-      z: (p0.z + p1.z) * 0.5,
-    };
-    const abx = pb.x - pa.x;
-    const aby = pb.y - pa.y;
-    const abz = pb.z - pa.z;
-    const lenSq = abx * abx + aby * aby + abz * abz;
-    let t = 0.5;
-    if (lenSq > working.epsSq) {
-      t = ((mid.x - pa.x) * abx + (mid.y - pa.y) * aby + (mid.z - pa.z) * abz) / lenSq;
-      t = Math.max(working.eps, Math.min(1 - working.eps, t));
+    const exit = findExitEdge(working, current, goal, prev);
+    if (!exit) {
+      warnings.push(
+        `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
+      );
+      return keys;
     }
-    const vm = working.splitEdge(a, b, t);
-    const keys: EdgeKey[] = [];
-    if (v0 !== vm && working.hasEdge(v0, vm)) keys.push(working.markSeam(v0, vm));
-    if (vm !== v1 && working.hasEdge(vm, v1)) keys.push(working.markSeam(vm, v1));
-    if (keys.length === 0) {
-      // After split, fan spokes may need explicit connection — try mark if edges appear
-      if (working.hasEdge(v0, vm)) keys.push(working.markSeam(v0, vm));
-      if (working.hasEdge(vm, v1)) keys.push(working.markSeam(vm, v1));
+
+    const { a, b, t } = exit;
+    const mid = working.splitEdge(a, b, t);
+    if (mid === current) {
+      warnings.push(
+        `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
+      );
+      return keys;
     }
-    return keys;
+
+    if (working.hasEdge(current, mid)) {
+      keys.push(working.markSeam(current, mid));
+    } else {
+      warnings.push(
+        `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
+      );
+      return keys;
+    }
+
+    prev = current;
+    current = mid;
+
+    if (current === target) {
+      return keys;
+    }
   }
 
   warnings.push(
     `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
   );
-  return [];
-}
-
-function facesIncidentToVertex(working: WorkingMesh, vi: number): number[] {
-  const out: number[] = [];
-  for (let fi = 0; fi < working.faces.length; fi++) {
-    if (working.faces[fi]!.includes(vi)) out.push(fi);
-  }
-  return out;
+  return keys;
 }
 
 /**
- * Shared mesh edge that borders both the face-star of v0 and of v1
- * (typical adjacent-face cut).
+ * Among faces incident to `current`, find the opposite-edge intersection with
+ * the chord current→goal that has the smallest forward parameter.
  */
-function findBridgeEdge(
+function findExitEdge(
   working: WorkingMesh,
-  v0: number,
-  v1: number,
-): { a: number; b: number } | null {
-  const edges0 = new Set<EdgeKey>();
-  for (const fi of facesIncidentToVertex(working, v0)) {
-    const [a, b, c] = working.faces[fi]!;
-    edges0.add(makeEdgeKey(a, b));
-    edges0.add(makeEdgeKey(b, c));
-    edges0.add(makeEdgeKey(c, a));
-  }
-  for (const fi of facesIncidentToVertex(working, v1)) {
-    const [a, b, c] = working.faces[fi]!;
+  current: number,
+  goal: Vec3,
+  prev: number | null,
+): { a: number; b: number; t: number } | null {
+  const origin = working.getVertex(current);
+  let best: { a: number; b: number; t: number; tSeg: number } | null = null;
+  const hitEps = Math.max(working.surfaceEps, working.eps);
+
+  for (const fi of working.facesOfVertex(current)) {
+    const [x, y, z] = working.faces[fi]!;
     for (const [u, v] of [
-      [a, b],
-      [b, c],
-      [c, a],
+      [x, y],
+      [y, z],
+      [z, x],
     ] as const) {
-      const key = makeEdgeKey(u, v);
-      if (!edges0.has(key)) continue;
-      // Prefer edges that are not incident to both endpoints already
-      if (u === v0 || v === v0 || u === v1 || v === v1) continue;
-      return { a: u, b: v };
-    }
-  }
-  // Fallback: any shared edge between the two stars (including spokes)
-  for (const fi of facesIncidentToVertex(working, v1)) {
-    const [a, b, c] = working.faces[fi]!;
-    for (const [u, v] of [
-      [a, b],
-      [b, c],
-      [c, a],
-    ] as const) {
-      const key = makeEdgeKey(u, v);
-      if (edges0.has(key) && u !== v0 && v !== v0 && u !== v1 && v !== v1) {
-        return { a: u, b: v };
+      if (u === current || v === current) continue;
+      if (prev !== null && (u === prev || v === prev)) continue;
+
+      const hit = segmentSegmentHit(
+        origin,
+        goal,
+        working.getVertex(u),
+        working.getVertex(v),
+        hitEps,
+      );
+      if (!hit) continue;
+      if (hit.tSeg <= PARAM_EPS || hit.tSeg >= 1 - PARAM_EPS) continue;
+      const t = Math.max(PARAM_EPS, Math.min(1 - PARAM_EPS, hit.tEdge));
+      if (best === null || hit.tSeg < best.tSeg) {
+        best = { a: u, b: v, t, tSeg: hit.tSeg };
       }
     }
   }
-  return null;
+
+  if (!best) return null;
+  return { a: best.a, b: best.b, t: best.t };
 }
 
-/** Axis-aligned 2D self-intersection of the polyline (XY projection of deltas). */
+/** Closest-point hit between two 3D segments; null if too far apart. */
+function segmentSegmentHit(
+  a: Vec3,
+  b: Vec3,
+  c: Vec3,
+  d: Vec3,
+  eps: number,
+): { tSeg: number; tEdge: number } | null {
+  const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+  const cd = { x: d.x - c.x, y: d.y - c.y, z: d.z - c.z };
+  const ac = { x: a.x - c.x, y: a.y - c.y, z: a.z - c.z };
+  const abab = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+  const cdcd = cd.x * cd.x + cd.y * cd.y + cd.z * cd.z;
+  const abcd = ab.x * cd.x + ab.y * cd.y + ab.z * cd.z;
+  const abac = ab.x * ac.x + ab.y * ac.y + ab.z * ac.z;
+  const cdac = cd.x * ac.x + cd.y * ac.y + cd.z * ac.z;
+  const denom = abab * cdcd - abcd * abcd;
+  const denomEps = Math.max(eps * eps, 1e-30);
+  let tSeg: number;
+  let tEdge: number;
+  if (Math.abs(denom) < denomEps) {
+    // Parallel / degenerate — project midpoint approach
+    if (cdcd < denomEps) return null;
+    tEdge = Math.max(0, Math.min(1, cdac / cdcd));
+    if (abab < denomEps) return null;
+    const cx = c.x + cd.x * tEdge - a.x;
+    const cy = c.y + cd.y * tEdge - a.y;
+    const cz = c.z + cd.z * tEdge - a.z;
+    tSeg = Math.max(
+      0,
+      Math.min(1, (cx * ab.x + cy * ab.y + cz * ab.z) / abab),
+    );
+  } else {
+    tSeg = (abcd * cdac - cdcd * abac) / denom;
+    tEdge = (abab * cdac - abcd * abac) / denom;
+  }
+  if (tSeg < -PARAM_EPS || tSeg > 1 + PARAM_EPS) return null;
+  if (tEdge < -PARAM_EPS || tEdge > 1 + PARAM_EPS) return null;
+  tSeg = Math.max(0, Math.min(1, tSeg));
+  tEdge = Math.max(0, Math.min(1, tEdge));
+  const px = a.x + ab.x * tSeg;
+  const py = a.y + ab.y * tSeg;
+  const pz = a.z + ab.z * tSeg;
+  const qx = c.x + cd.x * tEdge;
+  const qy = c.y + cd.y * tEdge;
+  const qz = c.z + cd.z * tEdge;
+  const dx = px - qx;
+  const dy = py - qy;
+  const dz = pz - qz;
+  if (dx * dx + dy * dy + dz * dz > eps * eps) return null;
+  return { tSeg, tEdge };
+}
+
+/** Whole-stroke 3D proper self-intersection (ADR 0100 Phase 1). */
 function strokeSelfIntersects(points: readonly Vec3[], eps: number): boolean {
   if (points.length < 4) return false;
-  // Proper segment intersection in a local frame is expensive; use 3D segment pairs
-  // with shared-endpoint exclusion — sufficient for planar face zigzags.
+  const closed =
+    distSq(points[0]!, points[points.length - 1]!) <= eps * eps;
+  const paramEps = 1e-6;
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i]!;
     const b = points[i + 1]!;
     for (let j = i + 2; j < points.length - 1; j++) {
-      // Adjacent segments share a vertex when j === i+1; skip those
-      if (j === i + 1) continue;
-      // Allow closed stroke: last segment may touch first endpoint
-      if (i === 0 && j === points.length - 2) continue;
+      if (closed && i === 0 && j === points.length - 2) continue;
       const c = points[j]!;
       const d = points[j + 1]!;
-      if (segmentsProperIntersect3d(a, b, c, d, eps)) return true;
+      if (segmentsProperIntersect3d(a, b, c, d, eps, paramEps)) return true;
     }
   }
   return false;
@@ -319,9 +373,8 @@ function segmentsProperIntersect3d(
   c: Vec3,
   d: Vec3,
   eps: number,
+  paramEps: number,
 ): boolean {
-  // Closest points between skew segments; treat as intersect if very close and
-  // parameters strictly inside (0,1).
   const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
   const cd = { x: d.x - c.x, y: d.y - c.y, z: d.z - c.z };
   const ac = { x: a.x - c.x, y: a.y - c.y, z: a.z - c.z };
@@ -331,10 +384,18 @@ function segmentsProperIntersect3d(
   const abac = ab.x * ac.x + ab.y * ac.y + ab.z * ac.z;
   const cdac = cd.x * ac.x + cd.y * ac.y + cd.z * ac.z;
   const denom = abab * cdcd - abcd * abcd;
-  if (Math.abs(denom) < eps * eps) return false;
+  const denomEps = Math.max(eps * eps, 1e-30);
+  if (Math.abs(denom) < denomEps) return false;
   const t = (abcd * cdac - cdcd * abac) / denom;
   const u = (abab * cdac - abcd * abac) / denom;
-  if (t <= eps || t >= 1 - eps || u <= eps || u >= 1 - eps) return false;
+  if (
+    t <= paramEps ||
+    t >= 1 - paramEps ||
+    u <= paramEps ||
+    u >= 1 - paramEps
+  ) {
+    return false;
+  }
   const px = a.x + ab.x * t;
   const py = a.y + ab.y * t;
   const pz = a.z + ab.z * t;
