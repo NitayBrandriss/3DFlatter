@@ -1,7 +1,7 @@
 # Phase 1 — Freeform cut strokes (3D)
 
 **Status:** In progress  
-**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md) *(forthcoming)*  
+**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)  
 **Roadmap:** [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md) Phase 1  
 **Depends on:** PoC ADRs [0001](../../decisions/poc/0001-mesh-model-and-topology.md), [0002](../../decisions/poc/0002-unfold-step-1-hinge-island.md)
 
@@ -30,7 +30,7 @@ Full design notes: see Cursor plan *Freeform 3D cuts* (promote details here as A
 
 ## Done when
 
-- [ ] ADR 0100 accepted  
-- [ ] Vitest coverage for materialize + snap + open-loop validation  
+- [x] ADR 0100 accepted  
+- [x] Vitest coverage for materialize + snap + open-loop validation  
 - [ ] Manual: draw → delete stroke (base mesh unchanged) → Flatten → cuts visible in 2D  
 - [ ] `npm test` / `npm run lint`

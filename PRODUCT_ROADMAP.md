@@ -38,7 +38,7 @@ flowchart LR
 
 | Phase | Theme | Status | ADR / plan |
 |-------|--------|--------|------------|
-| **1** | Freeform cut strokes (3D) | **Active** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) *(next)* · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
+| **1** | Freeform cut strokes (3D) | **Active** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
 | 2 | SVG tier 2 / laser-ready paths | Planned | TBD |
 | 3 | Glue flaps / tabs; edge ID matching on SVG | Planned | TBD |
 | 4 | Real-world scale (cm); A4/Letter pagination | Planned | TBD |
