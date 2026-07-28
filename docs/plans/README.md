@@ -2,7 +2,7 @@
 
 **Single home for all implementation plans.** ADRs (`docs/decisions/`) hold architecture contracts; this folder holds phased delivery plans and archived specs. Do **not** leave the only copy of a plan under `.cursor/plans/` — when Cursor generates a plan, promote it here and link it from the status table.
 
-**Prioritized backlog:** [thoughts.txt](../../thoughts.txt) (local, gitignored).
+**Backlog (canonical):** **Planned** rows in the [Status](#status) table below. Optional local scratch notes: [thoughts.txt](../../thoughts.txt) (gitignored).
 
 ```mermaid
 flowchart LR
@@ -23,19 +23,27 @@ flowchart LR
 
 ## Status
 
+### Shipped (PoC)
+
 | Phase | Topic | Status | Detail |
 |-------|-------|--------|--------|
 | Step 1 | Hinge-island unfold (triangle soup) | **Complete** | [ADR 0002](../decisions/0002-unfold-step-1-hinge-island.md) |
+| I/O | STL import (ASCII / binary) | **Complete** | `src/logic/io/stl/parseStl` |
 | Step 2 | `unfoldMesh` + layout + 2D viewer | **Complete** | [archive/step-2-flattening.md](archive/step-2-flattening.md) |
 | Step 2 stretch | 2D seam overlay on blueprint | **Complete** | [archive/step-2-seam-overlay.md](archive/step-2-seam-overlay.md) |
-| I/O | STL import (ASCII / binary) | **Complete** | `src/logic/io/stl/parseStl` |
 | Export | SVG preview (tier 1) | **Complete** | `src/logic/export/svg/` |
-| Export | SVG manufacturing / laser (tier 2) | Planned | See [thoughts.txt](../../thoughts.txt) |
 | Step 3 | Unfold quality detection (3a + 3b) | **Complete** | [ADR 0003](../decisions/0003-unfold-quality-detection.md), [archive/step-3-quality-detection.md](archive/step-3-quality-detection.md) |
 | Step 3 stretch | Quality overlay in 2D viewer | **Complete** | [archive/step-3-quality-overlay.md](archive/step-3-quality-overlay.md) |
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
 | QA | Audit remediation (Slices 0–7) | **Complete** | [ADR 0004](../decisions/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](../qa-audit.md) |
-| Phase 2 | Auto seam suggestions | Planned | [thoughts.txt](../../thoughts.txt) |
+
+### Planned (post-PoC)
+
+| Phase | Topic | Status | Detail |
+|-------|-------|--------|--------|
+| Export | SVG manufacturing / laser (tier 2) | Planned | [PROJECT_SUMMARY.md](../PROJECT_SUMMARY.md) deferrals |
+| Phase 2 | Auto seam suggestions | Planned | [README.md](../../README.md) PoC table |
+| I/O | GLB import | Planned | [README.md](../../README.md) PoC table |
 
 ---
 
@@ -58,7 +66,7 @@ Manual regression (Step 2): load cube → seam top face → Flatten → two sepa
 
 ## Backlog
 
-See **[thoughts.txt](../../thoughts.txt)** for the prioritized engineering backlog (single source of truth).
+Use **Planned** rows in [Status](#status) as the canonical backlog. Optional local notes: [thoughts.txt](../../thoughts.txt) (gitignored).
 
 When starting non-trivial work, add or extend an `archive/<phase>.md` spec and update the status table above.
 

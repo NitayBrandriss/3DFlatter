@@ -60,6 +60,7 @@ OBJ (`v` + `f`) and STL (ASCII/binary) import, zero material thickness, output i
 
 ## Documentation
 
+- **Project summary (PoC narrative):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
 - **Contributors / agents:** [AGENTS.md](AGENTS.md)
 - **ADRs and plans:** [docs/README.md](docs/README.md) — roadmap at [docs/plans/README.md](docs/plans/README.md)
 
@@ -67,6 +68,6 @@ OBJ (`v` + `f`) and STL (ASCII/binary) import, zero material thickness, output i
 
 - `3d_models/` — manual QA meshes (gitignored)
 - `tests/` — optional local test fixtures (gitignored)
-- `thoghts.txt` — personal engineering notes (gitignored)
+- `thoughts.txt` — optional local notes (gitignored); canonical backlog is [docs/plans/README.md](docs/plans/README.md) **Planned** rows
 
 Unit-test fixtures live in `src/logic/io/obj/testMeshes.ts` and `src/logic/io/stl/testMeshes.ts` (tracked).

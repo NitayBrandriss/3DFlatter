@@ -1,9 +1,12 @@
 # 3DFlatter — QA Code Audit
 
+> **How to use this doc (2026-07-28):** Static audit snapshot from **2026-07-19**; **[QA remediation Slices 0–7](plans/archive/qa-audit-remediation.md) is complete** (2026-07-27). For product roadmap, see [plans/README.md](plans/README.md). For **what is still open vs deferred**, see [Findings count](#findings-count) and [Low](#low) — not the 2026-07-19 executive bullets alone.
+
 **Date:** 2026-07-19 (Staff/Principal refresh of 2026-07-14 audit; Slice 0 ADR sync applied same day)  
 **Scope:** `src/logic/`, `src/state/`, `src/ui/` (incl. `layout/`), `src/viewer/`, `app/`, `docs/decisions/`, `docs/plans/`  
 **Method:** Deep static review against ADRs 0001–0003, AGENTS.md, plans hub + archives (incl. quality overlay + mobile layout), prior audit IDs. Code read + grep SoC verification + `npm test` / `npm run lint`. **No application code changes** — this file only.  
-**Test baseline:** `npm test` — **29 files, 138 tests, all passing** (was 28 / 122 on 2026-07-14).  
+**Test baseline (audit day):** `npm test` — **29 files, 138 tests, all passing** (was 28 / 122 on 2026-07-14).  
+**Test baseline (post–Slice 7):** run `npm test` locally — **33 files, 168 tests** (2026-07-28).  
 **Lint baseline:** `npm run lint` — **passes**.
 
 ---
@@ -24,9 +27,11 @@
 
 Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `EdgeKey` seam identity, and a clean `src/logic/` boundary (zero React/Three.js imports — verified). Prior Critical/High lifecycle bugs stay fixed (`loadSeq`, weld/orphan skips, partial unfold, flatten keyed to `meshLoadVersion`).
 
-**2026-07-19 focus:** ADR validity + doc drift, SoC, DRY, performance, and edge-case logic. ADRs 0001–0003 are still the right foundation; the main gaps are **documentation lag** (STL, shipped Step 2+ features, tear-kind taxonomy vs code) and a **Medium backlog** (BFS/helper duplication, flatten on UI thread, seam-toggle repartition, collision double-clip). No new Critical/High geometry defects found.
+**Post-remediation (2026-07-27):** Slices 0–7 addressed the Medium/High remediation backlog from this audit (docs sync, quality correctness, logic DRY/perf, I/O budgets, Zustand selectors, layout/a11y, UI structure). **No open Critical or High items.** Remaining work is **Low polish**, **Info** PoC limits, and **UI-004** (Web Worker flatten) **deferred** per [ADR 0004](decisions/0004-tech-debt-remediation-strategy.md).
 
-**Resolved since last audit:** STATE-004 (failed load no longer bumps `meshLoadVersion`), VIEW-005 (toasts are page-level, not buried in the 3D panel), UI-006 (mobile now auto-switches to 2D after successful flatten).
+**Original 2026-07-19 focus:** ADR validity + doc drift, SoC, DRY, performance, and edge-case logic. ADRs 0001–0003 remain the right foundation; doc gaps called out here were largely addressed in Slices 0–1.
+
+**Resolved since 2026-07-14 (highlights):** STATE-004, VIEW-005, UI-006; full slice list in [Changes since 2026-07-14](#changes-since-2026-07-14).
 
 ---
 
@@ -35,10 +40,12 @@ Architecture remains **strong for a PoC**: triangle-soup unfold (ADR 0002), `Edg
 | Status | Notes |
 |--------|--------|
 | **Resolved** | STATE-004, VIEW-005; UI-006 implemented; DOC-001/002/003 (Slice 0); **TEAR-001, LOGIC-025, LOGIC-006 assert** (Slice 1); **LOGIC-007, LOGIC-008, LOGIC-012** (Slice 2); **LOGIC-009, LOGIC-010, LOGIC-011, PERF-002** (Slice 3); **LOGIC-004/005/013–015, IO-001/002/003** (Slice 4); **STATE-003, ARCH-001, ARCH-003, UI-008** (Slice 5) |
-| **New Medium** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003; **VIEW-006** (2026-07-23 — post-Flatten mobile orbit lock) |
-| **New Low** | DOC-002 (PERF-002 fixed Slice 3) |
-| **Reconfirmed open** | STATE-006, UI-001–004, LAYOUT-*, A11Y-002/003, VIEW-001, APP-001, **VIEW-006** |
-| **Baseline** | Tests +16; quality overlay slice shipped (`qualitySummary.ts`, overlay caps, Flatten-card toggle) |
+| **Resolved (Slice 6–7, 2026-07-27)** | STATE-006, VIEW-001, VIEW-006, LAYOUT-001/002/004/008/009/010, A11Y-002/003; UI-001/003, UI-002 mitigated, APP-001 mitigated, APP-002/003, LAYOUT-007 |
+| **New Medium (2026-07-19 audit)** | TEAR-001, LOGIC-025, DOC-001, DOC-003, ARCH-003; VIEW-006 (filed 2026-07-23, fixed Slice 6) |
+| **New Low (2026-07-19 audit)** | DOC-002 (PERF-002 fixed Slice 3) |
+| **Deferred (not blocking PoC)** | **UI-004** Web Worker flatten — [remediation Deferred](plans/archive/qa-audit-remediation.md#deferred) |
+| **Still open** | Low-priority IDs in [Low](#low) table (~11); optional LOGIC-006 BFS walker share |
+| **Baseline** | Quality overlay + mobile layout shipped; remediation plan complete |
 
 ---
 
@@ -375,9 +382,10 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 |-------|--------|
 | **Severity** | Medium |
 | **Category** | Performance |
+| **Status** | **Deferred** (PoC) — per [ADR 0004](decisions/0004-tech-debt-remediation-strategy.md) Decision 1; [remediation Deferred](plans/archive/qa-audit-remediation.md#deferred) |
 | **Files** | `src/ui/useFlattenExport.ts` |
 | **Description** | `unfoldMesh` (+ quality) runs sync in `try/finally`. Loading overlay covers parse only. |
-| **Suggested fix** | Worker, chunked yield, or explicit flatten progress UI. |
+| **Suggested fix** | Worker, chunked yield, or explicit flatten progress UI — revisit when real meshes block the main thread. |
 
 ### UI-008 — 2D viewer always shows seams; export has toggle
 
@@ -545,6 +553,12 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 | **Suggested fix** | ~~…~~ Done. |
 | **Repro** | Narrow viewport → load mesh → Flatten → 2D tab → 3D tab — orbit should work without refresh. |
 
+---
+
+## Low
+
+Consolidated Low-severity items (includes fixed rows for history). **Open** rows are counted in [Findings count](#findings-count).
+
 | ID | Category | Files | Description | Suggested fix | Status |
 |----|----------|-------|-------------|---------------|--------|
 | **PERF-002** *(new)* | Performance | `spatialGrid.ts` | Per-call rebuild of index map + string-keyed `seen` (`${lo},${hi}`) on dense meshes | Index by soup position; numeric pair keys | **Fixed** (Slice 3, 2026-07-19) — soup-index array + `lo * stride + hi` |
@@ -588,16 +602,17 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 | Expectation | QA verdict |
 |-------------|------------|
-| Constants + CSS tokens | Done; values still duplicated (LAYOUT-001) |
+| Constants + CSS tokens | **Done** — Slice 6 token sync (LAYOUT-001 fixed) |
 | Hooks: media / sidebar / split / peek | Done |
 | `closeIfMobile` only after successful major actions | **Correct** |
 | Peek scoped `pointer-events` CSS | **Correct** |
 | Desktop in-flow vs mobile overlay + backdrop | **Correct** |
-| Escape + aria + tabs + separator | Mostly done; keyboard gaps (A11Y-002/003); Escape on desktop (STATE-006) |
+| Escape + aria + tabs + separator | **Done** — Slice 6 (STATE-006, A11Y-002/003) |
 | `prefers-reduced-motion` | **Correct** |
-| Auto-switch to 2D after flatten | **Now implemented** (UI-006) |
-| Persist sidebar / split | Done; init unclamped + hydration-hostile (LAYOUT-004/008/010) |
+| Auto-switch to 2D after flatten | **Implemented** (UI-006) |
+| Persist sidebar / split | Done — Slice 6 hydration/clamp (LAYOUT-004/008/010) |
 | Toasts visible across mobile panels | **Fixed** (VIEW-005) |
+| Post-Flatten mobile 3D orbit | **Fixed** (VIEW-006, Slice 6) |
 
 ---
 
@@ -638,7 +653,7 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 - **Load lifecycle:** `loadSeq`, preserve-on-failure, seam/`meshLoadVersion` invariant.
 - **Defense in depth:** weld + topology skip + partition orphan skip + partial unfold warnings.
 - **Quality pipeline:** orthogonal analyze pass, scale-aware tolerances, UI caps without mutating logic results.
-- **Tests:** 138 passing, colocated; grew with quality overlay / summary helpers.
+- **Tests:** Vitest suite grew through quality overlay and remediation (33 files / 168 tests as of 2026-07-28); colocated with logic.
 - **Layout extraction:** sidebar/chrome/hooks keep the shell maintainable relative to the old monolith.
 - **GPU cleanup:** geometry dispose in viewport/overlay paths.
 
@@ -662,30 +677,29 @@ No material SoC violations found. Overlay caps live in `qualitySummary.ts` (logi
 
 ## Findings count
 
-| Severity | Open | Fixed / mitigated (tracked) |
+*Updated 2026-07-28 after remediation Slices 0–7. Individual finding rows above remain the audit-time writeups; status columns note Slice fixes where applicable.*
+
+| Severity | Open | Fixed / mitigated / deferred |
 |----------|------|------------------------------|
 | Critical | 0 | 1 (LOGIC-001) |
 | High | 0 | 9 |
-| Medium | ~16 | + Slices 0–5 (LOGIC-*, IO-*, DOC-*, STATE-003, ARCH-001/003, UI-008); +VIEW-006 open |
-| Low | ~15 | + DOC-002; STATE-004, VIEW-005; PERF-002; IO-003 |
-| Info | 7 | UI-006 now shipped behavior |
-| **Open total** | **~38** | — |
-
-*Counts approximate after Slices 0–5; VIEW-006 filed 2026-07-23.*
+| Medium | 0 actionable open | Slices 0–7; **UI-004 deferred** (not counted as open backlog) |
+| Low | **11** | See [Low](#low) table (`STATE-005`, `UI-005`, `UI-007`, `LAYOUT-005`, `VIEW-002`–`004`, `LOGIC-016`–`019`) |
+| Info | 0 fixes required | PoC limits + shipped behaviors (e.g. UI-006) |
+| **Open total (Low only)** | **11** | Plus optional refactors (e.g. LOGIC-006 shared BFS walker) |
 
 ---
 
-## Category index (open items)
+## Category index (remaining work)
 
 | Category | Notable IDs |
 |----------|-------------|
-| **Architecture** | UI-002 mitigated, APP-001 mitigated — Slice 7; APP-002 fixed |
-| **Documentation Alignment** | LOGIC-017 — DOC-*/TEAR-001/LOGIC-005 addressed Slices 0–4 |
-| **DRY** | LOGIC-006 (BFS walker optional), UI-001/003 fixed Slice 7, LAYOUT-001, LOGIC-016/019 |
-| **Logic** | STATE-006, LAYOUT-*, VIEW-001, VIEW-006, A11Y-* |
-| **Performance** | UI-004 — STATE-003/ARCH-001 addressed Slice 5 |
+| **Performance** | **UI-004** — deferred Web Worker flatten ([ADR 0004](decisions/0004-tech-debt-remediation-strategy.md)) |
+| **DRY / polish (Low)** | LOGIC-016–019, LAYOUT-005, VIEW-003, UI-007 |
+| **Logic / UX (Low)** | STATE-005, UI-005, VIEW-002, VIEW-004 |
+| **Architecture** | UI-002, APP-001 — mitigated Slice 7; further card split optional |
 | **SoC** | No open violations — keep `logic/` boundary |
 
 ---
 
-*This document is a point-in-time Staff audit (refreshed 2026-07-19). Re-run after major pipeline, session, ADR, or layout changes.*
+*Original Staff audit refresh: 2026-07-19. Remediation complete: 2026-07-27. Re-run a full audit after major pipeline, session, or ADR changes.*

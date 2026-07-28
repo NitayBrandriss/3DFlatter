@@ -6,7 +6,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **PoC constraints:** zero material thickness; mesh import via OBJ v1 (`v` + `f`) or STL (ASCII/binary) at the I/O boundary; flattened output in the **XY plane**.
 
-Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1), [ADR 0003](docs/decisions/0003-unfold-quality-detection.md) (quality detection), [ADR 0004](docs/decisions/0004-tech-debt-remediation-strategy.md) (tech-debt remediation). Plans: [docs/plans/README.md](docs/plans/README.md). Backlog: [thoughts.txt](thoughts.txt) (local, gitignored).
+Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1), [ADR 0003](docs/decisions/0003-unfold-quality-detection.md) (quality detection), [ADR 0004](docs/decisions/0004-tech-debt-remediation-strategy.md) (tech-debt remediation). Plans: [docs/plans/README.md](docs/plans/README.md). Backlog: **Planned** rows in the plans hub; optional local notes in [thoughts.txt](thoughts.txt) (gitignored).
 
 ---
 
