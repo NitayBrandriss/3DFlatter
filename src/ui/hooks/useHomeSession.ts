@@ -17,9 +17,11 @@ export function useHomeSession() {
       topology: s.session?.topology ?? null,
       fileName: s.session?.fileName ?? null,
       meshLoadVersion: s.meshLoadVersion,
+      patternRevision: s.patternRevision,
     })),
   );
   const seams = useMeshSessionStore((s) => s.session?.seams ?? null);
+  const cutStrokes = useMeshSessionStore((s) => s.cutStrokes);
   const chrome = useMeshSessionStore(
     useShallow((s) => ({
       isLoading: s.isLoading,
@@ -33,13 +35,18 @@ export function useHomeSession() {
       loadMeshFile: s.loadMeshFile,
       toggleSeamAt: s.toggleSeamAt,
       clearAllSeams: s.clearAllSeams,
+      addCutStroke: s.addCutStroke,
+      updateCutStroke: s.updateCutStroke,
+      deleteCutStroke: s.deleteCutStroke,
+      clearCutStrokes: s.clearCutStrokes,
       setSeamMode: s.setSeamMode,
       dismissToast: s.dismissToast,
       notifyToast: s.notifyToast,
     })),
   );
 
-  const { mesh, topology, fileName, meshLoadVersion } = meshIdentity;
+  const { mesh, topology, fileName, meshLoadVersion, patternRevision } =
+    meshIdentity;
   const { isLoading, error, seamMode, toasts } = chrome;
 
   const session = useMemo((): MeshSession | null => {
@@ -57,7 +64,9 @@ export function useHomeSession() {
   return {
     mesh,
     seams,
+    cutStrokes,
     meshLoadVersion,
+    patternRevision,
     session,
     stats,
     isLoading,

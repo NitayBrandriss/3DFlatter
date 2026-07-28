@@ -20,7 +20,9 @@ export default function HomePage() {
   const {
     mesh,
     seams,
+    cutStrokes,
     meshLoadVersion,
+    patternRevision,
     session,
     stats,
     isLoading,
@@ -45,7 +47,13 @@ export default function HomePage() {
     qualityCounts,
     onFlatten,
     onExportSvg,
-  } = useFlattenExport(session, meshLoadVersion, notifyToast);
+  } = useFlattenExport(
+    session,
+    meshLoadVersion,
+    patternRevision,
+    cutStrokes,
+    notifyToast,
+  );
 
   const {
     wireframe,

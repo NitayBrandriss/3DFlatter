@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: slice-2-store
     content: Zustand cutStrokes CRUD; flatten fingerprint; useFlattenExport calls materialize then unfoldMesh (no meshLoadVersion on stroke edit)
-    status: pending
+    status: completed
   - id: slice-3-viewer
     content: Draw tool with ref-based in-progress stroke; R3F overlay from store; sidebar tool toggle
     status: pending

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import {
   formatByteLimit,
   MAX_MESH_FILE_BYTES,
@@ -17,6 +18,8 @@ import {
   toggleSeam,
 } from "../logic/seams/seamRegistry";
 
+export type { CutStroke, Vec3 };
+
 export type MeshSession = {
   mesh: MeshModel;
   topology: Topology;
@@ -32,8 +35,18 @@ export type ToastMessage = {
 
 type MeshSessionState = {
   session: MeshSession | null;
-  /** Bumps only on mesh load/clear — never on seam toggles. */
+  /** Bumps only on mesh load/clear — never on seam toggles or stroke edits. */
   meshLoadVersion: number;
+  /**
+   * Freeform cut overlay (ADR 0100). Canonical mesh-space polylines.
+   * Does not mutate `session.mesh`. Cleared on successful file load.
+   */
+  cutStrokes: CutStroke[];
+  /**
+   * Bumps on cut-stroke CRUD only. Used with `meshLoadVersion` for flatten
+   * snapshot identity — seam toggles do not bump this (STATE-002).
+   */
+  patternRevision: number;
   isLoading: boolean;
   error: string | null;
   seamMode: boolean;
@@ -43,10 +56,22 @@ type MeshSessionState = {
   loadMeshFile: (file: File) => Promise<boolean>;
   toggleSeamAt: (edgeKey: EdgeKey) => void;
   clearAllSeams: () => void;
+  addCutStroke: (stroke: CutStroke) => void;
+  updateCutStroke: (id: string, points: readonly Vec3[]) => void;
+  deleteCutStroke: (id: string) => void;
+  clearCutStrokes: () => void;
   setSeamMode: (enabled: boolean) => void;
   dismissToast: (id: number) => void;
   notifyToast: (text: string, tone?: ToastMessage["tone"]) => void;
 };
+
+/** Flatten snapshot key: mesh load + stroke edits (not seam membership). */
+export function flattenSnapshotKey(
+  meshLoadVersion: number,
+  patternRevision: number,
+): string {
+  return `${meshLoadVersion}:${patternRevision}`;
+}
 
 function pushToast(
   state: MeshSessionState,
@@ -134,6 +159,8 @@ let loadSeq = 0;
 export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   session: null,
   meshLoadVersion: 0,
+  cutStrokes: [],
+  patternRevision: 0,
   isLoading: false,
   error: null,
   seamMode: true,
@@ -190,6 +217,8 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
       set((s) => ({
         session,
         meshLoadVersion: s.meshLoadVersion + 1,
+        cutStrokes: [],
+        patternRevision: 0,
         isLoading: false,
         error: null,
         ...(hasLoadWarnings
@@ -239,6 +268,43 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
     if (!session || session.seams.seams.size === 0) return;
     set({
       session: { ...session, seams: clearSeams(session.seams) },
+    });
+  },
+
+  addCutStroke: (stroke: CutStroke) => {
+    if (stroke.points.length < 2) return;
+    set((s) => ({
+      cutStrokes: [...s.cutStrokes, { ...stroke, points: [...stroke.points] }],
+      patternRevision: s.patternRevision + 1,
+    }));
+  },
+
+  updateCutStroke: (id: string, points: readonly Vec3[]) => {
+    if (points.length < 2) return;
+    set((s) => {
+      const idx = s.cutStrokes.findIndex((c) => c.id === id);
+      if (idx < 0) return s;
+      const next = s.cutStrokes.slice();
+      const prev = next[idx]!;
+      next[idx] = { ...prev, points: [...points] };
+      return { cutStrokes: next, patternRevision: s.patternRevision + 1 };
+    });
+  },
+
+  deleteCutStroke: (id: string) => {
+    set((s) => {
+      if (!s.cutStrokes.some((c) => c.id === id)) return s;
+      return {
+        cutStrokes: s.cutStrokes.filter((c) => c.id !== id),
+        patternRevision: s.patternRevision + 1,
+      };
+    });
+  },
+
+  clearCutStrokes: () => {
+    set((s) => {
+      if (s.cutStrokes.length === 0) return s;
+      return { cutStrokes: [], patternRevision: s.patternRevision + 1 };
     });
   },
 

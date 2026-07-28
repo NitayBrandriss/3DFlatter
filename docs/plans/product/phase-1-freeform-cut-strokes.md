@@ -22,7 +22,7 @@ Non-destructive **cut strokes** on the 3D mesh (overlay in Zustand); **lazy** `m
 ## Implementation slices
 
 1. **Logic** — `materializeCutStrokes`, tests  
-2. **State** — stroke CRUD, Flatten wiring in `useFlattenExport`  
+2. **State** — stroke CRUD, Flatten wiring in `useFlattenExport` ✅  
 3. **Viewer** — draw tool + `CutStrokesOverlay`  
 4. **Docs** — ADR 0100 + update PRODUCT_ROADMAP when complete  
 
