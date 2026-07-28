@@ -1,8 +1,12 @@
 # 3DFlatter — Project Summary
 
-**Purpose:** A single narrative for presenting this repository: what was built, how it was phased, what was intentionally deferred, and how human + Cursor collaboration was organized.
+**Purpose:** A single narrative for presenting the **PoC baseline**: what was built, how it was phased, what was intentionally deferred, and how human + Cursor collaboration was organized.
 
-**Status (PoC):** **Complete** — core pipeline shipped; QA audit remediation finished (Slices 0–7). See [plans/README.md](plans/README.md) for the live status table.
+**Status (PoC):** **Frozen and closed** (2026-07-28). The PoC pipeline is complete; QA audit remediation finished (Slices 0–7). This document is **historical** — it will not be updated with product-phase features.
+
+**Product work:** See **[PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md)** at the repo root (active phases, ADR 0100+).
+
+PoC delivery detail: [plans/README.md](plans/README.md) **Shipped** table and [plans/archive/](plans/archive/).
 
 ---
 
@@ -86,7 +90,7 @@ The PoC goal was a **credible end-to-end demo**, not production CAM or automatic
 | **Web Worker flatten (`UI-004`)** | Large async architecture; main-thread flatten acceptable for modest meshes |
 | **Remaining Low/Info audit polish** | Non-blocking maintainability items ([qa-audit.md](qa-audit.md) deferred table) |
 
-**Future** work is tracked as **Planned** rows in [plans/README.md](plans/README.md). Optional local scratch: `thoughts.txt` (gitignored).
+Product-phase successors (freeform cuts, tabs, pagination, etc.) are **out of scope for this document**. See **[PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md)**.
 
 ---
 
@@ -150,14 +154,16 @@ Regression notes for Step 2: cube with a top-face seam → two separated islands
 | Audience | Start here |
 |----------|------------|
 | Recruiters / quick overview | [README.md](../README.md) |
-| This narrative | **This file** |
-| Live roadmap & status | [plans/README.md](plans/README.md) |
-| Architecture contracts | [decisions/](decisions/) |
+| PoC narrative (frozen) | **This file** |
+| **Product roadmap (active)** | **[PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md)** |
+| PoC phase specs (archive) | [plans/README.md](plans/README.md) |
+| PoC architecture (0001–0004) | [decisions/](decisions/) |
+| Product architecture (0100+) | [decisions/](decisions/) + PRODUCT_ROADMAP |
 | Contributors & agents | [AGENTS.md](../AGENTS.md) |
-| Audit history & open deferred items | [qa-audit.md](qa-audit.md) |
+| Audit history | [qa-audit.md](qa-audit.md) |
 
 ---
 
 ## Closing line for presentations
 
-**3DFlatter demonstrates a full Pepakura-style pipeline in the browser** — clean separation between testable computational geometry and a Three.js seam editor — with explicit architecture docs, phased delivery, and a completed QA hardening pass, while leaving manufacturing export and intelligent seaming as deliberate next-phase work.
+**3DFlatter demonstrates a full Pepakura-style pipeline in the browser** — clean separation between testable computational geometry and a Three.js seam editor — with explicit architecture docs, phased delivery, and a completed QA hardening pass. **Post-PoC product development** continues under [PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md).

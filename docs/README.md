@@ -2,9 +2,14 @@
 
 ## Project narrative
 
-**[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** — PoC scope, phased delivery, deferred work, and human + Cursor workflow (presentation-oriented).
+| Doc | Role |
+|-----|------|
+| **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** | **PoC baseline (frozen)** — presentation history through QA remediation |
+| **[PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md)** | **Active product roadmap** — phases, ADR 0100+, implementation order |
 
 ## Architecture decisions (ADRs)
+
+### PoC (0001–0004) — frozen contracts
 
 | ADR | Topic |
 |-----|-------|
@@ -13,10 +18,21 @@
 | [0003 — Unfold quality detection](decisions/0003-unfold-quality-detection.md) | Intra-island collision (3a) + edge tears (3b), detect-and-report |
 | [0004 — Tech-debt remediation strategy](decisions/0004-tech-debt-remediation-strategy.md) | QA remediation policy (selectors vs workers, visual QA gates) |
 
-## Plans & roadmap
+### Product (0100+) — post-PoC
 
-**Single folder for plans:** **[plans/README.md](plans/README.md)** (status table + links). Specs live in [plans/archive/](plans/archive/) — geometry phases and UI shell plans together. Do not keep the only copy under `.cursor/plans/`.
+Product ADRs are numbered **from 0100** to separate product architecture from the PoC record. They may `depends_on` PoC ADRs but should not rewrite PoC history in [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md).
 
-**Backlog:** **Planned** rows in [plans/README.md](plans/README.md). Optional local notes: [thoughts.txt](../thoughts.txt) (gitignored).
+| ADR | Topic |
+|-----|-------|
+| [0100 — Freeform cut strokes](decisions/0100-freeform-cut-strokes.md) | *Next — overlay strokes, lazy materialize on Flatten* |
+
+## Plans
+
+| Track | Location |
+|-------|----------|
+| PoC specs (complete) | [plans/README.md](plans/README.md) + [plans/archive/](plans/archive/) |
+| Product specs | Linked from [PRODUCT_ROADMAP.md](../PRODUCT_ROADMAP.md) |
+
+Optional local notes: [thoughts.txt](../thoughts.txt) (gitignored).
 
 For agent and contributor workflow, see [AGENTS.md](../AGENTS.md) at the repo root.

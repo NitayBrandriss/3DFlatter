@@ -55,14 +55,15 @@ OBJ (`v` + `f`) and STL (ASCII/binary) import, zero material thickness, output i
 | Flatten (unfold + layout) | Done |
 | 2D blueprint viewer + seam overlay | Done |
 | SVG export (preview tier) | Done |
-| AI-assisted seaming | Not started |
-| GLB input | Not started |
+| AI-assisted seaming | Not started (see [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md)) |
+| GLB input | Not started (see [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md)) |
 
 ## Documentation
 
-- **Project summary (PoC narrative):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
+- **PoC summary (frozen):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
+- **Product roadmap (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md)
 - **Contributors / agents:** [AGENTS.md](AGENTS.md)
-- **ADRs and plans:** [docs/README.md](docs/README.md) — roadmap at [docs/plans/README.md](docs/plans/README.md)
+- **Docs index:** [docs/README.md](docs/README.md) — PoC ADRs 0001–0004, product ADRs 0100+
 
 ## Local Assets
 

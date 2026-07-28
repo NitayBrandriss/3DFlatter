@@ -6,7 +6,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **PoC constraints:** zero material thickness; mesh import via OBJ v1 (`v` + `f`) or STL (ASCII/binary) at the I/O boundary; flattened output in the **XY plane**.
 
-Human roadmap: [README.md](README.md). Architectural contracts: [docs/decisions/](docs/decisions/) — [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md) (mesh/topology), [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md) (unfold Step 1), [ADR 0003](docs/decisions/0003-unfold-quality-detection.md) (quality detection), [ADR 0004](docs/decisions/0004-tech-debt-remediation-strategy.md) (tech-debt remediation). Plans: [docs/plans/README.md](docs/plans/README.md). Backlog: **Planned** rows in the plans hub; optional local notes in [thoughts.txt](thoughts.txt) (gitignored).
+Human overview: [README.md](README.md). **PoC (frozen):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md), plans [docs/plans/README.md](docs/plans/README.md), ADRs [0001](docs/decisions/0001-mesh-model-and-topology.md)–[0004](docs/decisions/0004-tech-debt-remediation-strategy.md). **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md), ADRs **0100+** in [docs/decisions/](docs/decisions/). Optional local notes: [thoughts.txt](thoughts.txt) (gitignored).
 
 ---
 
@@ -118,7 +118,8 @@ Stop and get user approval before:
 
 ## Planning workflow
 
-- **Plans hub (only):** [docs/plans/README.md](docs/plans/README.md) — status, backlog, archived specs under [docs/plans/archive/](docs/plans/archive/). Do not treat `.cursor/plans/` as canonical; promote Cursor-generated plans into `docs/plans/`.
+- **PoC (frozen):** [docs/plans/README.md](docs/plans/README.md) + [docs/plans/archive/](docs/plans/archive/) — historical specs only; do not add product features to [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md).
+- **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) — phases and status; new architecture in **ADR 0100+** under [docs/decisions/](docs/decisions/). Promote Cursor plans into `docs/plans/` and link from the product roadmap.
 - **Plan / Ask mode:** next phase step, tradeoffs, ADR impact — don't implement yet.
-- **Agent mode:** one incremental step from an approved plan.
+- **Agent mode:** one incremental step from an approved plan / ADR.
 - **Review pass:** separate prompt to scan for bugs and ADR violations after a slice lands.

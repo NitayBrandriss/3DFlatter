@@ -1,8 +1,10 @@
-# Plans & roadmap
+# Plans & roadmap (PoC — frozen)
 
-**Single home for all implementation plans.** ADRs (`docs/decisions/`) hold architecture contracts; this folder holds phased delivery plans and archived specs. Do **not** leave the only copy of a plan under `.cursor/plans/` — when Cursor generates a plan, promote it here and link it from the status table.
+**PoC delivery is complete.** The **Shipped** table below is the historical record. **Product-phase** planning lives in **[PRODUCT_ROADMAP.md](../../PRODUCT_ROADMAP.md)** (repo root). Product ADRs use numbering **0100+** in [docs/decisions/](../decisions/).
 
-**Backlog (canonical):** **Planned** rows in the [Status](#status) table below. Optional local scratch notes: [thoughts.txt](../../thoughts.txt) (gitignored).
+**Single home for PoC implementation specs:** [plans/archive/](plans/archive/). Do **not** leave the only copy of a plan under `.cursor/plans/` — promote into `docs/plans/` and link from the appropriate roadmap.
+
+Optional local scratch: [thoughts.txt](../../thoughts.txt) (gitignored).
 
 ```mermaid
 flowchart LR
@@ -37,13 +39,9 @@ flowchart LR
 | UI shell | Responsive layout (sidebar, split, mobile tabs, peek) | **Complete** | [archive/mobile-responsive-layout.md](archive/mobile-responsive-layout.md) |
 | QA | Audit remediation (Slices 0–7) | **Complete** | [ADR 0004](../decisions/0004-tech-debt-remediation-strategy.md), [archive/qa-audit-remediation.md](archive/qa-audit-remediation.md), [qa-audit.md](../qa-audit.md) |
 
-### Planned (post-PoC)
+### Product phase (not tracked here)
 
-| Phase | Topic | Status | Detail |
-|-------|-------|--------|--------|
-| Export | SVG manufacturing / laser (tier 2) | Planned | [PROJECT_SUMMARY.md](../PROJECT_SUMMARY.md) deferrals |
-| Phase 2 | Auto seam suggestions | Planned | [README.md](../../README.md) PoC table |
-| I/O | GLB import | Planned | [README.md](../../README.md) PoC table |
+Post-PoC work — including **Freeform cut strokes** — is tracked in **[PRODUCT_ROADMAP.md](../../PRODUCT_ROADMAP.md)**. Update that file and add product ADRs (`0100+`) instead of extending this PoC status table.
 
 ---
 
@@ -66,9 +64,9 @@ Manual regression (Step 2): load cube → seam top face → Flatten → two sepa
 
 ## Backlog
 
-Use **Planned** rows in [Status](#status) as the canonical backlog. Optional local notes: [thoughts.txt](../../thoughts.txt) (gitignored).
+**Product backlog:** [PRODUCT_ROADMAP.md](../../PRODUCT_ROADMAP.md). Do not add new product rows to the PoC **Shipped** table above.
 
-When starting non-trivial work, add or extend an `archive/<phase>.md` spec and update the status table above.
+When shipping **PoC archive** docs only: extend `archive/<phase>.md` and the Shipped table. For **product** work: update PRODUCT_ROADMAP and add `docs/decisions/0100-*.md` as needed.
 
 ---
 
