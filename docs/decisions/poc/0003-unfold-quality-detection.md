@@ -103,7 +103,7 @@ Local analysis runs pre-layout; `toGlobalReport` applies `LayoutedIsland.offset`
 
 ### Tolerances
 
-All constants live in [`src/logic/geom2d/tolerances.ts`](../../src/logic/geom2d/tolerances.ts):
+All constants live in [`src/logic/geom2d/tolerances.ts`](../../../src/logic/geom2d/tolerances.ts):
 
 | Constant | Value | Used for |
 |----------|-------|----------|
@@ -160,4 +160,4 @@ Scale-aware helpers: `collisionAreaThreshold(avgEdgeLength2d)`, `tearThreshold(e
 - [ADR 0001](0001-mesh-model-and-topology.md) — mesh, topology, XY plane
 - [ADR 0002](0002-unfold-step-1-hinge-island.md) — hinge unfold, known non-invariants
 - [ADR 0004](0004-tech-debt-remediation-strategy.md) — tech-debt remediation sequencing
-- [Plans & roadmap](../plans/README.md) — Step 3 complete; [qa-audit-remediation](../plans/archive/qa-audit-remediation.md)
+- [PoC plans](../../plans/poc/README.md) — Step 3 complete; [qa-audit-remediation](../../plans/poc/archive/qa-audit-remediation.md)

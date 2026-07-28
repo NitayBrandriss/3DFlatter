@@ -9,7 +9,7 @@ depends_on: ADR 0002
 
 ## Step 1 complete (prerequisites)
 
-Documented in [ADR 0002](../decisions/0002-unfold-step-1-hinge-island.md). Do not reimplement.
+Documented in [ADR 0002](../../../decisions/poc/0002-unfold-step-1-hinge-island.md). Do not reimplement.
 
 | Delivered | Location |
 |-----------|----------|

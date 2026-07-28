@@ -6,7 +6,7 @@ Web PoC that turns 3D polygonal meshes into 2D flat patterns (Pepakura-style): l
 
 **PoC constraints:** zero material thickness; mesh import via OBJ v1 (`v` + `f`) or STL (ASCII/binary) at the I/O boundary; flattened output in the **XY plane**.
 
-Human overview: [README.md](README.md). **PoC (frozen):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md), plans [docs/plans/README.md](docs/plans/README.md), ADRs [0001](docs/decisions/0001-mesh-model-and-topology.md)–[0004](docs/decisions/0004-tech-debt-remediation-strategy.md). **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md), ADRs **0100+** in [docs/decisions/](docs/decisions/). Optional local notes: [thoughts.txt](thoughts.txt) (gitignored).
+Human overview: [README.md](README.md). **PoC (frozen):** [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md), plans [docs/plans/poc/](docs/plans/poc/README.md), ADRs [0001–0004](docs/decisions/poc/). **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md), plans [docs/plans/product/](docs/plans/product/README.md), ADRs **0100+** in [docs/decisions/product/](docs/decisions/product/). Optional local notes: [thoughts.txt](thoughts.txt) (gitignored).
 
 ---
 
@@ -35,7 +35,7 @@ Pipeline: **load → topology → seams → islands → unfold → export**
 | [src/state/](src/state/) | Zustand session orchestration | Wires I/O → topology → UI side effects |
 | [src/ui/](src/ui/) | Non-3D UI components | Keep thin |
 | [app/](app/) | Next.js routes | Orchestration, not heavy geometry |
-| [docs/](docs/) | ADRs and plans | **Must follow** ADRs in `decisions/`; roadmap in [docs/plans/README.md](docs/plans/README.md) |
+| [docs/](docs/) | ADRs and plans | **Must follow** PoC ADRs in `decisions/poc/`; product in `decisions/product/`; roadmaps in [docs/plans/](docs/plans/README.md) and [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) |
 
 **Core contracts** live in [src/logic/mesh/types.ts](src/logic/mesh/types.ts): `MeshModel`, `Topology`, `EdgeKey`, `SeamRegistry`.
 
@@ -47,7 +47,7 @@ Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`
 
 ### Before writing code
 
-- Read relevant existing modules and [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md).
+- Read relevant existing modules and [ADR 0001](docs/decisions/poc/0001-mesh-model-and-topology.md).
 - State which pipeline stage the change touches and what depends on it.
 - If requirements, UX, or geometry behavior are unclear, **ask** rather than guess.
 
@@ -72,8 +72,8 @@ Reuse existing helpers instead of reimplementing: `makeEdgeKey`, `buildTopology`
 
 ### Always
 
-- Follow [ADR 0001](docs/decisions/0001-mesh-model-and-topology.md): triangulated mesh, 0-based indices, `EdgeKey` seam identity, XY flatten plane.
-- Follow [ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md): triangle-soup 2D output, parent-soup-copy BFS — **never** reintroduce `Map<VertexIndex, Vec2>` for unfold placement.
+- Follow [ADR 0001](docs/decisions/poc/0001-mesh-model-and-topology.md): triangulated mesh, 0-based indices, `EdgeKey` seam identity, XY flatten plane.
+- Follow [ADR 0002](docs/decisions/poc/0002-unfold-step-1-hinge-island.md): triangle-soup 2D output, parent-soup-copy BFS — **never** reintroduce `Map<VertexIndex, Vec2>` for unfold placement.
 - Keep `src/logic/` free of React and Three.js imports.
 - Colocate Vitest tests for non-trivial logic changes.
 - Preserve existing public types in `types.ts` unless explicitly changing architecture.
@@ -118,8 +118,8 @@ Stop and get user approval before:
 
 ## Planning workflow
 
-- **PoC (frozen):** [docs/plans/README.md](docs/plans/README.md) + [docs/plans/archive/](docs/plans/archive/) — historical specs only; do not add product features to [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md).
-- **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) — phases and status; new architecture in **ADR 0100+** under [docs/decisions/](docs/decisions/). Promote Cursor plans into `docs/plans/` and link from the product roadmap.
+- **PoC (frozen):** [docs/plans/poc/](docs/plans/poc/README.md) — historical specs in `poc/archive/`; do not add product features to [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md).
+- **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) + [docs/plans/product/](docs/plans/product/README.md); architecture in **ADR 0100+** under [docs/decisions/product/](docs/decisions/product/). Promote Cursor plans into `docs/plans/product/`.
 - **Plan / Ask mode:** next phase step, tradeoffs, ADR impact — don't implement yet.
 - **Agent mode:** one incremental step from an approved plan / ADR.
 - **Review pass:** separate prompt to scan for bugs and ADR violations after a slice lands.

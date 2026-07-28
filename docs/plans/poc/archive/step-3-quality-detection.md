@@ -1,8 +1,8 @@
 # Step 3 — Unfold quality detection
 
 **Status:** Complete  
-**ADR:** [0003 — Unfold quality detection](../../decisions/0003-unfold-quality-detection.md)  
-**Backlog:** [thoughts.txt](../../../thoughts.txt)
+**ADR:** [0003 — Unfold quality detection](../../../decisions/poc/0003-unfold-quality-detection.md)
+**Backlog:** [thoughts.txt](../../../../thoughts.txt)
 
 ## Scope
 

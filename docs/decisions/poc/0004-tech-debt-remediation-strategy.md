@@ -8,9 +8,9 @@ depends_on: 0001, 0002, 0003
 
 ### Context
 
-The project has a large, prioritized QA audit ([docs/qa-audit.md](../qa-audit.md)) covering architecture, DRY geometry helpers, quality-detection performance, session/state scaling, layout/a11y, and UI structure. Remediating every finding in one push would stall feature velocity. We need an explicit strategy for **what to fix now**, **what to defer**, and **how to verify** algorithmic refactors without relying solely on unit tests.
+The project has a large, prioritized QA audit ([docs/qa-audit.md](../../qa-audit.md)) covering architecture, DRY geometry helpers, quality-detection performance, session/state scaling, layout/a11y, and UI structure. Remediating every finding in one push would stall feature velocity. We need an explicit strategy for **what to fix now**, **what to defer**, and **how to verify** algorithmic refactors without relying solely on unit tests.
 
-The remediation plan lives at [docs/plans/archive/qa-audit-remediation.md](../plans/archive/qa-audit-remediation.md). This ADR records the architectural policy that plan must follow.
+The remediation plan lives at [docs/plans/poc/archive/qa-audit-remediation.md](../../plans/poc/archive/qa-audit-remediation.md). This ADR records the architectural policy that plan must follow.
 
 ### Decision 1 — Prefer granular Zustand selectors over Web Workers
 
@@ -52,12 +52,12 @@ The remediation plan lives at [docs/plans/archive/qa-audit-remediation.md](../pl
 
 | File | Role |
 |------|------|
-| [docs/plans/archive/qa-audit-remediation.md](../plans/archive/qa-audit-remediation.md) | Sliced execution plan bound by this ADR |
-| [docs/qa-audit.md](../qa-audit.md) | Finding source of truth; update statuses as slices ship |
+| [docs/plans/poc/archive/qa-audit-remediation.md](../../plans/poc/archive/qa-audit-remediation.md) | Sliced execution plan bound by this ADR |
+| [docs/qa-audit.md](../../qa-audit.md) | Finding source of truth; update statuses as slices ship |
 
 ### References
 
 - [ADR 0001](0001-mesh-model-and-topology.md) — mesh / topology
 - [ADR 0002](0002-unfold-step-1-hinge-island.md) — hinge unfold
 - [ADR 0003](0003-unfold-quality-detection.md) — quality detection
-- [AGENTS.md](../../AGENTS.md) — planning workflow; ask before architectural changes
+- [AGENTS.md](../../../AGENTS.md) — planning workflow; ask before architectural changes

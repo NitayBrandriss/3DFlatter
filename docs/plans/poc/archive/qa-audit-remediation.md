@@ -1,9 +1,9 @@
 # QA audit remediation
 
 **Status:** Complete (Slices 0–7)  
-**Source audit:** [qa-audit.md](../../qa-audit.md) (2026-07-19 Staff refresh)  
-**ADR:** [0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)  
-**Depends on:** ADRs [0001](../../decisions/0001-mesh-model-and-topology.md)–[0003](../../decisions/0003-unfold-quality-detection.md)  
+**Source audit:** [qa-audit.md](../../../qa-audit.md) (2026-07-19 Staff refresh)  
+**ADR:** [0004 — Tech-debt remediation strategy](../../../decisions/poc/0004-tech-debt-remediation-strategy.md)  
+**Depends on:** ADRs [0001](../../../decisions/poc/0001-mesh-model-and-topology.md)–[0003](../../../decisions/poc/0003-unfold-quality-detection.md)  
 **Hub:** [Plans & roadmap](../README.md)
 
 ## Goal
@@ -52,7 +52,7 @@ flowchart TD
 | **7** | UI structure / DRY | **Complete** (2026-07-27) | UI-001–003, APP-001–003, LAYOUT-007 |
 | **Deferred** | Worker + Low/Info | Deferred | UI-004, remaining Low, Info LOGIC-020–023 |
 
-**Dependency rules:** Slice 2 before 3. Slice 0 can ship alone. One slice per Agent pass. Run `npm test` after each slice; also `npm run lint` when touching TypeScript/React. Update [qa-audit.md](../../qa-audit.md) statuses when a slice ships.
+**Dependency rules:** Slice 2 before 3. Slice 0 can ship alone. One slice per Agent pass. Run `npm test` after each slice; also `npm run lint` when touching TypeScript/React. Update [qa-audit.md](../../../qa-audit.md) statuses when a slice ships.
 
 ---
 
@@ -66,9 +66,9 @@ flowchart TD
 
 **Primary files:**
 
-- [docs/decisions/0001-mesh-model-and-topology.md](../../decisions/0001-mesh-model-and-topology.md)
-- [docs/decisions/0002-unfold-step-1-hinge-island.md](../../decisions/0002-unfold-step-1-hinge-island.md)
-- [docs/decisions/0003-unfold-quality-detection.md](../../decisions/0003-unfold-quality-detection.md)
+- [docs/decisions/poc/0001-mesh-model-and-topology.md](../../../decisions/poc/0001-mesh-model-and-topology.md)
+- [docs/decisions/poc/0002-unfold-step-1-hinge-island.md](../../../decisions/poc/0002-unfold-step-1-hinge-island.md)
+- [docs/decisions/poc/0003-unfold-quality-detection.md](../../../decisions/poc/0003-unfold-quality-detection.md)
 
 **Approach:**
 
@@ -92,13 +92,13 @@ flowchart TD
 
 **Primary files:**
 
-- [src/logic/unfold/detectTears.ts](../../../src/logic/unfold/detectTears.ts)
-- [src/logic/unfold/buildUnfoldTreeEdges.ts](../../../src/logic/unfold/buildUnfoldTreeEdges.ts)
-- [src/logic/unfold/unfoldIsland.ts](../../../src/logic/unfold/unfoldIsland.ts)
-- [src/logic/unfold/unfoldMesh.ts](../../../src/logic/unfold/unfoldMesh.ts)
-- [src/logic/unfold/layoutIslands.ts](../../../src/logic/unfold/layoutIslands.ts)
-- [src/logic/unfold/toGlobalQualityReports.ts](../../../src/logic/unfold/toGlobalQualityReports.ts)
-- [src/logic/mesh/types.ts](../../../src/logic/mesh/types.ts) (if adding `sourceIslandIndex`)
+- [src/logic/unfold/detectTears.ts](../../../../src/logic/unfold/detectTears.ts)
+- [src/logic/unfold/buildUnfoldTreeEdges.ts](../../../../src/logic/unfold/buildUnfoldTreeEdges.ts)
+- [src/logic/unfold/unfoldIsland.ts](../../../../src/logic/unfold/unfoldIsland.ts)
+- [src/logic/unfold/unfoldMesh.ts](../../../../src/logic/unfold/unfoldMesh.ts)
+- [src/logic/unfold/layoutIslands.ts](../../../../src/logic/unfold/layoutIslands.ts)
+- [src/logic/unfold/toGlobalQualityReports.ts](../../../../src/logic/unfold/toGlobalQualityReports.ts)
+- [src/logic/mesh/types.ts](../../../../src/logic/mesh/types.ts) (if adding `sourceIslandIndex`)
 
 **Approach:**
 
@@ -129,8 +129,8 @@ flowchart TD
 **Primary files:**
 
 - New: `src/logic/mesh/faceUtils.ts` (or equivalent)
-- [src/logic/mesh/edgeKey.ts](../../../src/logic/mesh/edgeKey.ts) — add `parseEdgeKey`
-- [src/logic/geom2d/tolerances.ts](../../../src/logic/geom2d/tolerances.ts)
+- [src/logic/mesh/edgeKey.ts](../../../../src/logic/mesh/edgeKey.ts) — add `parseEdgeKey`
+- [src/logic/geom2d/tolerances.ts](../../../../src/logic/geom2d/tolerances.ts)
 - Call sites: `unfoldIsland.ts`, `buildUnfoldTreeEdges.ts`, `partitionIslands.ts`, `unfoldEdge2d.ts`, `displaySeamSegments.ts`, `seamSegments2d.ts`, `detectTears.ts`, `weldVertices.ts`, `polygonConvexity.ts`, `resolvePick.ts`
 
 **Approach:**
@@ -163,11 +163,11 @@ flowchart TD
 
 **Primary files:**
 
-- [src/logic/unfold/detectCollisions.ts](../../../src/logic/unfold/detectCollisions.ts)
-- [src/logic/unfold/detectTears.ts](../../../src/logic/unfold/detectTears.ts)
-- [src/logic/unfold/unfoldEdge2d.ts](../../../src/logic/unfold/unfoldEdge2d.ts)
-- [src/logic/geom2d/triangle2d.ts](../../../src/logic/geom2d/triangle2d.ts)
-- [src/logic/geom2d/spatialGrid.ts](../../../src/logic/geom2d/spatialGrid.ts)
+- [src/logic/unfold/detectCollisions.ts](../../../../src/logic/unfold/detectCollisions.ts)
+- [src/logic/unfold/detectTears.ts](../../../../src/logic/unfold/detectTears.ts)
+- [src/logic/unfold/unfoldEdge2d.ts](../../../../src/logic/unfold/unfoldEdge2d.ts)
+- [src/logic/geom2d/triangle2d.ts](../../../../src/logic/geom2d/triangle2d.ts)
+- [src/logic/geom2d/spatialGrid.ts](../../../../src/logic/geom2d/spatialGrid.ts)
 
 **Approach:**
 
@@ -199,11 +199,11 @@ flowchart TD
 
 **Primary files:**
 
-- [src/logic/mesh/buildTopology.ts](../../../src/logic/mesh/buildTopology.ts)
-- [src/logic/io/stl/parseStl.ts](../../../src/logic/io/stl/parseStl.ts)
-- [src/logic/io/obj/parseObj.ts](../../../src/logic/io/obj/parseObj.ts)
-- [src/logic/unfold/seamSegments2d.ts](../../../src/logic/unfold/seamSegments2d.ts)
-- [src/state/meshSessionStore.ts](../../../src/state/meshSessionStore.ts)
+- [src/logic/mesh/buildTopology.ts](../../../../src/logic/mesh/buildTopology.ts)
+- [src/logic/io/stl/parseStl.ts](../../../../src/logic/io/stl/parseStl.ts)
+- [src/logic/io/obj/parseObj.ts](../../../../src/logic/io/obj/parseObj.ts)
+- [src/logic/unfold/seamSegments2d.ts](../../../../src/logic/unfold/seamSegments2d.ts)
+- [src/state/meshSessionStore.ts](../../../../src/state/meshSessionStore.ts)
 
 **Approach:**
 
@@ -232,10 +232,10 @@ flowchart TD
 
 **Primary files:**
 
-- [app/page.tsx](../../../app/page.tsx)
-- [src/state/meshSessionStore.ts](../../../src/state/meshSessionStore.ts)
-- [src/ui/useFlattenExport.ts](../../../src/ui/useFlattenExport.ts)
-- [src/ui/UnfoldViewer2D.tsx](../../../src/ui/UnfoldViewer2D.tsx)
+- [app/page.tsx](../../../../app/page.tsx)
+- [src/state/meshSessionStore.ts](../../../../src/state/meshSessionStore.ts)
+- [src/ui/useFlattenExport.ts](../../../../src/ui/useFlattenExport.ts)
+- [src/ui/UnfoldViewer2D.tsx](../../../../src/ui/UnfoldViewer2D.tsx)
 
 **Approach:**
 
@@ -319,13 +319,13 @@ flowchart TD
 2. Implement minimal diff; extend existing modules; ask before new dependencies or public type shape changes beyond this plan.
 3. `npm test`; `npm run lint` if TS/React touched.
 4. For Slices **2** and **3**: complete **Manual visual QA with a complex seamed model**.
-5. Mark audit IDs fixed in [qa-audit.md](../../qa-audit.md); tick Done-when boxes here.
+5. Mark audit IDs fixed in [qa-audit.md](../../../qa-audit.md); tick Done-when boxes here.
 6. One slice per PR / Agent pass preferred.
 
 ---
 
 ## References
 
-- [qa-audit.md](../../qa-audit.md)
-- [ADR 0004 — Tech-debt remediation strategy](../../decisions/0004-tech-debt-remediation-strategy.md)
-- [AGENTS.md](../../../AGENTS.md)
+- [qa-audit.md](../../../qa-audit.md)
+- [ADR 0004 — Tech-debt remediation strategy](../../../decisions/poc/0004-tech-debt-remediation-strategy.md)
+- [AGENTS.md](../../../../AGENTS.md)

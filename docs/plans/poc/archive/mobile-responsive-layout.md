@@ -3,7 +3,7 @@
 **Status:** Complete  
 
 **Hub:** [Plans & roadmap](../README.md)  
-**QA:** [qa-audit.md](../../qa-audit.md) (layout slice health check)
+**QA:** [qa-audit.md](../../../qa-audit.md) (layout slice health check)
 
 Responsive shell: collapsible sidebar, labeled toggles, draggable desktop 2D split, mobile 3D/2D tabs, auto-close on major actions, peek-through on continuous controls — via `src/ui/layout/`.
 
@@ -28,11 +28,11 @@ Responsive shell: collapsible sidebar, labeled toggles, draggable desktop 2D spl
 
 ---
 
-## Architecture principles (aligned with [AGENTS.md](../../../AGENTS.md))
+## Architecture principles (aligned with [AGENTS.md](../../../../AGENTS.md))
 
 | Principle | Decision |
 |-----------|----------|
-| **Thin route, fat UI module** | [`app/page.tsx`](../../../app/page.tsx) orchestrates; layout UI lives in [`src/ui/layout/`](../../../src/ui/layout/) |
+| **Thin route, fat UI module** | [`app/page.tsx`](../../../../app/page.tsx) orchestrates; layout UI lives in [`src/ui/layout/`](../../../../src/ui/layout/) |
 | **No logic in `src/logic/`** | Layout is presentation-only; clamp math in `src/ui/layout/` with Vitest |
 | **No new dependencies** | CSS transitions, `useSyncExternalStore`, Pointer Events, `localStorage` |
 | **Single source of truth** | Breakpoint + dimensions in `constants.ts`; mirrored as CSS custom properties in `:root` |
@@ -46,15 +46,15 @@ Responsive shell: collapsible sidebar, labeled toggles, draggable desktop 2D spl
 
 **Shell + UX polish:** shipped.
 
-- Shell: [`app/page.tsx`](../../../app/page.tsx) → [`src/ui/layout/`](../../../src/ui/layout/) (`AppSidebar`, `ViewportChrome`, hooks)
-- CSS: [`app/globals.css`](../../../app/globals.css) — tokens, `data-sidebar` / `data-sidebar-peek`, desktop in-flow width vs mobile overlay drawer
+- Shell: [`app/page.tsx`](../../../../app/page.tsx) → [`src/ui/layout/`](../../../../src/ui/layout/) (`AppSidebar`, `ViewportChrome`, hooks)
+- CSS: [`app/globals.css`](../../../../app/globals.css) — tokens, `data-sidebar` / `data-sidebar-peek`, desktop in-flow width vs mobile overlay drawer
 - Desktop: collapsible sidebar, draggable 2D split (both viewports always visible)
 - Mobile: rail + overlay drawer, 3D/2D tabs, auto-close on major actions, scale-slider peek-through
 - Default: `sidebarOpen = userOverride ?? isDesktop` (desktop open, mobile closed)
 - Toggles: single-line (`flex-direction: row`); Close tab `left: 100%` outside drawer; scroll on `.sidebar-drawer-body`
 - Mobile collapsed: `visibility: hidden` + `translateX(-100%)` (driven by `data-sidebar`, not a default-only transform)
 - **Flatten (mobile):** `handleFlatten` in `page.tsx` — on success sets `mobilePanel` to `"2d"`; `AppSidebar` still calls `closeIfMobile()`
-- Storage helper: [`readLayoutStorage.ts`](../../../src/ui/layout/readLayoutStorage.ts)
+- Storage helper: [`readLayoutStorage.ts`](../../../../src/ui/layout/readLayoutStorage.ts)
 
 ```mermaid
 flowchart TB
@@ -177,7 +177,7 @@ const sidebarOpen = userOverride ?? isDesktop;
 | **Persist** | After explicit toggle / close / `closeIfMobile`, write `3dflatter.sidebarOpen` |
 | **No snap on resize** | Crossing 769px must not override `userOverride` |
 | **Mobile auto-close** | Still calls `closeIfMobile()` after successful major actions — that is intentional close, not a change to the default |
-| **SSR** | `getServerSnapshot → true` (desktop); mobile may flash open→closed on hydrate ([LAYOUT-004](../../qa-audit.md)) — acceptable for PoC |
+| **SSR** | `getServerSnapshot → true` (desktop); mobile may flash open→closed on hydrate ([LAYOUT-004](../../../qa-audit.md)) — acceptable for PoC |
 
 `useMediaQuery` stays on `useSyncExternalStore` (unchanged).
 
@@ -236,7 +236,7 @@ Staff / UX decisions for the three reported issues:
 
 ## Part 3 — Mobile 3D / 2D tabs — shipped
 
-- `mobilePanel: "3d" | "2d"` state in [`app/page.tsx`](../../../app/page.tsx); [`ViewportChrome`](../../../src/ui/layout/ViewportChrome.tsx) owns tablist / tabpanels
+- `mobilePanel: "3d" | "2d"` state in [`app/page.tsx`](../../../../app/page.tsx); [`ViewportChrome`](../../../../src/ui/layout/ViewportChrome.tsx) owns tablist / tabpanels
 - Toasts stay in 3D host
 
 ### Flatten → 2D (mobile only)
@@ -245,8 +245,8 @@ After a **successful** Flatten on mobile, the user should see the pattern immedi
 
 | Layer | Responsibility |
 |-------|----------------|
-| [`app/page.tsx`](../../../app/page.tsx) `handleFlatten` | Calls `onFlatten()`; if `ok && !isDesktop`, `setMobilePanel("2d")` |
-| [`AppSidebar`](../../../src/ui/layout/AppSidebar.tsx) `handleFlatten` | Calls the page handler; if `ok`, `closeIfMobile()` |
+| [`app/page.tsx`](../../../../app/page.tsx) `handleFlatten` | Calls `onFlatten()`; if `ok && !isDesktop`, `setMobilePanel("2d")` |
+| [`AppSidebar`](../../../../src/ui/layout/AppSidebar.tsx) `handleFlatten` | Calls the page handler; if `ok`, `closeIfMobile()` |
 
 ```tsx
 // app/page.tsx
@@ -313,7 +313,7 @@ const handleFlatten = useCallback((): boolean => {
 - Swipe-from-left-edge to open drawer
 - Keyboard shortcut `[` to toggle sidebar on desktop
 - Extend peek-through to desktop
-- Reduce mobile SSR open→closed flash ([LAYOUT-004](../../qa-audit.md))
+- Reduce mobile SSR open→closed flash ([LAYOUT-004](../../../qa-audit.md))
 
 ---
 

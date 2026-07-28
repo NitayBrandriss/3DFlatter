@@ -40,7 +40,7 @@ flowchart LR
 
 ## Part 1 — Documentation updates
 
-### [`docs/plans/archive/step-2-flattening.md`](../archive/step-2-flattening.md)
+### [`step-2-flattening.md`](./step-2-flattening.md)
 
 - Change frontmatter `status: planned` → `status: complete` with an active stretch subsection.
 - Replace stale line 29 (`Not done yet: multi-island orchestration…`) with a **Delivered (core)** table listing shipped files.

@@ -1,11 +1,11 @@
 # 3DFlatter — Product roadmap
 
 **Status:** Active (post-PoC)  
-**PoC baseline:** Frozen — see [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) and [docs/plans/README.md](docs/plans/README.md) (Shipped table only). PoC ADRs **0001–0004** in [docs/decisions/](docs/decisions/) are **not amended** for product features unless a product ADR explicitly extends them.
+**PoC baseline:** Frozen — see [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md) and [docs/plans/poc/README.md](docs/plans/poc/README.md). PoC ADRs **0001–0004** in [docs/decisions/poc/](docs/decisions/poc/) are **not amended** for product features unless a product ADR explicitly extends them.
 
-**Architecture numbering:** Product-phase ADRs start at **0100** (`docs/decisions/0100-*.md`). They may depend on PoC ADRs but keep product scope separate from the historical PoC record.
+**Architecture numbering:** Product-phase ADRs start at **0100** in [docs/decisions/product/](docs/decisions/product/).
 
-**Implementation plans:** Product specs live under [docs/plans/](docs/plans/) (active files or `archive/` when complete). Update this roadmap when a phase ships.
+**Implementation plans:** Product specs under [docs/plans/product/](docs/plans/product/); PoC specs under [docs/plans/poc/archive/](docs/plans/poc/archive/).
 
 ---
 
@@ -17,9 +17,9 @@
 | **Seams** | Manual edge pick (`EdgeKey`) | Edge pick **+** freeform cut strokes |
 | **Mesh edits** | Load-only `MeshModel` | Overlay strokes; **lazy materialize** on Flatten |
 | **Export** | SVG tier 1 preview | Tier 2 manufacturing, edge IDs, folds, pagination (later) |
-| **Docs** | [PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md), plans archive | **This file** + ADR 0100+ |
+| **Docs** | [PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md), [plans/poc/](docs/plans/poc/) | **This file** + ADR 0100+ |
 
-The PoC codebase remains the foundation: `src/logic/` purity, triangle-soup unfold ([ADR 0002](docs/decisions/0002-unfold-step-1-hinge-island.md)), quality detect-and-report ([ADR 0003](docs/decisions/0003-unfold-quality-detection.md)).
+The PoC codebase remains the foundation: `src/logic/` purity, triangle-soup unfold ([ADR 0002](docs/decisions/poc/0002-unfold-step-1-hinge-island.md)), quality detect-and-report ([ADR 0003](docs/decisions/poc/0003-unfold-quality-detection.md)).
 
 ---
 
@@ -38,7 +38,7 @@ flowchart LR
 
 | Phase | Theme | Status | ADR / plan |
 |-------|--------|--------|------------|
-| **1** | Freeform cut strokes (3D) | **Active** | [ADR 0100](docs/decisions/0100-freeform-cut-strokes.md) *(next)* |
+| **1** | Freeform cut strokes (3D) | **Active** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) *(next)* · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
 | 2 | SVG tier 2 / laser-ready paths | Planned | TBD |
 | 3 | Glue flaps / tabs; edge ID matching on SVG | Planned | TBD |
 | 4 | Real-world scale (cm); A4/Letter pagination | Planned | TBD |
@@ -91,7 +91,7 @@ flowchart TB
 1. **Logic** — `materializeCutStrokes`, segment–triangle cuts, fan splits, snap, Vitest fixtures  
 2. **State** — stroke CRUD, `patternRevision`, wire [useFlattenExport](src/ui/useFlattenExport.ts)  
 3. **Viewer** — draw tool, ref-based in-progress stroke, `CutStrokesOverlay`  
-4. **Docs** — [docs/plans/archive/phase-1-freeform-cut-strokes.md](docs/plans/archive/phase-1-freeform-cut-strokes.md) when work starts *(create with ADR 0100)*
+4. **Docs** — [docs/plans/product/phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) + ADR 0100
 
 ### Phase 1 non-goals
 
@@ -124,6 +124,6 @@ Details will get their own ADRs (0101+) when scheduled.
 
 1. Read PoC ADRs 0001–0004 and [AGENTS.md](AGENTS.md).  
 2. Add or update a **product ADR** (`0100+`) before non-trivial code.  
-3. Add a row to **this roadmap** and an implementation spec under `docs/plans/`.  
-4. Do **not** extend [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md) with product delivery history — update this file instead.  
+3. Add a row to **this roadmap** and a spec under [docs/plans/product/](docs/plans/product/).  
+4. Do **not** extend [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md) with product delivery history — update this file instead.  
 5. Run `npm test` (and `npm run lint` when touching TS/React) before marking a slice complete.

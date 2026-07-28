@@ -60,15 +60,15 @@ OBJ (`v` + `f`) and STL (ASCII/binary) import, zero material thickness, output i
 
 ## Documentation
 
-- **PoC summary (frozen):** [docs/PROJECT_SUMMARY.md](docs/PROJECT_SUMMARY.md)
+- **PoC phase summary (frozen):** [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md)
 - **Product roadmap (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md)
 - **Contributors / agents:** [AGENTS.md](AGENTS.md)
-- **Docs index:** [docs/README.md](docs/README.md) — PoC ADRs 0001–0004, product ADRs 0100+
+- **Docs layout:** [docs/README.md](docs/README.md) — `plans/poc/` vs `plans/product/`, `decisions/poc/` vs `decisions/product/`
 
 ## Local Assets
 
 - `3d_models/` — manual QA meshes (gitignored)
 - `tests/` — optional local test fixtures (gitignored)
-- `thoughts.txt` — optional local notes (gitignored); canonical backlog is [docs/plans/README.md](docs/plans/README.md) **Planned** rows
+- `thoughts.txt` — optional local notes (gitignored); backlog in [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md)
 
 Unit-test fixtures live in `src/logic/io/obj/testMeshes.ts` and `src/logic/io/stl/testMeshes.ts` (tracked).

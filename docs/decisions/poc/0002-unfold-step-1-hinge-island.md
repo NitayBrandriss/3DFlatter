@@ -111,8 +111,8 @@ The following items were deferred when this ADR shipped. **They are no longer op
 
 | Item | Status |
 |------|--------|
-| `unfoldMesh()` multi-island orchestrator + island XY packing | **Shipped** — [step-2-flattening](../plans/archive/step-2-flattening.md) |
-| `UnfoldViewer2D` / SVG export UI | **Shipped** — Step 2 + [export/svg](../../src/logic/export/svg/) |
+| `unfoldMesh()` multi-island orchestrator + island XY packing | **Shipped** — [step-2-flattening](../../plans/poc/archive/step-2-flattening.md) |
+| `UnfoldViewer2D` / SVG export UI | **Shipped** — Step 2 + [export/svg](../../../src/logic/export/svg/) |
 | Collision / overlap detection within an island | **Shipped** — [ADR 0003](0003-unfold-quality-detection.md) |
 | Intra-island slits without island partition | **Still deferred** — future feature |
 | 2D corner re-welding across non-tree shared edges | **Still deferred** — future feature / auto-fix |
@@ -133,4 +133,4 @@ Do not reintroduce per-vertex 2D maps without a new ADR. Mesh-level orchestratio
 
 - [ADR 0001](0001-mesh-model-and-topology.md) — mesh, topology, XY plane
 - [ADR 0003](0003-unfold-quality-detection.md) — quality detection (shipped Step 3)
-- [Plans & roadmap](../plans/README.md) — Step 2+ archive specs
+- [PoC plans](../../plans/poc/README.md) — Step 2+ archive specs

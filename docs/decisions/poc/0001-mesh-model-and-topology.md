@@ -25,16 +25,16 @@ OBJ and STL are **peer** I/O formats at the boundary. Both produce the same cano
 - Support only `v` (vertex positions) and `f` (faces).
 - Ignore materials/textures for now (`mtl`, `usemtl`).
 - Ignore normals/UVs for now (`vn`, `vt`), groups/objects (`g`, `o`), and smoothing (`s`).
-- Implementation: [`src/logic/io/obj/parseObj.ts`](../../src/logic/io/obj/parseObj.ts).
+- Implementation: [`src/logic/io/obj/parseObj.ts`](../../../src/logic/io/obj/parseObj.ts).
 
 ##### STL import scope (v1)
 - Support **ASCII** and **binary** STL (format detected from buffer layout / `solid` prefix heuristics).
 - Each STL facet is already a triangle; no n-gon triangulation step.
 - Degenerate facets (exact coincident corners pre-weld, and index-degenerate faces after weld) contribute to aggregate `degenerate_triangle` warnings — not per-triangle rows.
-- Implementation: [`src/logic/io/stl/parseStl.ts`](../../src/logic/io/stl/parseStl.ts).
+- Implementation: [`src/logic/io/stl/parseStl.ts`](../../../src/logic/io/stl/parseStl.ts).
 
 ##### Vertex welding (accepted consequence)
-- Both OBJ and STL run [`weldVertices`](../../src/logic/mesh/weldVertices.ts) on load (`epsilon` ≈ `1e-6`, same order as hinge/`SAT_EPS`).
+- Both OBJ and STL run [`weldVertices`](../../../src/logic/mesh/weldVertices.ts) on load (`epsilon` ≈ `1e-6`, same order as hinge/`SAT_EPS`).
 - Welding may drop index-degenerate triangles; callers surface `removedDegenerateFaceCount` via load warnings where applicable.
 
 #### Triangulation and indices
@@ -89,5 +89,5 @@ OBJ and STL are **peer** I/O formats at the boundary. Both produce the same cano
 ### Future options / revisit
 - Optional `vn` / `vt` for better viewport rendering and UV-based heuristics.
 - Geometric degeneracy filter at import or topology (amend this ADR if adopted).
-- Unfold Step 1: [ADR 0002](0002-unfold-step-1-hinge-island.md). Mesh orchestration + quality: [ADR 0003](0003-unfold-quality-detection.md), [plans/README.md](../plans/README.md).
+- Unfold Step 1: [ADR 0002](0002-unfold-step-1-hinge-island.md). Mesh orchestration + quality: [ADR 0003](0003-unfold-quality-detection.md), [plans/poc/README.md](../../plans/poc/README.md).
 - Introduce a half-edge structure if algorithms become complex, but keep `EdgeKey` compatibility so seam selections remain stable.
