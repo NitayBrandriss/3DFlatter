@@ -390,3 +390,112 @@ Slice 1 happy-path coverage (edge→edge, interior dart, zigzag, snap, multi-str
 
 - Audit pass left production cut sources unchanged; remediation edited `src/logic/cuts/` + ADR/plan docs afterward.
 - This document is the product-track QA home for future slices (state wiring, viewer draw tool, etc.).
+
+---
+
+## Slice 3 — Viewer: draw tool + CutStrokesOverlay
+
+**Date:** 2026-07-29  
+**Scope:** `PickableMesh.tsx` (draw-tool pointer logic), `CutStrokesOverlay.tsx`, `InProgressCutStrokeLine.tsx`, `packCutStrokeDisplaySegments.ts`, `displayNormalization.ts` round-trip, `page.tsx` wiring.  
+**Test file:** `src/viewer/slice3.audit.test.ts` (12 tests, all pass)
+
+### Summary
+
+Slice 3 is primarily React/R3F UI code. The testable pure-logic surface (`packCutStrokeDisplaySegments`, `displayToCanonical`/`canonicalToDisplay`) is **robust** — all adversarial tests pass including degenerate meshes, extreme scales, and zero-scale normalization. The static review of the React draw-tool identified several low-to-medium issues but **no critical or high-severity bugs**.
+
+### Findings
+
+#### VIEW-S3-001 — `appendSample` closes over stale `normalization`
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Component** | `PickableMesh.tsx` line 77–96 |
+| **Issue** | `appendSample` captures `normalization` in its closure. If the mesh is reloaded (new normalization) while a draw is in progress, the remaining samples will be converted with the old normalization. The `canonicalPoints` accumulated so far would be in a different coordinate frame from the new mesh. |
+| **Root cause** | `normalization` is a `useMemo` dep of `appendSample` but `drawing.current` persists across re-renders. |
+| **Risk** | Low in practice — mesh reload resets the Canvas via `key={sceneKey}` which unmounts `PickableMesh`, aborting any in-progress draw. Only a risk if `normalization` changes without remount (currently impossible). |
+| **Strategy** | No fix needed now. If normalization ever becomes mutable mid-draw, store it in a ref that `appendSample` reads. |
+
+#### VIEW-S3-002 — No feedback when `MAX_STROKE_POINTS` is hit
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `PickableMesh.tsx` line 86 |
+| **Issue** | When the user drags a very long stroke exceeding 512 samples, additional points are silently dropped. The polyline appears to "freeze" with no visual or auditory feedback. |
+| **Root cause** | The `if (displayPoints.current.length >= MAX_STROKE_POINTS) return;` guard is silent. |
+| **Strategy** | Optional UX: change cursor or line color when cap is reached. Low priority — 512 samples at MIN_SAMPLE_DIST of 0.015 display units covers a very long stroke. |
+
+#### VIEW-S3-003 — `MIN_SAMPLE_DIST_SQ` is in display space, not canonical
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `PickableMesh.tsx` line 19, 80–85 |
+| **Issue** | The minimum distance between consecutive samples (0.015 display units) is fixed in display space. Since display normalization scales all meshes to a uniform radius, this is actually correct and scale-independent. No bug — documenting for clarity. |
+| **Strategy** | None needed. |
+
+#### VIEW-S3-004 — `pointerCapture` failure is swallowed silently
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `PickableMesh.tsx` lines 116–118, 149–151 |
+| **Issue** | `setPointerCapture` / `releasePointerCapture` failures are caught and ignored. If capture fails, the pointer can leave the mesh during drawing and the stroke commits short. |
+| **Root cause** | Defensive try/catch for environments where capture is unsupported. |
+| **Risk** | Minimal — the document-level `pointerup` listener (line 197–203) acts as a fallback and still commits the stroke. |
+| **Strategy** | Acceptable as-is. |
+
+#### VIEW-S3-005 — `onPointerMove` drops samples when pointer leaves mesh surface
+| Field | Value |
+|-------|-------|
+| **Severity** | Medium |
+| **Component** | `PickableMesh.tsx` line 134–135 |
+| **Issue** | During `cut` drawing, if the pointer moves off the mesh surface (e.g., the user overshoots an edge), `e.faceIndex` is null and the sample is skipped. This creates a gap in the stroke. When the pointer re-enters the mesh, the next sample connects to the last valid sample with a straight line that may cut across empty space. |
+| **Root cause** | R3F only fires `onPointerMove` with a faceIndex when the ray hits the mesh geometry. Off-mesh moves don't provide a hit point. |
+| **Risk** | The materialization pass (`materializeCutStrokes`) will handle the off-surface segment by failing to locate those points (returning `kind: "none"`), so no topological corruption. But the drawn polyline may look misleading — the user sees a straight jump. |
+| **Strategy** | Future UX: clamp the last sample to the mesh edge, or show a dashed line for off-mesh segments. Not a correctness issue. |
+
+#### VIEW-S3-006 — `cutStrokeIdSeq` in page.tsx is not reset on mesh load
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `app/page.tsx` line 111–113 |
+| **Issue** | `cutStrokeIdSeq` is a `useRef` that increments forever across mesh loads. The ID format `cut-${meshLoadVersion}-${seq}` prevents collisions since `meshLoadVersion` differs per load, so this is cosmetic only — IDs like `cut-2-15` are fine. |
+| **Strategy** | No fix needed. Optionally reset to 0 on mesh load for tidiness. |
+
+#### VIEW-S3-007 — `CutStrokesOverlay` geometry disposal race
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `CutStrokesOverlay.tsx` lines 31–33 |
+| **Issue** | The cleanup effect disposes the geometry when `lineGeometry` changes. If React runs the cleanup after the new geometry is attached to the `<lineSegments>`, this is correct. React guarantees cleanup runs before the next effect, so this is safe. |
+| **Strategy** | None needed — React lifecycle handles this correctly. |
+
+#### VIEW-S3-008 — `InProgressCutStrokeLine` creates new `BufferAttribute` every `setPoints` call
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Component** | `InProgressCutStrokeLine.tsx` lines 43–52 |
+| **Issue** | Every pointer-move sample that passes the distance threshold creates a brand-new `Float32Array` and `BufferAttribute`. This generates garbage. For 512 max samples, this is at most 512 allocations during a single drag — trivial for modern GC but suboptimal. |
+| **Strategy** | Optional optimization: pre-allocate a buffer of `MAX_STROKE_POINTS * 3` floats and use `setDrawRange` to control visible length. Low priority. |
+
+### Test results
+
+All 12 adversarial tests pass:
+- `packCutStrokeDisplaySegments`: empty, degenerate, mixed, ordering, zero-scale, extreme large/small coordinates
+- `display↔canonical round-trip`: large coords, tiny coords, zero-scale normalization
+- Static constants sanity checks
+
+### Verdict
+
+**Slice 3 is clean.** No critical or high-severity issues. The two medium findings (VIEW-S3-001, VIEW-S3-005) are not correctness bugs — they're UX edge cases that the materialization layer already handles gracefully. The pure-logic packing and coordinate transform code is solid across all adversarial inputs.
+
+### Remediation priority
+
+| ID | Severity | Action |
+|----|----------|--------|
+| VIEW-S3-001 | Medium | No fix needed now (unmount prevents the scenario) |
+| VIEW-S3-002 | Low | Optional UX polish |
+| VIEW-S3-003 | Low | Documentation only (no bug) |
+| VIEW-S3-004 | Low | Acceptable defensive code |
+| VIEW-S3-005 | Medium | Future UX enhancement, not a correctness issue |
+| VIEW-S3-006 | Low | Cosmetic only |
+| VIEW-S3-007 | Low | React lifecycle handles correctly |
+| VIEW-S3-008 | Low | Optional micro-optimization |
