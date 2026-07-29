@@ -60,7 +60,7 @@ flowchart LR
 | **Open loops** | Allowed; validation **warns** (toast) but user may proceed — define slit vs island semantics in ADR 0100 |
 | **Internal stops / zigzags** | Subdivide with interior Steiner points + fan triangulation; reject self-intersecting strokes per face |
 | **Snapping** | Scale-aware epsilon: snap to existing vertices (and edges) to avoid sliver geometry |
-| **Versioning** | `meshLoadVersion` bumps **only** on file load; stroke edits use **`patternRevision`** (or flatten fingerprint) for stale pattern UI |
+| **Versioning** | `meshLoadVersion` bumps **only** on file load; stroke edits use **`patternRevision`**; flatten fingerprint also includes **`seamsContentKey`** for stale pattern UI |
 | **Future hooks** | Stroke `id`, optional later `foldKind`; `CutManifest` at materialize for edge ID matching (not in Phase 1 UI) |
 
 ### Architecture

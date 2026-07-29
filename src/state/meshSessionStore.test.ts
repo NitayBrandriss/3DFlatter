@@ -51,10 +51,14 @@ function resetStore() {
     patternRevision: 0,
     isLoading: false,
     error: null,
-    seamMode: true,
+    meshEditTool: "seam",
     toasts: [],
     toastSeq: 0,
   });
+}
+
+function withSession() {
+  useMeshSessionStore.setState({ session: cubeSession(), meshLoadVersion: 1 });
 }
 
 describe("seamsContentKey", () => {
@@ -83,10 +87,14 @@ describe("seamsContentKey", () => {
 });
 
 describe("flattenSnapshotKey", () => {
-  it("changes when patternRevision or meshLoadVersion changes", () => {
-    expect(flattenSnapshotKey(1, 0)).toBe("1:0");
-    expect(flattenSnapshotKey(1, 0)).not.toBe(flattenSnapshotKey(1, 1));
-    expect(flattenSnapshotKey(1, 0)).not.toBe(flattenSnapshotKey(2, 0));
+  it("changes when patternRevision, meshLoadVersion, or seamsKey changes", () => {
+    expect(flattenSnapshotKey(1, 0, "")).toBe("1:0:");
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(1, 1, ""));
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(2, 0, ""));
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(
+      flattenSnapshotKey(1, 0, makeEdgeKey(0, 1)),
+    );
+    expect(flattenSnapshotKey(1, 0, "a")).toBe(flattenSnapshotKey(1, 0, "a"));
   });
 });
 
@@ -110,6 +118,7 @@ describe("computeSessionStats", () => {
 describe("cutStrokes CRUD", () => {
   beforeEach(() => {
     resetStore();
+    withSession();
   });
 
   it("addCutStroke appends and bumps patternRevision without meshLoadVersion", () => {
@@ -132,6 +141,18 @@ describe("cutStrokes CRUD", () => {
     expect(next.meshLoadVersion).toBe(loadBefore);
   });
 
+  it("deep-copies points so external mutation cannot corrupt the store", () => {
+    const p0 = { x: 0, y: 0, z: 0 };
+    const p1 = { x: 1, y: 0, z: 0 };
+    const points = [p0, p1];
+    useMeshSessionStore.getState().addCutStroke({ id: "mut", points });
+    p0.x = 99;
+    points.push({ x: 2, y: 2, z: 2 });
+    const stored = useMeshSessionStore.getState().cutStrokes[0]!;
+    expect(stored.points).toHaveLength(2);
+    expect(stored.points[0]!.x).toBe(0);
+  });
+
   it("rejects strokes with fewer than 2 points", () => {
     useMeshSessionStore.getState().addCutStroke({
       id: "short",
@@ -139,6 +160,28 @@ describe("cutStrokes CRUD", () => {
     });
     expect(useMeshSessionStore.getState().cutStrokes).toHaveLength(0);
     expect(useMeshSessionStore.getState().patternRevision).toBe(0);
+  });
+
+  it("replace-on-add upserts by id instead of allowing duplicates", () => {
+    const store = useMeshSessionStore.getState();
+    store.addCutStroke({
+      id: "dup",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    store.addCutStroke({
+      id: "dup",
+      points: [
+        { x: 0, y: 1, z: 0 },
+        { x: 1, y: 1, z: 0 },
+      ],
+    });
+    const strokes = useMeshSessionStore.getState().cutStrokes;
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0]!.points[0]!.y).toBe(1);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(2);
   });
 
   it("updateCutStroke replaces points and bumps patternRevision", () => {
@@ -202,6 +245,19 @@ describe("cutStrokes CRUD", () => {
     expect(useMeshSessionStore.getState().patternRevision).toBe(0);
   });
 
+  it("stroke CRUD no-ops when session is null", () => {
+    useMeshSessionStore.setState({ session: null, patternRevision: 0, cutStrokes: [] });
+    useMeshSessionStore.getState().addCutStroke({
+      id: "orphan",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    expect(useMeshSessionStore.getState().cutStrokes).toHaveLength(0);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(0);
+  });
+
   it("toggleSeamAt does not bump patternRevision or meshLoadVersion", () => {
     const session = cubeSession();
     useMeshSessionStore.setState({
@@ -228,6 +284,7 @@ describe("cutStrokes CRUD", () => {
 
     try {
       useMeshSessionStore.setState({
+        session: cubeSession(),
         cutStrokes: [
           {
             id: "old",

@@ -1,19 +1,26 @@
 import * as THREE from "three";
 import type { MeshModel } from "../logic/mesh/types";
-import { computeDisplayVertices } from "./displayNormalization";
+import {
+  computeDisplayNormalization,
+  computeDisplayVertices,
+  type DisplayNormalization,
+} from "./displayNormalization";
 
 export type DisplayMeshAssets = {
   /** Three.js geometry using display-normalized positions (owned by the caller). */
   geometry: THREE.BufferGeometry;
   /** MeshModel with display vertices; face indices match canonical topology. */
   displayMesh: MeshModel;
+  /** Inverse of display verts — maps stroke hits back to canonical coords. */
+  normalization: DisplayNormalization;
 };
 
 /**
  * Build display geometry and a pick-aligned mesh snapshot from canonical store data.
- * Normalization runs exactly once so render, raycast resolve, and seam overlay agree.
+ * Normalization runs exactly once so render, raycast resolve, and overlays agree.
  */
 export function buildDisplayMeshAssets(mesh: MeshModel): DisplayMeshAssets {
+  const normalization = computeDisplayNormalization(mesh.vertices);
   const displayVertices = computeDisplayVertices(mesh.vertices);
 
   const geometry = new THREE.BufferGeometry();
@@ -34,5 +41,5 @@ export function buildDisplayMeshAssets(mesh: MeshModel): DisplayMeshAssets {
     vertices: displayVertices,
   };
 
-  return { geometry, displayMesh };
+  return { geometry, displayMesh, normalization };
 }

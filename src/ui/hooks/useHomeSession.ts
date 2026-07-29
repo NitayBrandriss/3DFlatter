@@ -26,7 +26,7 @@ export function useHomeSession() {
     useShallow((s) => ({
       isLoading: s.isLoading,
       error: s.error,
-      seamMode: s.seamMode,
+      meshEditTool: s.meshEditTool,
       toasts: s.toasts,
     })),
   );
@@ -39,7 +39,7 @@ export function useHomeSession() {
       updateCutStroke: s.updateCutStroke,
       deleteCutStroke: s.deleteCutStroke,
       clearCutStrokes: s.clearCutStrokes,
-      setSeamMode: s.setSeamMode,
+      setMeshEditTool: s.setMeshEditTool,
       dismissToast: s.dismissToast,
       notifyToast: s.notifyToast,
     })),
@@ -47,7 +47,7 @@ export function useHomeSession() {
 
   const { mesh, topology, fileName, meshLoadVersion, patternRevision } =
     meshIdentity;
-  const { isLoading, error, seamMode, toasts } = chrome;
+  const { isLoading, error, meshEditTool, toasts } = chrome;
 
   const session = useMemo((): MeshSession | null => {
     if (!mesh || !topology || !seams || fileName == null) return null;
@@ -71,7 +71,7 @@ export function useHomeSession() {
     stats,
     isLoading,
     error,
-    seamMode,
+    meshEditTool,
     toasts,
     ...actions,
   };

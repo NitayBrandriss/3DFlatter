@@ -17,13 +17,13 @@ Non-destructive **cut strokes** on the 3D mesh (overlay in Zustand); **lazy** `m
 | Commit | `materializeCutStrokes` → derived mesh + topology + seam union → `unfoldMesh` |
 | Open loops | Warn on Flatten; user may proceed |
 | Geometry | Segment–triangle clip walk, interior Steiner + fan, scale-aware snap/surface eps; whole-stroke self-intersect reject |
-| Versioning | `meshLoadVersion` on load only; `patternRevision` (or flatten fingerprint) for stroke edits |
+| Versioning | `meshLoadVersion` on load only; `patternRevision` for stroke edits; flatten fingerprint also includes `seamsContentKey` |
 
 ## Implementation slices
 
 1. **Logic** — `materializeCutStrokes`, tests  
 2. **State** — stroke CRUD, Flatten wiring in `useFlattenExport` ✅  
-3. **Viewer** — draw tool + `CutStrokesOverlay`  
+3. **Viewer** — draw tool + `CutStrokesOverlay` ✅  
 4. **Docs** — ADR 0100 + update PRODUCT_ROADMAP when complete  
 
 Full design notes: see Cursor plan *Freeform 3D cuts* (promote details here as ADR 0100 lands).

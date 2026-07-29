@@ -17,8 +17,9 @@ import {
   seamCount,
   toggleSeam,
 } from "../logic/seams/seamRegistry";
+import type { MeshEditTool } from "./meshEditTool";
 
-export type { CutStroke, Vec3 };
+export type { CutStroke, Vec3, MeshEditTool };
 
 export type MeshSession = {
   mesh: MeshModel;
@@ -40,16 +41,19 @@ type MeshSessionState = {
   /**
    * Freeform cut overlay (ADR 0100). Canonical mesh-space polylines.
    * Does not mutate `session.mesh`. Cleared on successful file load.
+   * Stroke CRUD no-ops when `session` is null.
    */
   cutStrokes: CutStroke[];
   /**
-   * Bumps on cut-stroke CRUD only. Used with `meshLoadVersion` for flatten
-   * snapshot identity — seam toggles do not bump this (STATE-002).
+   * Bumps on cut-stroke CRUD only. Used with `meshLoadVersion` and
+   * `seamsContentKey` for flatten snapshot identity (ADR 0100).
+   * Seam toggles do not bump this — seams enter the fingerprint via content key.
    */
   patternRevision: number;
   isLoading: boolean;
   error: string | null;
-  seamMode: boolean;
+  /** Edge-pick seams, freeform draw cut, or orbit-only. */
+  meshEditTool: MeshEditTool;
   toasts: ToastMessage[];
   toastSeq: number;
 
@@ -60,17 +64,25 @@ type MeshSessionState = {
   updateCutStroke: (id: string, points: readonly Vec3[]) => void;
   deleteCutStroke: (id: string) => void;
   clearCutStrokes: () => void;
-  setSeamMode: (enabled: boolean) => void;
+  setMeshEditTool: (tool: MeshEditTool) => void;
   dismissToast: (id: number) => void;
   notifyToast: (text: string, tone?: ToastMessage["tone"]) => void;
 };
 
-/** Flatten snapshot key: mesh load + stroke edits (not seam membership). */
+/**
+ * Flatten snapshot key (ADR 0100): mesh load + stroke revision + seams fingerprint.
+ * Seam edits change `seamsKey` without bumping `patternRevision` / `meshLoadVersion`.
+ */
 export function flattenSnapshotKey(
   meshLoadVersion: number,
   patternRevision: number,
+  seamsKey: string,
 ): string {
-  return `${meshLoadVersion}:${patternRevision}`;
+  return `${meshLoadVersion}:${patternRevision}:${seamsKey}`;
+}
+
+function cloneStrokePoints(points: readonly Vec3[]): Vec3[] {
+  return points.map((p) => ({ ...p }));
 }
 
 function pushToast(
@@ -163,7 +175,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   patternRevision: 0,
   isLoading: false,
   error: null,
-  seamMode: true,
+  meshEditTool: "seam",
   toasts: [],
   toastSeq: 0,
 
@@ -272,26 +284,39 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   },
 
   addCutStroke: (stroke: CutStroke) => {
-    if (stroke.points.length < 2) return;
-    set((s) => ({
-      cutStrokes: [...s.cutStrokes, { ...stroke, points: [...stroke.points] }],
-      patternRevision: s.patternRevision + 1,
-    }));
+    if (!get().session || stroke.points.length < 2) return;
+    const cloned: CutStroke = {
+      ...stroke,
+      points: cloneStrokePoints(stroke.points),
+    };
+    set((s) => {
+      const idx = s.cutStrokes.findIndex((c) => c.id === stroke.id);
+      if (idx >= 0) {
+        const next = s.cutStrokes.slice();
+        next[idx] = cloned;
+        return { cutStrokes: next, patternRevision: s.patternRevision + 1 };
+      }
+      return {
+        cutStrokes: [...s.cutStrokes, cloned],
+        patternRevision: s.patternRevision + 1,
+      };
+    });
   },
 
   updateCutStroke: (id: string, points: readonly Vec3[]) => {
-    if (points.length < 2) return;
+    if (!get().session || points.length < 2) return;
     set((s) => {
       const idx = s.cutStrokes.findIndex((c) => c.id === id);
       if (idx < 0) return s;
       const next = s.cutStrokes.slice();
       const prev = next[idx]!;
-      next[idx] = { ...prev, points: [...points] };
+      next[idx] = { ...prev, points: cloneStrokePoints(points) };
       return { cutStrokes: next, patternRevision: s.patternRevision + 1 };
     });
   },
 
   deleteCutStroke: (id: string) => {
+    if (!get().session) return;
     set((s) => {
       if (!s.cutStrokes.some((c) => c.id === id)) return s;
       return {
@@ -308,7 +333,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
     });
   },
 
-  setSeamMode: (enabled: boolean) => set({ seamMode: enabled }),
+  setMeshEditTool: (tool: MeshEditTool) => set({ meshEditTool: tool }),
 
   dismissToast: (id: number) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),

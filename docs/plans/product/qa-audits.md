@@ -29,6 +29,167 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ---
 
+## Audit — 2026-07-28 — Phase 1 Slice 2: cut stroke state + Flatten wiring
+
+**Status:** Remediated (2026-07-29) — STATE-S2-001–006 addressed; see [Remediation](#remediation-2026-07-29-slice-2).  
+**Date:** 2026-07-28  
+**Scope:** Slice 2 only — [`meshSessionStore`](../../../src/state/meshSessionStore.ts) cut-stroke CRUD / `patternRevision` / `flattenSnapshotKey`; [`flattenWithCutStrokes`](../../../src/logic/cuts/flattenWithCutStrokes.ts); static review of [`useFlattenExport`](../../../src/ui/useFlattenExport.ts) + [`useHomeSession`](../../../src/ui/hooks/useHomeSession.ts). No viewer draw tool (Slice 3). **No production code changes.**  
+**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Plan:** [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md)  
+**Method:** Adversarial Vitest + static ADR/STATE contract review.  
+**Characterizing tests:** [`src/state/meshSessionStore.audit.test.ts`](../../../src/state/meshSessionStore.audit.test.ts)  
+**Test baseline (audit day):** audit file **17 tests — 2 failed, 15 passed**; baseline store + `flattenWithCutStrokes` tests still green.
+
+### Remediation (2026-07-29 Slice 2)
+
+| ID | Status | Fix summary |
+|----|--------|-------------|
+| STATE-S2-001 | **Resolved** | Deep-copy each `Vec3` on add/update via `cloneStrokePoints` |
+| STATE-S2-002 | **Resolved** | Honor ADR 0100: `flattenSnapshotKey(load, rev, seamsContentKey)`; seam edits stale 2D |
+| STATE-S2-003 | **Resolved** | `addCutStroke` replace-on-add (upsert by `id`) |
+| STATE-S2-004 | **Resolved** | Collapse materialize warnings into one toast (`formatMaterializeWarningsToast`) |
+| STATE-S2-005 | **Resolved** | Stroke CRUD no-ops when `session === null` |
+| STATE-S2-006 | **Resolved** | Collapsed toast prioritizes open-loop via structured `openLoops` |
+
+### Executive summary
+
+Slice 2 correctly keeps the base `session.mesh` immutable, clears strokes on successful load, bumps `patternRevision` only on stroke CRUD (not seam toggles), and wires Flatten through `flattenWithCutStrokes` → materialize → unfold with materialize warnings toasted. Happy-path coverage is good.
+
+Two defects need attention before Slice 3 draw UX:
+
+1. **STATE-S2-001 (High):** `addCutStroke` / `updateCutStroke` only shallow-copy the points array — mutating `Vec3` fields after insert corrupts store overlay (and thus Flatten).
+2. **STATE-S2-002 (High vs ADR / Medium vs PoC UX):** ADR 0100 requires the Flatten fingerprint to include **seams**; `flattenSnapshotKey(meshLoadVersion, patternRevision)` omits seams, preserving STATE-002 “stale pattern until re-Flatten.” Export/2D can disagree with live seam picks after a toggle.
+
+Duplicate stroke ids are allowed and make `update`/`delete` ambiguous (Medium). Toast flooding on many materialize warnings is Low/Medium.
+
+**Verdict (audit day):** Fix deep-copy before Slice 3 pointer sampling writes into the store. Resolve ADR vs STATE-002 fingerprint explicitly (amend ADR **or** include `seamsContentKey` in the snapshot key) before treating Flatten UX as ADR-complete.
+
+**Verdict (post-remediation):** STATE-S2-001–006 closed; proceed to Slice 3 draw UX.
+
+### Findings count
+
+| Severity | Open (audit) | Open (now) | Notes |
+|----------|--------------|------------|-------|
+| Critical | 0 | 0 | — |
+| High | 1–2 | **0** | STATE-S2-001–002 remediated |
+| Medium | 2 | **0** | STATE-S2-003–004 remediated |
+| Low | 2 | **0** | STATE-S2-005–006 remediated |
+
+### Findings table
+
+| ID | Severity | Issue | Evidence |
+|----|----------|-------|----------|
+| STATE-S2-001 | **High** | Shallow point copy — external `Vec3` mutation corrupts `cutStrokes` | Remediated — deep-copy regression green |
+| STATE-S2-002 | **High** (ADR) | Flatten snapshot key omitted seams | Remediated — fingerprint includes `seamsContentKey` |
+| STATE-S2-003 | **Medium** | Duplicate stroke `id`s allowed | Remediated — replace-on-add |
+| STATE-S2-004 | **Medium** | Many `materializeWarnings` each call `notifyToast` | Remediated — single summary toast |
+| STATE-S2-005 | **Low** | Strokes with `session === null` | Remediated — CRUD requires session |
+| STATE-S2-006 | **Low** | `openLoops` unused in Flatten hook | Remediated — prioritizes open-loop in collapsed toast |
+
+---
+
+### STATE-S2-001 — Shallow `Vec3` copy in stroke CRUD
+
+- **Issue:** After `addCutStroke` / `updateCutStroke`, mutating a caller-owned point’s `.x`/`.y`/`.z` changes the Zustand overlay. Slice 3 live drawing will hold mutable refs into in-progress polylines — high corruption risk at Flatten.
+- **Severity:** High
+- **Root Cause & Proposed Strategy:** Store does `{ ...stroke, points: [...stroke.points] }` (array clone, shared objects).
+
+  **Fix:** Deep-copy points, e.g. `points.map((p) => ({ ...p }))` on add/update (and optionally freeze). Add regression tests from the audit file.
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### STATE-S2-002 — Flatten fingerprint omits seams (ADR vs STATE-002)
+
+- **Issue:** ADR 0100: “Flatten fingerprint must include strokes + seams + `meshLoadVersion`.” Implementation keys snapshots by `meshLoadVersion:patternRevision` only. Seam toggles do not bump `patternRevision`, so after Flatten → toggle seam, the 2D panel/SVG still show the **previous** unfold until the user hits Flatten again.
+- **Severity:** High against ADR; Medium if PoC STATE-002 “keep prior pattern visible” remains the product choice.
+- **Root Cause & Proposed Strategy:** Intentional STATE-002 carryover; ADR text was not reconciled in Slice 2.
+
+  **Fix applied:** Honor ADR — `flattenSnapshotKey(load, rev, seamsContentKey(seams))`. Stale panel clears when seams change. `meshLoadVersion` / `patternRevision` still not bumped on seam edits.
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### STATE-S2-003 — Duplicate stroke identities
+
+- **Issue:** `addCutStroke` does not reject duplicate `id`. `updateCutStroke` updates the first match; `deleteCutStroke` removes **all** with that id.
+- **Severity:** Medium
+- **Root Cause & Proposed Strategy:** No uniqueness check.
+
+  **Fix applied:** Replace-on-add (upsert by `id`).
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### STATE-S2-004 — Materialize warning toast spam / drop
+
+- **Issue:** Each materialize warning becomes its own toast; store keeps only the last 4. Long strokes with many skipped segments can hide open-loop or self-intersect messages.
+- **Severity:** Medium
+- **Root Cause & Proposed Strategy:** 1:1 toast per warning string.
+
+  **Fix applied:** Collapse into one summary toast via `formatMaterializeWarningsToast`.
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### STATE-S2-005 — Strokes without a session
+
+- **Issue:** Overlay CRUD does not require `session`. Harmless today (Flatten no-ops without session; load clears strokes) but odd if UI exposes stroke actions pre-load.
+- **Severity:** Low
+- **Root Cause & Proposed Strategy:** Overlay is session-orthogonal by design.
+
+  **Fix applied:** Store guard — stroke CRUD no-ops when `session === null`.
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### STATE-S2-006 — `openLoops` unused in Flatten hook
+
+- **Issue:** `flattenWithCutStrokes` returns structured `openLoops`; `useFlattenExport` only iterates `materializeWarnings` (which already include open-loop text). Structured field is dead at the UI boundary.
+- **Severity:** Low
+- **Root Cause & Proposed Strategy:** Adequate for Phase 1 toasts; structured data unused.
+
+  **Fix applied:** Collapsed toast prioritizes open-loop using structured `openLoops`.
+
+  **Status:** Resolved (2026-07-29).
+
+---
+
+### What passed (confidence)
+
+- Base mesh buffers unchanged after Flatten with/without strokes
+- Successful load clears strokes + resets `patternRevision`; failed load preserves both
+- Seam toggle / clearAllSeams do not bump `patternRevision` or `meshLoadVersion`
+- Self-intersecting stroke surfaces warning and still unfolds
+- Open-loop warnings propagate from materialize through `flattenWithCutStrokes`
+- Multi-stroke Flatten completes without error
+- Baseline Slice 2 unit tests remain green
+
+### Structural / future-proofing
+
+| Risk | Severity | Notes |
+|------|----------|-------|
+| Sync Flatten on main thread with materialize + unfold | Medium | ADR defers Worker; long strokes on dense meshes may hitch UI (watch after Slice 3) |
+| Snapshot key ignores stroke **content** if revision not bumped | Low | All CRUD paths bump revision today; don’t add silent in-place point edits later |
+| Quality overlay auto-enable keyed only by `meshLoadVersion` | Low | Stroke-only re-flatten still works via new snapshot; overlay state may feel sticky across pattern revisions |
+
+### Recommended next steps
+
+1. Proceed to Slice 3 draw UX (unique stroke ids at generation time).
+2. Keep [`meshSessionStore.audit.test.ts`](../../../src/state/meshSessionStore.audit.test.ts) as regression gate.
+
+### Audit hygiene
+
+- Remediation edited production Slice 2 sources (store + Flatten hook + toast helper).
+- Slice 1 audit remains below (remediated).
+
+---
+
 ## Audit — 2026-07-28 — Phase 1 Slice 1: `materializeCutStrokes`
 
 **Status:** Remediated (2026-07-28) — CUT-001–010 addressed in logic; see [Remediation](#remediation-2026-07-28).  

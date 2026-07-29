@@ -31,7 +31,11 @@ export function SeamOverlay({
   if (!lineGeometry) return null;
 
   return (
-    <lineSegments geometry={lineGeometry} scale={modelScale}>
+    <lineSegments
+      geometry={lineGeometry}
+      scale={modelScale}
+      raycast={() => undefined}
+    >
       <lineBasicMaterial color="#ff4444" linewidth={2} depthTest />
     </lineSegments>
   );

@@ -10,9 +10,11 @@ import {
 } from "@/logic/unfold/qualitySummary";
 import {
   flattenSnapshotKey,
+  seamsContentKey,
   type MeshSession,
 } from "@/state/meshSessionStore";
 import { downloadTextFile, svgFileNameFromMesh } from "./download";
+import { formatMaterializeWarningsToast } from "./formatMaterializeWarningsToast";
 
 type NotifyToast = (text: string, tone?: "info" | "warning") => void;
 
@@ -40,13 +42,13 @@ function resolveQualityOverlayState(
  *
  * - **Session (Zustand)** owns mesh, topology, live seams, and `cutStrokes`.
  *   Seam toggles and stroke edits must not bump `meshLoadVersion` (AGENTS.md).
- *   Stroke CRUD bumps `patternRevision` only (ADR 0100).
+ *   Stroke CRUD bumps `patternRevision` only; seam membership enters the
+ *   flatten key via `seamsContentKey` (ADR 0100).
  * - **Flatten snapshot (this hook)** owns the last successful unfold result,
- *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision)`.
- *   Seam edits keep the prior pattern visible until re-flatten (STATE-002);
- *   stroke edits stale the snapshot via `patternRevision`.
+ *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision, seamsKey)`.
+ *   Seam or stroke edits stale the snapshot (2D clears until re-Flatten).
  * - On Flatten: `flattenWithCutStrokes` (materialize when strokes exist) then
- *   unfold; materialize warnings (incl. open loops) toast before quality toasts.
+ *   unfold; materialize warnings collapse to one toast before quality toasts.
  * - No separate flatten Zustand store: the snapshot is page-local UI state.
  */
 export function useFlattenExport(
@@ -71,7 +73,12 @@ export function useFlattenExport(
     meshLoadVersion,
   );
 
-  const snapshotKey = flattenSnapshotKey(meshLoadVersion, patternRevision);
+  const seamsKey = session ? seamsContentKey(session.seams) : "";
+  const snapshotKey = flattenSnapshotKey(
+    meshLoadVersion,
+    patternRevision,
+    seamsKey,
+  );
   const flattenResult =
     flattenSnapshot && flattenSnapshot.key === snapshotKey
       ? flattenSnapshot.result
@@ -95,15 +102,23 @@ export function useFlattenExport(
     if (!session) return false;
     setFlattening(true);
     try {
-      const { unfold: result, materializeWarnings } = flattenWithCutStrokes({
+      const {
+        unfold: result,
+        materializeWarnings,
+        openLoops,
+      } = flattenWithCutStrokes({
         mesh: session.mesh,
         topology: session.topology,
         seams: session.seams,
         cutStrokes,
       });
 
-      for (const warning of materializeWarnings) {
-        notifyToast(warning, "warning");
+      const materializeToast = formatMaterializeWarningsToast(
+        materializeWarnings,
+        openLoops,
+      );
+      if (materializeToast) {
+        notifyToast(materializeToast, "warning");
       }
 
       if (result.error) {
@@ -130,7 +145,11 @@ export function useFlattenExport(
         });
       }
       setFlattenSnapshot({
-        key: flattenSnapshotKey(meshLoadVersion, patternRevision),
+        key: flattenSnapshotKey(
+          meshLoadVersion,
+          patternRevision,
+          seamsContentKey(session.seams),
+        ),
         result,
       });
       return true;

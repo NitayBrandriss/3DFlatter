@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: slice-3-viewer
     content: Draw tool with ref-based in-progress stroke; R3F overlay from store; sidebar tool toggle
-    status: pending
+    status: completed
   - id: slice-4-docs
     content: Archive phase-2-freeform-cut-strokes.md + promote plan from .cursor when active
     status: pending
