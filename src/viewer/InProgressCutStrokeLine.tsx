@@ -16,15 +16,29 @@ export const InProgressCutStrokeLine = forwardRef<
   InProgressCutStrokeHandle,
   { modelScale: number }
 >(function InProgressCutStrokeLine({ modelScale }, ref) {
-  const geometry = useMemo(() => {
+  const { line, geometry } = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
-    return geo;
+    const material = new THREE.LineBasicMaterial({
+      color: "#7dd3fc",
+      linewidth: 2,
+      depthTest: true,
+    });
+    const lineObj = new THREE.Line(geo, material);
+    lineObj.raycast = () => undefined;
+    return { line: lineObj, geometry: geo };
   }, []);
 
   useEffect(() => {
-    return () => geometry.dispose();
-  }, [geometry]);
+    return () => {
+      geometry.dispose();
+      (line.material as THREE.Material).dispose();
+    };
+  }, [geometry, line]);
+
+  useEffect(() => {
+    line.scale.setScalar(modelScale);
+  }, [line, modelScale]);
 
   useImperativeHandle(
     ref,
@@ -61,9 +75,5 @@ export const InProgressCutStrokeLine = forwardRef<
     [geometry],
   );
 
-  return (
-    <line geometry={geometry} scale={modelScale} raycast={() => undefined}>
-      <lineBasicMaterial color="#7dd3fc" linewidth={2} depthTest />
-    </line>
-  );
+  return <primitive object={line} />;
 });
