@@ -499,3 +499,69 @@ All 12 adversarial tests pass:
 | VIEW-S3-006 | Low | Cosmetic only |
 | VIEW-S3-007 | Low | React lifecycle handles correctly |
 | VIEW-S3-008 | Low | Optional micro-optimization |
+
+---
+
+## Slice 4 — Docs + Cross-Slice Integration Audit
+
+**Date:** 2026-07-29  
+**Scope:** Full end-to-end audit across all 4 slices; docs verification; integration seams between logic → state → viewer → page.
+
+### Docs verification (Slice 4)
+
+- `docs/plans/product/phase-1-freeform-cut-strokes.md` exists, status is complete in `README.md`.
+- `docs/plans/product/README.md` marks the phase as **Complete** with link to ADR 0100.
+- ADR 0100 (`docs/decisions/product/0100-freeform-cut-strokes.md`) is present and up to date.
+- No archive folder created yet (spec says "move to `product/archive/` if the folder grows") — acceptable for a single completed phase.
+- `.cursor/plans/freeform_3d_cuts_466c5d0b.plan.md` still exists — per the plan's slice-4 todo it should be deleted/archived after promotion. **Minor doc hygiene issue.**
+
+### Full test suite
+
+**280 tests, 41 files, all passing.** Zero `TODO`/`FIXME`/`HACK` markers. Zero `as any` / `@ts-ignore` casts.
+
+### Cross-slice integration analysis
+
+#### XSLICE-001 — Data flow integrity: stroke → store → materialize → unfold ✅
+| Field | Value |
+|-------|-------|
+| **Severity** | None (passing) |
+| **Detail** | `PickableMesh.onPointerUp` → `onCutStrokeCommit` → `page.tsx` wraps in `{id, points}` → `addCutStroke` (deep-copies points) → `flattenWithCutStrokes` (materializes + unfolds). The chain is type-safe and deep-copy-protected per STATE-S2-001 fix. Verified by `meshSessionStore.audit.test.ts`. |
+
+#### XSLICE-002 — Display↔canonical coordinate round-trip ✅
+| Field | Value |
+|-------|-------|
+| **Severity** | None (passing) |
+| **Detail** | `PickableMesh` records pointer hits in display space → `displayToCanonical` → stored as canonical `Vec3[]`. `CutStrokesOverlay` reads canonical → `canonicalToDisplay` for rendering. Round-trip verified by `displayNormalization.test.ts` + `slice3.audit.test.ts`. |
+
+#### XSLICE-003 — Seam + cut flatten fingerprint ✅
+| Field | Value |
+|-------|-------|
+| **Severity** | None (passing) |
+| **Detail** | `flattenSnapshotKey` includes `seamsContentKey` (STATE-S2-002 fix). Seam toggles do not bump `meshLoadVersion`. Cut stroke edits bump `patternRevision`. All invariants verified by `meshSessionStore.audit.test.ts`. |
+
+#### XSLICE-004 — Canvas remount on mesh load isolates draw state ✅
+| Field | Value |
+|-------|-------|
+| **Severity** | None (passing) |
+| **Detail** | `MeshViewport` uses `key={sceneKey}` where `sceneKey = mesh-${meshLoadVersion}`. Loading a new mesh unmounts the entire R3F tree, which discards any in-progress draw refs. This prevents VIEW-S3-001 (stale normalization) from ever triggering. |
+
+#### XSLICE-005 — `.cursor/plans/` not cleaned up after promotion
+| Field | Value |
+|-------|-------|
+| **Severity** | Low |
+| **Detail** | `.cursor/plans/freeform_3d_cuts_466c5d0b.plan.md` still exists after the plan was promoted to `docs/plans/product/`. Per the Slice 4 todo ("Archive phase-2-freeform-cut-strokes.md + promote plan from .cursor when active"), this file should be deleted or archived. No impact on functionality. |
+
+### Summary
+
+| Area | Status |
+|------|--------|
+| Slice 1 (geometry) | ✅ All 52 adversarial + 8 unit tests pass; remediations (CUT-001–010) verified |
+| Slice 2 (state) | ✅ All 16 adversarial + 9 unit tests pass; remediations (STATE-S2-001–006) verified |
+| Slice 3 (viewer) | ✅ All 12 adversarial + existing tests pass; 2 medium UX issues (no correctness bugs) |
+| Slice 4 (docs) | ✅ Plan promoted, ADR present, README updated; minor hygiene: `.cursor/plans/` not deleted |
+| Cross-slice integration | ✅ Data flow, coordinates, fingerprinting, and Canvas lifecycle are all sound |
+| Full suite | **280/280 passing** |
+
+### Verdict
+
+**Phase 1 (Freeform Cut Strokes) is production-quality.** No critical, high, or medium-severity integration issues remain. The only outstanding items are UX polish (VIEW-S3-002 silent point cap, VIEW-S3-005 off-mesh gap display) and minor doc hygiene (XSLICE-005).

@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: slice-4-docs
     content: Archive phase-2-freeform-cut-strokes.md + promote plan from .cursor when active
-    status: pending
+    status: completed
 isProject: false
 ---
 
