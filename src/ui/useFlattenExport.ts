@@ -15,27 +15,13 @@ import {
 } from "@/state/meshSessionStore";
 import { downloadTextFile, svgFileNameFromMesh } from "./download";
 import { formatMaterializeWarningsToast } from "./formatMaterializeWarningsToast";
+import {
+  defaultQualityOverlayState,
+  isFlattenSnapshotCurrent,
+  resolveQualityOverlayState,
+} from "./flattenSnapshotUi";
 
 type NotifyToast = (text: string, tone?: "info" | "warning") => void;
-
-type QualityOverlayState = {
-  meshVersion: number;
-  show: boolean;
-  autoEnabled: boolean;
-};
-
-function defaultQualityOverlayState(meshVersion: number): QualityOverlayState {
-  return { meshVersion, show: false, autoEnabled: false };
-}
-
-function resolveQualityOverlayState(
-  state: QualityOverlayState,
-  meshLoadVersion: number,
-): QualityOverlayState {
-  return state.meshVersion === meshLoadVersion
-    ? state
-    : defaultQualityOverlayState(meshLoadVersion);
-}
 
 /**
  * Flatten/export UI state (ARCH-003 dual-ownership contract):
@@ -80,7 +66,8 @@ export function useFlattenExport(
     seamsKey,
   );
   const flattenResult =
-    flattenSnapshot && flattenSnapshot.key === snapshotKey
+    flattenSnapshot &&
+    isFlattenSnapshotCurrent(flattenSnapshot.key, snapshotKey)
       ? flattenSnapshot.result
       : null;
 

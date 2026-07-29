@@ -565,3 +565,15 @@ All 12 adversarial tests pass:
 ### Verdict
 
 **Phase 1 (Freeform Cut Strokes) is production-quality.** No critical, high, or medium-severity integration issues remain. The only outstanding items are UX polish (VIEW-S3-002 silent point cap, VIEW-S3-005 off-mesh gap display) and minor doc hygiene (XSLICE-005).
+
+---
+
+## Test suite consolidation (2026-07-29)
+
+Adversarial cases from QA audit passes were merged into canonical Vitest files; `*.audit.test.ts` files were removed.
+
+| Former audit file | Canonical home |
+|-------------------|----------------|
+| `materializeCutStrokes.audit.test.ts` | [`materializeCutStrokes.adversarial.test.ts`](../../../src/logic/cuts/materializeCutStrokes.adversarial.test.ts) + [`workingMesh.test.ts`](../../../src/logic/cuts/workingMesh.test.ts); shared helpers in `cutTestFixtures.ts` / `cutTestAssertions.ts` |
+| `meshSessionStore.audit.test.ts` | [`meshSessionStore.test.ts`](../../../src/state/meshSessionStore.test.ts); flatten integration in [`flattenWithCutStrokes.test.ts`](../../../src/logic/cuts/flattenWithCutStrokes.test.ts) |
+| `slice3.audit.test.ts` | [`packCutStrokeDisplaySegments.test.ts`](../../../src/viewer/packCutStrokeDisplaySegments.test.ts), [`displayNormalization.test.ts`](../../../src/viewer/displayNormalization.test.ts); draw sampling in [`cutDrawSampling.test.ts`](../../../src/viewer/cutDrawSampling.test.ts) |

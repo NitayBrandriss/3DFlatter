@@ -44,6 +44,6 @@ Non-destructive **cut strokes** on the 3D mesh (overlay in Zustand); **lazy** `m
 ## Done when
 
 - [x] ADR 0100 accepted  
-- [x] Vitest coverage for materialize + snap + open-loop validation  
+- [x] Vitest: `materializeCutStrokes.test.ts`, `materializeCutStrokes.adversarial.test.ts`, `workingMesh.test.ts`, `flattenWithCutStrokes.test.ts`, `meshSessionStore.test.ts`, viewer packing/sampling tests  
 - [x] Manual: draw → delete stroke (base mesh unchanged) → Flatten → cuts visible in 2D  
 - [x] `npm test` / `npm run lint`

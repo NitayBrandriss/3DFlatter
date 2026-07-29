@@ -1,56 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { makeEdgeKey } from "../mesh/edgeKey";
-import type { MeshModel } from "../mesh/types";
+import {
+  findClosestVertex,
+  stroke,
+  unitQuad,
+  unitTriangle,
+  v,
+} from "./cutTestFixtures";
+import { seamEdgesExistOnMesh } from "./cutTestAssertions";
 import { materializeCutStrokes } from "./materializeCutStrokes";
-import type { CutStroke, Vec3 } from "./types";
-
-function makeMesh(vertices: number[], faces: number[]): MeshModel {
-  return {
-    vertices: new Float32Array(vertices),
-    faces: new Uint32Array(faces),
-    vertexCount: vertices.length / 3,
-    faceCount: faces.length / 3,
-  };
-}
-
-/** Unit right triangle in XY: (0,0,0)–(1,0,0)–(0,1,0). */
-function unitTriangle(): MeshModel {
-  return makeMesh([0, 0, 0, 1, 0, 0, 0, 1, 0], [0, 1, 2]);
-}
-
-/** Two triangles sharing edge 0–2 (quad split). */
-function unitQuad(): MeshModel {
-  return makeMesh(
-    [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
-    [0, 1, 2, 0, 2, 3],
-  );
-}
-
-function stroke(id: string, points: Vec3[]): CutStroke {
-  return { id, points };
-}
-
-function v(x: number, y: number, z = 0): Vec3 {
-  return { x, y, z };
-}
 
 describe("materializeCutStrokes", () => {
   it("diagonal cut: edge-to-edge chord becomes a seam and splits the face", () => {
     const mesh = unitTriangle();
-    // Midpoint of hypotenuse (1,0)–(0,1) and midpoint of (0,0)–(1,0)
-    const cuts = [
-      stroke("d1", [v(0.5, 0, 0), v(0.5, 0.5, 0)]),
-    ];
-    // 0.5,0.5 is midpoint of edge 1–2
+    const cuts = [stroke("d1", [v(0.5, 0, 0), v(0.5, 0.5, 0)])];
     const result = materializeCutStrokes(mesh, cuts, new Set());
 
-    expect(result.mesh.faceCount).toBeGreaterThan(1);
-    expect(result.mesh.vertexCount).toBeGreaterThanOrEqual(5);
+    expect(result.mesh.faceCount).toBe(3);
+    expect(result.mesh.vertexCount).toBe(5);
     expect(result.seams.seams.size).toBeGreaterThanOrEqual(1);
     expect(result.manifest).toHaveLength(1);
-    expect(result.manifest[0]!.edgeKeys.length).toBeGreaterThanOrEqual(1);
-    // Endpoints on boundary → not an open loop for a single triangle
+    expect(result.manifest[0]!.edgeKeys.length).toBe(1);
     expect(result.validation.openLoops).toHaveLength(0);
+    expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
   });
 
   it("internal stop: interior endpoint fans the face and warns open loop", () => {
@@ -58,7 +30,7 @@ describe("materializeCutStrokes", () => {
     const cuts = [stroke("dart", [v(0.5, 0, 0), v(0.25, 0.25, 0)])];
     const result = materializeCutStrokes(mesh, cuts, new Set());
 
-    expect(result.mesh.faceCount).toBeGreaterThanOrEqual(3);
+    expect(result.mesh.faceCount).toBe(4);
     expect(result.validation.openLoops).toHaveLength(1);
     expect(result.validation.openLoops[0]!.strokeId).toBe("dart");
     expect(result.validation.openLoops[0]!.interiorEndpoints).toContain(1);
@@ -68,7 +40,6 @@ describe("materializeCutStrokes", () => {
 
   it("zigzag (valid): multi-segment cut on one face without self-intersection", () => {
     const mesh = unitTriangle();
-    // Non-crossing polyline (previous fixture crossed seg0 vs seg2)
     const cuts = [
       stroke("zz", [
         v(0.15, 0),
@@ -83,7 +54,7 @@ describe("materializeCutStrokes", () => {
       false,
     );
     expect(result.manifest.length).toBe(3);
-    expect(result.seams.seams.size).toBeGreaterThanOrEqual(1);
+    expect(result.seams.seams.size).toBeGreaterThanOrEqual(2);
     expect(result.mesh.faceCount).toBeGreaterThan(1);
   });
 
@@ -97,7 +68,6 @@ describe("materializeCutStrokes", () => {
       new Set(),
     );
 
-    // Snapped start should be vertex 0 — no extra vertex at nearCorner
     const { vertices, vertexCount } = result.mesh;
     let nearCount = 0;
     for (let i = 0; i < vertexCount; i++) {
@@ -107,16 +77,14 @@ describe("materializeCutStrokes", () => {
       if (Math.hypot(x - 1e-8, y - 1e-8, z) < 1e-9) nearCount++;
     }
     expect(nearCount).toBe(0);
-    expect(result.seams.seams.has(makeEdgeKey(0, findClosestVertex(result.mesh, midHyp)))).toBe(
-      true,
-    );
+    expect(
+      result.seams.seams.has(makeEdgeKey(0, findClosestVertex(result.mesh, midHyp))),
+    ).toBe(true);
   });
 
   it("multi-stroke: later stroke sees subdivided mesh from earlier stroke", () => {
     const mesh = unitQuad();
-    // First: vertical cut on left triangle through interior
     const s1 = stroke("a", [v(0, 0.5, 0), v(0.5, 0.5, 0)]);
-    // Second: from that region toward right — starts near first cut's interior end
     const s2 = stroke("b", [v(0.5, 0.5, 0), v(1, 0.5, 0)]);
 
     const one = materializeCutStrokes(mesh, [s1], new Set());
@@ -137,7 +105,6 @@ describe("materializeCutStrokes", () => {
       manual,
     );
 
-    // Parent edge 0-1 was split; children should carry the seam
     expect(result.seams.seams.has(makeEdgeKey(0, 1))).toBe(false);
     const midOn01 = findClosestVertex(result.mesh, v(0.5, 0, 0));
     expect(result.seams.seams.has(makeEdgeKey(0, midOn01))).toBe(true);
@@ -170,19 +137,3 @@ describe("materializeCutStrokes", () => {
     );
   });
 });
-
-function findClosestVertex(mesh: MeshModel, p: Vec3): number {
-  let best = 0;
-  let bestD = Infinity;
-  for (let i = 0; i < mesh.vertexCount; i++) {
-    const dx = mesh.vertices[3 * i]! - p.x;
-    const dy = mesh.vertices[3 * i + 1]! - p.y;
-    const dz = mesh.vertices[3 * i + 2]! - p.z;
-    const d = dx * dx + dy * dy + dz * dz;
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  }
-  return best;
-}

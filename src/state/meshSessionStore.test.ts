@@ -96,6 +96,21 @@ describe("flattenSnapshotKey", () => {
     );
     expect(flattenSnapshotKey(1, 0, "a")).toBe(flattenSnapshotKey(1, 0, "a"));
   });
+
+  it("ADR 0100: seam or stroke revision change stales flatten snapshot", () => {
+    const load = 3;
+    const rev = 2;
+    const seamsA = seamsContentKey(createSeamRegistry());
+    const seamsB = seamsContentKey(
+      toggleSeam(createSeamRegistry(), makeEdgeKey(0, 1)),
+    );
+    expect(seamsA).not.toBe(seamsB);
+    expect(flattenSnapshotKey(load, rev, seamsA)).not.toBe(
+      flattenSnapshotKey(load, rev, seamsB),
+    );
+    const keyBefore = flattenSnapshotKey(1, 0, seamsA);
+    expect(flattenSnapshotKey(1, 1, seamsA)).not.toBe(keyBefore);
+  });
 });
 
 describe("computeSessionStats", () => {
@@ -139,6 +154,21 @@ describe("cutStrokes CRUD", () => {
     expect(next.cutStrokes[0]!.id).toBe("a");
     expect(next.patternRevision).toBe(revBefore + 1);
     expect(next.meshLoadVersion).toBe(loadBefore);
+  });
+
+  it("addCutStroke does not mutate session.mesh buffers", () => {
+    const session = cubeSession();
+    const vertsBefore = Array.from(session.mesh.vertices);
+    useMeshSessionStore.setState({ session, meshLoadVersion: 1 });
+    useMeshSessionStore.getState().addCutStroke({
+      id: "c",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    expect(Array.from(session.mesh.vertices)).toEqual(vertsBefore);
+    expect(useMeshSessionStore.getState().session!.mesh).toBe(session.mesh);
   });
 
   it("deep-copies points so external mutation cannot corrupt the store", () => {
@@ -208,6 +238,36 @@ describe("cutStrokes CRUD", () => {
     expect(next.meshLoadVersion).toBe(loadBefore);
   });
 
+  it("updateCutStroke deep-copies points against later mutation", () => {
+    useMeshSessionStore.getState().addCutStroke({
+      id: "u",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    const p0 = { x: 0, y: 1, z: 0 };
+    const p1 = { x: 1, y: 1, z: 0 };
+    const nextPts = [p0, p1];
+    useMeshSessionStore.getState().updateCutStroke("u", nextPts);
+    p0.y = -1;
+    expect(useMeshSessionStore.getState().cutStrokes[0]!.points[0]!.y).toBe(1);
+  });
+
+  it("updateCutStroke with fewer than 2 points is a no-op", () => {
+    useMeshSessionStore.getState().addCutStroke({
+      id: "a",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    const rev = useMeshSessionStore.getState().patternRevision;
+    useMeshSessionStore.getState().updateCutStroke("a", [{ x: 0, y: 0, z: 0 }]);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(rev);
+    expect(useMeshSessionStore.getState().cutStrokes[0]!.points).toHaveLength(2);
+  });
+
   it("deleteCutStroke and clearCutStrokes bump patternRevision", () => {
     const store = useMeshSessionStore.getState();
     store.addCutStroke({
@@ -273,6 +333,71 @@ describe("cutStrokes CRUD", () => {
     expect(next.meshLoadVersion).toBe(2);
     expect(next.patternRevision).toBe(5);
     expect(next.session!.seams.seams.has(edge)).toBe(true);
+  });
+
+  it("clearAllSeams does not bump patternRevision or meshLoadVersion", () => {
+    const session = cubeSession(
+      toggleSeam(createSeamRegistry(), makeEdgeKey(0, 1)),
+    );
+    useMeshSessionStore.setState({
+      session,
+      meshLoadVersion: 3,
+      patternRevision: 7,
+      cutStrokes: [
+        {
+          id: "x",
+          points: [
+            { x: 0, y: 0, z: 0 },
+            { x: 1, y: 0, z: 0 },
+          ],
+        },
+      ],
+    });
+    useMeshSessionStore.getState().clearAllSeams();
+    const next = useMeshSessionStore.getState();
+    expect(next.patternRevision).toBe(7);
+    expect(next.meshLoadVersion).toBe(3);
+    expect(next.session!.seams.seams.size).toBe(0);
+    expect(next.cutStrokes).toHaveLength(1);
+  });
+
+  it("failed load preserves cutStrokes and patternRevision", async () => {
+    const previousRaf = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    }) as typeof requestAnimationFrame;
+
+    try {
+      useMeshSessionStore.setState({
+        cutStrokes: [
+          {
+            id: "keep",
+            points: [
+              { x: 0, y: 0, z: 0 },
+              { x: 1, y: 0, z: 0 },
+            ],
+          },
+        ],
+        patternRevision: 3,
+        meshLoadVersion: 1,
+        session: cubeSession(),
+      });
+      const file = new File(["not a mesh"], "bad.txt", { type: "text/plain" });
+      const ok = await useMeshSessionStore.getState().loadMeshFile(file);
+      expect(ok).toBe(false);
+      const next = useMeshSessionStore.getState();
+      expect(next.cutStrokes).toHaveLength(1);
+      expect(next.patternRevision).toBe(3);
+      expect(next.meshLoadVersion).toBe(1);
+      expect(next.session).not.toBeNull();
+    } finally {
+      if (previousRaf) {
+        globalThis.requestAnimationFrame = previousRaf;
+      } else {
+        Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+      }
+    }
   });
 
   it("successful load clears cutStrokes and resets patternRevision", async () => {

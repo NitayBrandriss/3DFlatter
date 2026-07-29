@@ -13,11 +13,12 @@ import {
   type DisplayNormalization,
 } from "./displayNormalization";
 import type { InProgressCutStrokeHandle } from "./InProgressCutStrokeLine";
+import {
+  isAtCutStrokePointCap,
+  shouldAppendCutSample,
+} from "./cutDrawSampling";
 
 const DRAG_THRESHOLD_PX = 5;
-/** Min display-space distance between consecutive cut samples. */
-const MIN_SAMPLE_DIST_SQ = 0.015 * 0.015;
-const MAX_STROKE_POINTS = 512;
 
 export function PickableMesh({
   geometry,
@@ -77,13 +78,8 @@ export function PickableMesh({
   const appendSample = useCallback(
     (displayLocal: { x: number; y: number; z: number }) => {
       const prev = displayPoints.current[displayPoints.current.length - 1];
-      if (prev) {
-        const dx = displayLocal.x - prev.x;
-        const dy = displayLocal.y - prev.y;
-        const dz = displayLocal.z - prev.z;
-        if (dx * dx + dy * dy + dz * dz < MIN_SAMPLE_DIST_SQ) return;
-      }
-      if (displayPoints.current.length >= MAX_STROKE_POINTS) return;
+      if (!shouldAppendCutSample(prev, displayLocal)) return;
+      if (isAtCutStrokePointCap(displayPoints.current.length)) return;
 
       displayPoints.current.push(displayLocal);
       const canonical = displayToCanonical(displayLocal, normalization);

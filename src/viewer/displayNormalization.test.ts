@@ -54,4 +54,39 @@ describe("displayNormalization", () => {
     expect(d[1]).toBe(0);
     expect(d[2]).toBe(0);
   });
+
+  it("round-trips for very large coordinates", () => {
+    const big = 1e12;
+    const verts = new Float32Array([0, 0, 0, big, 0, 0, 0, big, 0]);
+    const norm = computeDisplayNormalization(verts);
+    const p = { x: big / 2, y: big / 3, z: 0 };
+    const d = canonicalToDisplay(p, norm);
+    const back = displayToCanonical(d, norm);
+    const relErr = Math.abs(back.x - p.x) / Math.abs(p.x);
+    expect(relErr).toBeLessThan(1e-6);
+  });
+
+  it("round-trips for very tiny coordinates", () => {
+    const tiny = 1e-10;
+    const verts = new Float32Array([0, 0, 0, tiny, 0, 0, 0, tiny, 0]);
+    const norm = computeDisplayNormalization(verts);
+    const p = { x: tiny / 2, y: tiny / 3, z: 0 };
+    const d = canonicalToDisplay(p, norm);
+    const back = displayToCanonical(d, norm);
+    expect(back.x).toBeCloseTo(p.x, 15);
+    expect(back.y).toBeCloseTo(p.y, 15);
+  });
+
+  it("displayToCanonical with zero scale returns center offset", () => {
+    const norm = {
+      centerX: 5,
+      centerY: 10,
+      centerZ: 15,
+      scale: 0,
+    };
+    const result = displayToCanonical({ x: 999, y: 999, z: 999 }, norm);
+    expect(result.x).toBe(5);
+    expect(result.y).toBe(10);
+    expect(result.z).toBe(15);
+  });
 });
