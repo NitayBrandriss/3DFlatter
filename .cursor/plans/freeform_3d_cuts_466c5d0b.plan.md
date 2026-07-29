@@ -1,22 +1,22 @@
 ---
 name: Freeform 3D cuts
-overview: "Non-destructive cut strokes in Zustand (canonical polylines); lazy materialize on Flatten (subdivide + seam EdgeKeys). Edge-pick seams unchanged. ADR 0100 documents overlay model, fan splits, snapping, validation, and future export hooks."
+overview: Non-destructive cut strokes in Zustand (canonical polylines); lazy materialize on Flatten (subdivide + seam EdgeKeys). Edge-pick seams unchanged. ADR 0100 documents overlay model, fan splits, snapping, validation, and future export hooks.
 todos:
   - id: adr-0100
     content: Write ADR 0100-freeform-cut-strokes.md + link from PRODUCT_ROADMAP and docs/README
-    status: pending
+    status: completed
   - id: slice-1-logic
     content: materializeCutStrokes(baseMesh, strokes, manualSeams) + fan/internal-point subdivision + snap + Vitest
-    status: pending
+    status: completed
   - id: slice-2-store
     content: Zustand cutStrokes CRUD; flatten fingerprint; useFlattenExport calls materialize then unfoldMesh (no meshLoadVersion on stroke edit)
-    status: pending
+    status: completed
   - id: slice-3-viewer
     content: Draw tool with ref-based in-progress stroke; R3F overlay from store; sidebar tool toggle
-    status: pending
+    status: completed
   - id: slice-4-docs
     content: Archive phase-2-freeform-cut-strokes.md + promote plan from .cursor when active
-    status: pending
+    status: completed
 isProject: false
 ---
 

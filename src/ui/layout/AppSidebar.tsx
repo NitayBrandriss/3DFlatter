@@ -27,9 +27,12 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
     stats,
     isLoading,
     error,
-    seamMode,
-    setSeamMode,
+    meshEditTool,
+    setMeshEditTool,
     clearAllSeams,
+    cutStrokeCount,
+    clearCutStrokes,
+    deleteLastCutStroke,
   } = sessionProps;
 
   const {
@@ -198,16 +201,23 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
           </div>
 
           <div className="card">
-            <div className="card-heading">Seams</div>
+            <div className="card-heading">Edit tool</div>
 
             <label className="toggle">
-              <span className="muted">Seam mode</span>
-              <input
-                type="checkbox"
-                checked={seamMode}
+              <span className="muted">3D tool</span>
+              <select
+                className="select"
+                value={meshEditTool}
                 disabled={!session}
-                onChange={(e) => setSeamMode(e.currentTarget.checked)}
-              />
+                onChange={(e) =>
+                  setMeshEditTool(e.currentTarget.value as typeof meshEditTool)
+                }
+                aria-label="3D edit tool"
+              >
+                <option value="none">Orbit only</option>
+                <option value="seam">Edge seam pick</option>
+                <option value="cut">Draw cut</option>
+              </select>
             </label>
 
             <div className="muted sidebar-meta-tight">
@@ -217,6 +227,10 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     <span className="sidebar-meta-label">Selected:</span>{" "}
                     {stats.seamCount.toLocaleString()} seam
                     {stats.seamCount === 1 ? "" : "s"}
+                  </div>
+                  <div>
+                    <span className="sidebar-meta-label">Cut strokes:</span>{" "}
+                    {cutStrokeCount.toLocaleString()}
                   </div>
                   <div>
                     <span className="sidebar-meta-label">Islands:</span>{" "}
@@ -230,7 +244,7 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                   </div>
                 </>
               ) : (
-                "Load a mesh to select seams."
+                "Load a mesh to edit seams and cuts."
               )}
             </div>
 
@@ -241,6 +255,22 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
               onClick={clearAllSeams}
             >
               Clear seams
+            </button>
+            <button
+              type="button"
+              className="btn btn--block"
+              disabled={!session || cutStrokeCount === 0}
+              onClick={deleteLastCutStroke}
+            >
+              Delete last cut
+            </button>
+            <button
+              type="button"
+              className="btn btn--block"
+              disabled={!session || cutStrokeCount === 0}
+              onClick={clearCutStrokes}
+            >
+              Clear cuts
             </button>
           </div>
 

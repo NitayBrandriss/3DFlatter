@@ -1,31 +1,54 @@
 "use client";
 
 import * as THREE from "three";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
+import type { Vec3 } from "../logic/cuts/types";
 import type { EdgeKey, MeshModel } from "../logic/mesh/types";
 import { resolvePick } from "../logic/seams/resolvePick";
+import type { MeshEditTool } from "../state/meshEditTool";
+import {
+  displayToCanonical,
+  type DisplayNormalization,
+} from "./displayNormalization";
+import type { InProgressCutStrokeHandle } from "./InProgressCutStrokeLine";
 
 const DRAG_THRESHOLD_PX = 5;
+/** Min display-space distance between consecutive cut samples. */
+const MIN_SAMPLE_DIST_SQ = 0.015 * 0.015;
+const MAX_STROKE_POINTS = 512;
 
 export function PickableMesh({
   geometry,
   displayMesh,
   wireframe,
   modelScale,
-  seamMode,
+  editTool,
+  normalization,
   onEdgePick,
+  onCutStrokeCommit,
+  inProgressLineRef,
+  onOrbitEnabledChange,
 }: {
   geometry: THREE.BufferGeometry;
   /** Display-normalized mesh aligned with `geometry` positions for raycast resolve. */
   displayMesh: MeshModel;
   wireframe: boolean;
   modelScale: number;
-  seamMode: boolean;
+  editTool: MeshEditTool;
+  normalization: DisplayNormalization;
   onEdgePick: (edgeKey: EdgeKey) => void;
+  onCutStrokeCommit: (points: Vec3[]) => void;
+  inProgressLineRef: RefObject<InProgressCutStrokeHandle | null>;
+  onOrbitEnabledChange: (enabled: boolean) => void;
 }) {
+  const { gl } = useThree();
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   const displayMeshRef = useRef(displayMesh);
+  const drawing = useRef(false);
+  const displayPoints = useRef<{ x: number; y: number; z: number }[]>([]);
+  const canonicalPoints = useRef<Vec3[]>([]);
 
   useEffect(() => {
     displayMeshRef.current = displayMesh;
@@ -35,20 +58,104 @@ export function PickableMesh({
     pointerDown.current = null;
   }, []);
 
+  const stopDrawing = useCallback(
+    (commit: boolean) => {
+      if (!drawing.current) return;
+      drawing.current = false;
+      onOrbitEnabledChange(true);
+      const points = canonicalPoints.current;
+      displayPoints.current = [];
+      canonicalPoints.current = [];
+      inProgressLineRef.current?.clear();
+      if (commit && points.length >= 2) {
+        onCutStrokeCommit(points.map((p) => ({ ...p })));
+      }
+    },
+    [inProgressLineRef, onCutStrokeCommit, onOrbitEnabledChange],
+  );
+
+  const appendSample = useCallback(
+    (displayLocal: { x: number; y: number; z: number }) => {
+      const prev = displayPoints.current[displayPoints.current.length - 1];
+      if (prev) {
+        const dx = displayLocal.x - prev.x;
+        const dy = displayLocal.y - prev.y;
+        const dz = displayLocal.z - prev.z;
+        if (dx * dx + dy * dy + dz * dz < MIN_SAMPLE_DIST_SQ) return;
+      }
+      if (displayPoints.current.length >= MAX_STROKE_POINTS) return;
+
+      displayPoints.current.push(displayLocal);
+      const canonical = displayToCanonical(displayLocal, normalization);
+      canonicalPoints.current.push({
+        x: canonical.x,
+        y: canonical.y,
+        z: canonical.z,
+      });
+      inProgressLineRef.current?.setPoints(displayPoints.current);
+    },
+    [inProgressLineRef, normalization],
+  );
+
   const onPointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (!seamMode) return;
-      pointerDown.current = {
-        x: e.nativeEvent.clientX,
-        y: e.nativeEvent.clientY,
-      };
+      if (editTool === "none") return;
+
+      if (editTool === "seam") {
+        pointerDown.current = {
+          x: e.nativeEvent.clientX,
+          y: e.nativeEvent.clientY,
+        };
+        return;
+      }
+
+      // cut
+      if (e.faceIndex == null || !e.point) return;
+      e.stopPropagation();
+      try {
+        gl.domElement.setPointerCapture(e.pointerId);
+      } catch {
+        /* capture unsupported */
+      }
+
+      drawing.current = true;
+      onOrbitEnabledChange(false);
+
+      const local = e.object.worldToLocal(e.point.clone());
+      displayPoints.current = [];
+      canonicalPoints.current = [];
+      appendSample({ x: local.x, y: local.y, z: local.z });
     },
-    [seamMode],
+    [appendSample, editTool, gl, onOrbitEnabledChange],
+  );
+
+  const onPointerMove = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      if (editTool !== "cut" || !drawing.current) return;
+      if (e.faceIndex == null || !e.point) return;
+      e.stopPropagation();
+      const local = e.object.worldToLocal(e.point.clone());
+      appendSample({ x: local.x, y: local.y, z: local.z });
+    },
+    [appendSample, editTool],
   );
 
   const onPointerUp = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (!seamMode || !pointerDown.current) {
+      if (editTool === "cut") {
+        if (drawing.current) {
+          e.stopPropagation();
+          try {
+            gl.domElement.releasePointerCapture(e.pointerId);
+          } catch {
+            /* already released */
+          }
+          stopDrawing(true);
+        }
+        return;
+      }
+
+      if (editTool !== "seam" || !pointerDown.current) {
         clearPointerDown();
         return;
       }
@@ -76,18 +183,23 @@ export function PickableMesh({
         onEdgePick(resolved.edgeKey);
       }
     },
-    [clearPointerDown, onEdgePick, seamMode],
+    [clearPointerDown, editTool, gl, onEdgePick, stopDrawing],
   );
 
-  // VIEW-001: clear drag guard when pointer leaves mesh or is cancelled.
+  // Clear guards when tool changes or pointer is cancelled globally.
   useEffect(() => {
-    if (!seamMode) {
+    if (editTool === "none") {
       clearPointerDown();
+      stopDrawing(false);
       return;
     }
 
     const onDocumentPointerUp = () => {
-      clearPointerDown();
+      if (drawing.current) {
+        stopDrawing(true);
+      } else {
+        clearPointerDown();
+      }
     };
 
     document.addEventListener("pointerup", onDocumentPointerUp);
@@ -96,16 +208,22 @@ export function PickableMesh({
       document.removeEventListener("pointerup", onDocumentPointerUp);
       document.removeEventListener("pointercancel", onDocumentPointerUp);
     };
-  }, [clearPointerDown, seamMode]);
+  }, [clearPointerDown, editTool, stopDrawing]);
 
   return (
     <mesh
       geometry={geometry}
       scale={modelScale}
       onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={clearPointerDown}
-      onPointerLeave={clearPointerDown}
+      onPointerCancel={() => {
+        clearPointerDown();
+        stopDrawing(false);
+      }}
+      onPointerLeave={() => {
+        if (editTool === "seam") clearPointerDown();
+      }}
     >
       <meshStandardMaterial
         color="#cbd5e1"

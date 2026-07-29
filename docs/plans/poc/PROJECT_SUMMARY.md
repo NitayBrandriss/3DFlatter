@@ -90,7 +90,7 @@ The PoC goal was a **credible end-to-end demo**, not production CAM or automatic
 | **Half-edge mesh / robust non-manifold repair** | Documented limits; user-visible warnings instead of silent fixes |
 | **Concave n-gon triangulation beyond fan** | Fan triangulation with warnings; known PoC risk per ADR 0001 |
 | **Web Worker flatten (`UI-004`)** | Large async architecture; main-thread flatten acceptable for modest meshes |
-| **Remaining Low/Info audit polish** | Non-blocking maintainability items ([qa-audit.md](../../qa-audit.md) deferred table) |
+| **Remaining Low/Info audit polish** | Non-blocking maintainability items ([qa-audit.md](qa-audit.md) deferred table) |
 
 Product-phase successors (freeform cuts, tabs, pagination, etc.) are **out of scope for this document**. See **[PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md)**.
 
@@ -162,7 +162,7 @@ Regression notes for Step 2: cube with a top-face seam → two separated islands
 | PoC architecture (0001–0004) | [decisions/poc/](../../decisions/poc/) |
 | Product plans & ADRs (0100+) | [plans/product/](../product/) · [decisions/product/](../../decisions/product/) |
 | Contributors & agents | [AGENTS.md](../../../AGENTS.md) |
-| Audit history | [qa-audit.md](../../qa-audit.md) |
+| Audit history | [qa-audit.md](qa-audit.md) |
 
 ---
 

@@ -1,7 +1,7 @@
 # Phase 1 — Freeform cut strokes (3D)
 
-**Status:** In progress  
-**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md) *(forthcoming)*  
+**Status:** Complete  
+**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)  
 **Roadmap:** [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md) Phase 1  
 **Depends on:** PoC ADRs [0001](../../decisions/poc/0001-mesh-model-and-topology.md), [0002](../../decisions/poc/0002-unfold-step-1-hinge-island.md)
 
@@ -16,21 +16,34 @@ Non-destructive **cut strokes** on the 3D mesh (overlay in Zustand); **lazy** `m
 | Editing | `cutStrokes` in canonical 3D; base `session.mesh` unchanged until Flatten |
 | Commit | `materializeCutStrokes` → derived mesh + topology + seam union → `unfoldMesh` |
 | Open loops | Warn on Flatten; user may proceed |
-| Geometry | Segment–triangle cuts, interior Steiner points + fan triangulation, vertex/edge snap |
-| Versioning | `meshLoadVersion` on load only; `patternRevision` (or flatten fingerprint) for stroke edits |
+| Geometry | Segment–triangle clip walk, interior Steiner + fan, scale-aware snap/surface eps; whole-stroke self-intersect reject |
+| Versioning | `meshLoadVersion` on load only; `patternRevision` for stroke edits; flatten fingerprint also includes `seamsContentKey` |
 
 ## Implementation slices
 
-1. **Logic** — `materializeCutStrokes`, tests  
-2. **State** — stroke CRUD, Flatten wiring in `useFlattenExport`  
-3. **Viewer** — draw tool + `CutStrokesOverlay`  
-4. **Docs** — ADR 0100 + update PRODUCT_ROADMAP when complete  
+1. **Logic** — `materializeCutStrokes`, tests ✅  
+2. **State** — stroke CRUD, Flatten wiring in `useFlattenExport` ✅  
+3. **Viewer** — draw tool + `CutStrokesOverlay` ✅  
+4. **Docs** — ADR 0100 + update PRODUCT_ROADMAP ✅  
 
-Full design notes: see Cursor plan *Freeform 3D cuts* (promote details here as ADR 0100 lands).
+## Key files
+
+| Path | Purpose |
+|------|---------|
+| `src/logic/cuts/` | `materializeCutStrokes`, `WorkingMesh`, snap/vec3 helpers, types |
+| `src/logic/cuts/flattenWithCutStrokes.ts` | Pure flatten pipeline (materialize → unfold) |
+| `src/state/meshSessionStore.ts` | `cutStrokes` CRUD, `patternRevision`, `flattenSnapshotKey` |
+| `src/state/meshEditTool.ts` | Tool enum: `none` / `seam` / `cut` |
+| `src/ui/useFlattenExport.ts` | Flatten hook with materialize wiring + warning toasts |
+| `src/viewer/PickableMesh.tsx` | Seam pick + draw-cut input |
+| `src/viewer/CutStrokesOverlay.tsx` | Committed stroke overlay (cyan) |
+| `src/viewer/InProgressCutStrokeLine.tsx` | Imperative in-progress line (ref-based) |
+| `src/viewer/displayNormalization.ts` | Display↔canonical coordinate transforms |
+| `src/viewer/packCutStrokeDisplaySegments.ts` | Stroke→LineSegments packing |
 
 ## Done when
 
-- [ ] ADR 0100 accepted  
-- [ ] Vitest coverage for materialize + snap + open-loop validation  
-- [ ] Manual: draw → delete stroke (base mesh unchanged) → Flatten → cuts visible in 2D  
-- [ ] `npm test` / `npm run lint`
+- [x] ADR 0100 accepted  
+- [x] Vitest coverage for materialize + snap + open-loop validation  
+- [x] Manual: draw → delete stroke (base mesh unchanged) → Flatten → cuts visible in 2D  
+- [x] `npm test` / `npm run lint`

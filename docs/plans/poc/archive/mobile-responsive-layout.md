@@ -3,7 +3,7 @@
 **Status:** Complete  
 
 **Hub:** [Plans & roadmap](../README.md)  
-**QA:** [qa-audit.md](../../../qa-audit.md) (layout slice health check)
+**QA:** [qa-audit.md](../qa-audit.md) (layout slice health check)
 
 Responsive shell: collapsible sidebar, labeled toggles, draggable desktop 2D split, mobile 3D/2D tabs, auto-close on major actions, peek-through on continuous controls — via `src/ui/layout/`.
 
@@ -177,7 +177,7 @@ const sidebarOpen = userOverride ?? isDesktop;
 | **Persist** | After explicit toggle / close / `closeIfMobile`, write `3dflatter.sidebarOpen` |
 | **No snap on resize** | Crossing 769px must not override `userOverride` |
 | **Mobile auto-close** | Still calls `closeIfMobile()` after successful major actions — that is intentional close, not a change to the default |
-| **SSR** | `getServerSnapshot → true` (desktop); mobile may flash open→closed on hydrate ([LAYOUT-004](../../../qa-audit.md)) — acceptable for PoC |
+| **SSR** | `getServerSnapshot → true` (desktop); mobile may flash open→closed on hydrate ([LAYOUT-004](../qa-audit.md)) — acceptable for PoC |
 
 `useMediaQuery` stays on `useSyncExternalStore` (unchanged).
 
@@ -313,7 +313,7 @@ const handleFlatten = useCallback((): boolean => {
 - Swipe-from-left-edge to open drawer
 - Keyboard shortcut `[` to toggle sidebar on desktop
 - Extend peek-through to desktop
-- Reduce mobile SSR open→closed flash ([LAYOUT-004](../../../qa-audit.md))
+- Reduce mobile SSR open→closed flash ([LAYOUT-004](../qa-audit.md))
 
 ---
 

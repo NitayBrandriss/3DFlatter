@@ -38,7 +38,7 @@ flowchart LR
 
 | Phase | Theme | Status | ADR / plan |
 |-------|--------|--------|------------|
-| **1** | Freeform cut strokes (3D) | **Active** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) *(next)* · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
+| **1** | Freeform cut strokes (3D) | **Complete** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
 | 2 | SVG tier 2 / laser-ready paths | Planned | TBD |
 | 3 | Glue flaps / tabs; edge ID matching on SVG | Planned | TBD |
 | 4 | Real-world scale (cm); A4/Letter pagination | Planned | TBD |
@@ -46,7 +46,7 @@ flowchart LR
 
 ---
 
-## Phase 1 — Freeform cut strokes (active)
+## Phase 1 — Freeform cut strokes (complete)
 
 **Intent:** Mark cuts on the 3D model by **drawing** across face interiors, not only toggling existing mesh edges. Editing is **non-destructive** until Flatten.
 
@@ -60,7 +60,7 @@ flowchart LR
 | **Open loops** | Allowed; validation **warns** (toast) but user may proceed — define slit vs island semantics in ADR 0100 |
 | **Internal stops / zigzags** | Subdivide with interior Steiner points + fan triangulation; reject self-intersecting strokes per face |
 | **Snapping** | Scale-aware epsilon: snap to existing vertices (and edges) to avoid sliver geometry |
-| **Versioning** | `meshLoadVersion` bumps **only** on file load; stroke edits use **`patternRevision`** (or flatten fingerprint) for stale pattern UI |
+| **Versioning** | `meshLoadVersion` bumps **only** on file load; stroke edits use **`patternRevision`**; flatten fingerprint also includes **`seamsContentKey`** for stale pattern UI |
 | **Future hooks** | Stroke `id`, optional later `foldKind`; `CutManifest` at materialize for edge ID matching (not in Phase 1 UI) |
 
 ### Architecture

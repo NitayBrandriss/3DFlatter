@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { parseObj } from "../logic/io/obj/parseObj";
 import { buildTopology } from "../logic/mesh/buildTopology";
 import { makeEdgeKey } from "../logic/mesh/edgeKey";
@@ -8,7 +8,9 @@ import {
 } from "../logic/seams/seamRegistry";
 import {
   computeSessionStats,
+  flattenSnapshotKey,
   seamsContentKey,
+  useMeshSessionStore,
   type MeshSession,
 } from "./meshSessionStore";
 
@@ -41,6 +43,24 @@ function cubeSession(seams = createSeamRegistry()): MeshSession {
   return { mesh, topology, seams, fileName: "cube.obj" };
 }
 
+function resetStore() {
+  useMeshSessionStore.setState({
+    session: null,
+    meshLoadVersion: 0,
+    cutStrokes: [],
+    patternRevision: 0,
+    isLoading: false,
+    error: null,
+    meshEditTool: "seam",
+    toasts: [],
+    toastSeq: 0,
+  });
+}
+
+function withSession() {
+  useMeshSessionStore.setState({ session: cubeSession(), meshLoadVersion: 1 });
+}
+
 describe("seamsContentKey", () => {
   it("is empty for an empty registry", () => {
     expect(seamsContentKey(createSeamRegistry())).toBe("");
@@ -66,6 +86,18 @@ describe("seamsContentKey", () => {
   });
 });
 
+describe("flattenSnapshotKey", () => {
+  it("changes when patternRevision, meshLoadVersion, or seamsKey changes", () => {
+    expect(flattenSnapshotKey(1, 0, "")).toBe("1:0:");
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(1, 1, ""));
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(2, 0, ""));
+    expect(flattenSnapshotKey(1, 0, "")).not.toBe(
+      flattenSnapshotKey(1, 0, makeEdgeKey(0, 1)),
+    );
+    expect(flattenSnapshotKey(1, 0, "a")).toBe(flattenSnapshotKey(1, 0, "a"));
+  });
+});
+
 describe("computeSessionStats", () => {
   it("reports a single island for a closed cube with no seams", () => {
     const stats = computeSessionStats(cubeSession());
@@ -80,5 +112,207 @@ describe("computeSessionStats", () => {
     const stats = computeSessionStats(cubeSession(toggleSeam(createSeamRegistry(), key)));
     expect(stats!.seamCount).toBe(1);
     expect(stats!.islandCount).toBe(1);
+  });
+});
+
+describe("cutStrokes CRUD", () => {
+  beforeEach(() => {
+    resetStore();
+    withSession();
+  });
+
+  it("addCutStroke appends and bumps patternRevision without meshLoadVersion", () => {
+    const store = useMeshSessionStore.getState();
+    const loadBefore = store.meshLoadVersion;
+    const revBefore = store.patternRevision;
+
+    store.addCutStroke({
+      id: "a",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+
+    const next = useMeshSessionStore.getState();
+    expect(next.cutStrokes).toHaveLength(1);
+    expect(next.cutStrokes[0]!.id).toBe("a");
+    expect(next.patternRevision).toBe(revBefore + 1);
+    expect(next.meshLoadVersion).toBe(loadBefore);
+  });
+
+  it("deep-copies points so external mutation cannot corrupt the store", () => {
+    const p0 = { x: 0, y: 0, z: 0 };
+    const p1 = { x: 1, y: 0, z: 0 };
+    const points = [p0, p1];
+    useMeshSessionStore.getState().addCutStroke({ id: "mut", points });
+    p0.x = 99;
+    points.push({ x: 2, y: 2, z: 2 });
+    const stored = useMeshSessionStore.getState().cutStrokes[0]!;
+    expect(stored.points).toHaveLength(2);
+    expect(stored.points[0]!.x).toBe(0);
+  });
+
+  it("rejects strokes with fewer than 2 points", () => {
+    useMeshSessionStore.getState().addCutStroke({
+      id: "short",
+      points: [{ x: 0, y: 0, z: 0 }],
+    });
+    expect(useMeshSessionStore.getState().cutStrokes).toHaveLength(0);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(0);
+  });
+
+  it("replace-on-add upserts by id instead of allowing duplicates", () => {
+    const store = useMeshSessionStore.getState();
+    store.addCutStroke({
+      id: "dup",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    store.addCutStroke({
+      id: "dup",
+      points: [
+        { x: 0, y: 1, z: 0 },
+        { x: 1, y: 1, z: 0 },
+      ],
+    });
+    const strokes = useMeshSessionStore.getState().cutStrokes;
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0]!.points[0]!.y).toBe(1);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(2);
+  });
+
+  it("updateCutStroke replaces points and bumps patternRevision", () => {
+    const store = useMeshSessionStore.getState();
+    store.addCutStroke({
+      id: "a",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    const loadBefore = useMeshSessionStore.getState().meshLoadVersion;
+    const revBefore = useMeshSessionStore.getState().patternRevision;
+
+    store.updateCutStroke("a", [
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 1, z: 0 },
+      { x: 1, y: 1, z: 0 },
+    ]);
+
+    const next = useMeshSessionStore.getState();
+    expect(next.cutStrokes[0]!.points).toHaveLength(3);
+    expect(next.patternRevision).toBe(revBefore + 1);
+    expect(next.meshLoadVersion).toBe(loadBefore);
+  });
+
+  it("deleteCutStroke and clearCutStrokes bump patternRevision", () => {
+    const store = useMeshSessionStore.getState();
+    store.addCutStroke({
+      id: "a",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    store.addCutStroke({
+      id: "b",
+      points: [
+        { x: 0, y: 1, z: 0 },
+        { x: 1, y: 1, z: 0 },
+      ],
+    });
+    const loadBefore = useMeshSessionStore.getState().meshLoadVersion;
+
+    store.deleteCutStroke("a");
+    expect(useMeshSessionStore.getState().cutStrokes.map((c) => c.id)).toEqual([
+      "b",
+    ]);
+
+    store.clearCutStrokes();
+    const next = useMeshSessionStore.getState();
+    expect(next.cutStrokes).toEqual([]);
+    // 2 adds + delete + clear
+    expect(next.patternRevision).toBe(4);
+    expect(next.meshLoadVersion).toBe(loadBefore);
+  });
+
+  it("does not bump patternRevision when deleting a missing id or clearing empty", () => {
+    useMeshSessionStore.getState().deleteCutStroke("missing");
+    useMeshSessionStore.getState().clearCutStrokes();
+    expect(useMeshSessionStore.getState().patternRevision).toBe(0);
+  });
+
+  it("stroke CRUD no-ops when session is null", () => {
+    useMeshSessionStore.setState({ session: null, patternRevision: 0, cutStrokes: [] });
+    useMeshSessionStore.getState().addCutStroke({
+      id: "orphan",
+      points: [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    });
+    expect(useMeshSessionStore.getState().cutStrokes).toHaveLength(0);
+    expect(useMeshSessionStore.getState().patternRevision).toBe(0);
+  });
+
+  it("toggleSeamAt does not bump patternRevision or meshLoadVersion", () => {
+    const session = cubeSession();
+    useMeshSessionStore.setState({
+      session,
+      meshLoadVersion: 2,
+      patternRevision: 5,
+      cutStrokes: [],
+    });
+    const edge = [...session.topology.edgeToFaces.keys()][0]!;
+    useMeshSessionStore.getState().toggleSeamAt(edge);
+
+    const next = useMeshSessionStore.getState();
+    expect(next.meshLoadVersion).toBe(2);
+    expect(next.patternRevision).toBe(5);
+    expect(next.session!.seams.seams.has(edge)).toBe(true);
+  });
+
+  it("successful load clears cutStrokes and resets patternRevision", async () => {
+    const previousRaf = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    }) as typeof requestAnimationFrame;
+
+    try {
+      useMeshSessionStore.setState({
+        session: cubeSession(),
+        cutStrokes: [
+          {
+            id: "old",
+            points: [
+              { x: 0, y: 0, z: 0 },
+              { x: 1, y: 0, z: 0 },
+            ],
+          },
+        ],
+        patternRevision: 4,
+        meshLoadVersion: 1,
+      });
+
+      const file = new File([CUBE_OBJ], "cube.obj", { type: "text/plain" });
+      const ok = await useMeshSessionStore.getState().loadMeshFile(file);
+      expect(ok).toBe(true);
+
+      const next = useMeshSessionStore.getState();
+      expect(next.cutStrokes).toEqual([]);
+      expect(next.patternRevision).toBe(0);
+      expect(next.meshLoadVersion).toBe(2);
+      expect(next.session).not.toBeNull();
+    } finally {
+      if (previousRaf) {
+        globalThis.requestAnimationFrame = previousRaf;
+      } else {
+        Reflect.deleteProperty(globalThis, "requestAnimationFrame");
+      }
+    }
   });
 });

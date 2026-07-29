@@ -20,17 +20,22 @@ export default function HomePage() {
   const {
     mesh,
     seams,
+    cutStrokes,
     meshLoadVersion,
+    patternRevision,
     session,
     stats,
     isLoading,
     error,
-    seamMode,
+    meshEditTool,
     toasts,
     loadMeshFile,
     toggleSeamAt,
     clearAllSeams,
-    setSeamMode,
+    addCutStroke,
+    deleteCutStroke,
+    clearCutStrokes,
+    setMeshEditTool,
     dismissToast,
     notifyToast,
   } = useHomeSession();
@@ -45,7 +50,13 @@ export default function HomePage() {
     qualityCounts,
     onFlatten,
     onExportSvg,
-  } = useFlattenExport(session, meshLoadVersion, notifyToast);
+  } = useFlattenExport(
+    session,
+    meshLoadVersion,
+    patternRevision,
+    cutStrokes,
+    notifyToast,
+  );
 
   const {
     wireframe,
@@ -59,6 +70,7 @@ export default function HomePage() {
     resetModelScale,
   } = useViewportPreferences();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
+  const cutStrokeIdSeq = useRef(0);
 
   const {
     isDesktop,
@@ -94,6 +106,22 @@ export default function HomePage() {
     [toggleSeamAt],
   );
 
+  const onCutStrokeCommit = useCallback(
+    (points: Parameters<typeof addCutStroke>[0]["points"]) => {
+      cutStrokeIdSeq.current += 1;
+      addCutStroke({
+        id: `cut-${meshLoadVersion}-${cutStrokeIdSeq.current}`,
+        points,
+      });
+    },
+    [addCutStroke, meshLoadVersion],
+  );
+
+  const deleteLastCutStroke = useCallback(() => {
+    const last = cutStrokes[cutStrokes.length - 1];
+    if (last) deleteCutStroke(last.id);
+  }, [cutStrokes, deleteCutStroke]);
+
   const handleFlatten = useCallback((): boolean => {
     const ok = onFlatten();
     if (ok && !isDesktop) {
@@ -128,9 +156,12 @@ export default function HomePage() {
             stats,
             isLoading,
             error,
-            seamMode,
-            setSeamMode,
+            meshEditTool,
+            setMeshEditTool,
             clearAllSeams,
+            cutStrokeCount: cutStrokes.length,
+            clearCutStrokes,
+            deleteLastCutStroke,
           }}
           flatten={{
             flattening,
@@ -176,14 +207,16 @@ export default function HomePage() {
             <MeshViewport
               mesh={mesh}
               seams={seams}
+              cutStrokes={cutStrokes}
               meshLoadVersion={meshLoadVersion}
               viewportPanelRef={viewport3dPanelRef}
               wireframe={wireframe}
               showGrid={showGrid}
               showAxes={showAxes}
               modelScale={modelScale}
-              seamMode={seamMode}
+              editTool={meshEditTool}
               onEdgePick={onEdgePick}
+              onCutStrokeCommit={onCutStrokeCommit}
             />
             {isLoading ? (
               <div className="overlay">

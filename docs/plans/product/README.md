@@ -12,7 +12,7 @@
 
 | Plan | Phase | Status | ADR |
 |------|-------|--------|-----|
-| [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) | 1 — Freeform cut strokes | **In progress** | [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md) *(draft next)* |
+| [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) | 1 — Freeform cut strokes | **Complete** | [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md) |
 
 ---
 

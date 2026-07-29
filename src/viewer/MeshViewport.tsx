@@ -3,9 +3,16 @@
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
+import type { MeshEditTool } from "../state/meshEditTool";
+import { CutStrokesOverlay } from "./CutStrokesOverlay";
+import {
+  InProgressCutStrokeLine,
+  type InProgressCutStrokeHandle,
+} from "./InProgressCutStrokeLine";
 import { buildDisplayMeshAssets } from "./meshModelToGeometry";
 import { PickableMesh } from "./PickableMesh";
 import { SeamOverlay } from "./SeamOverlay";
@@ -16,7 +23,13 @@ import {
 } from "./sceneScale";
 import { SyncGlToPanel } from "./syncGlToPanel";
 
-function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
+function FitCameraToMesh({
+  geometry,
+  orbitEnabled,
+}: {
+  geometry: THREE.BufferGeometry;
+  orbitEnabled: boolean;
+}) {
   const { camera } = useThree();
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
@@ -55,6 +68,7 @@ function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
         controlsRef.current = r as OrbitControlsImpl | null;
       }}
       makeDefault
+      enabled={orbitEnabled}
       enableDamping
       dampingFactor={0.08}
       rotateSpeed={0.8}
@@ -65,17 +79,20 @@ function FitCameraToMesh({ geometry }: { geometry: THREE.BufferGeometry }) {
 export function MeshViewport({
   mesh,
   seams,
+  cutStrokes,
   meshLoadVersion,
   viewportPanelRef,
   wireframe,
   showGrid,
   showAxes,
   modelScale,
-  seamMode,
+  editTool,
   onEdgePick,
+  onCutStrokeCommit,
 }: {
   mesh: MeshModel | null;
   seams: SeamRegistry | null;
+  cutStrokes: readonly CutStroke[];
   /** Passed so React re-mounts the canvas scene on a new load if mesh ref is reused. */
   meshLoadVersion: number;
   /** Host `.viewport-3d` element — VIEW-006 resize sync when tab visibility changes. */
@@ -84,14 +101,18 @@ export function MeshViewport({
   showGrid: boolean;
   showAxes: boolean;
   modelScale: number;
-  seamMode: boolean;
+  editTool: MeshEditTool;
   onEdgePick: (edgeKey: EdgeKey) => void;
+  onCutStrokeCommit: (points: Vec3[]) => void;
 }) {
   // Rebuild display assets only when canonical mesh identity changes (file load).
   const displayAssets = useMemo(() => {
     if (!mesh) return null;
     return buildDisplayMeshAssets(mesh);
   }, [mesh]);
+
+  const inProgressRef = useRef<InProgressCutStrokeHandle | null>(null);
+  const [orbitEnabled, setOrbitEnabled] = useState(true);
 
   // Release GPU buffers when the mesh is replaced or the viewport unmounts.
   useEffect(() => {
@@ -127,15 +148,31 @@ export function MeshViewport({
             displayMesh={displayAssets.displayMesh}
             wireframe={wireframe}
             modelScale={modelScale}
-            seamMode={seamMode}
+            editTool={editTool}
+            normalization={displayAssets.normalization}
             onEdgePick={onEdgePick}
+            onCutStrokeCommit={onCutStrokeCommit}
+            inProgressLineRef={inProgressRef}
+            onOrbitEnabledChange={setOrbitEnabled}
           />
           <SeamOverlay
             displayVertices={displayAssets.displayMesh.vertices}
             seams={seams}
             modelScale={modelScale}
           />
-          <FitCameraToMesh geometry={displayAssets.geometry} />
+          <CutStrokesOverlay
+            cutStrokes={cutStrokes}
+            normalization={displayAssets.normalization}
+            modelScale={modelScale}
+          />
+          <InProgressCutStrokeLine
+            ref={inProgressRef}
+            modelScale={modelScale}
+          />
+          <FitCameraToMesh
+            geometry={displayAssets.geometry}
+            orbitEnabled={orbitEnabled}
+          />
         </>
       ) : (
         <OrbitControls makeDefault enableDamping dampingFactor={0.08} />

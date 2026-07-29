@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import type { UnfoldMeshResult } from "@/logic/mesh/types";
 import type { QualityIssueCounts } from "@/logic/unfold/qualitySummary";
+import type { MeshEditTool } from "@/state/meshEditTool";
 import type { MeshSession, computeSessionStats } from "@/state/meshSessionStore";
 
 type SessionStats = ReturnType<typeof computeSessionStats>;
@@ -22,9 +23,12 @@ export type AppSidebarSessionProps = {
   stats: SessionStats;
   isLoading: boolean;
   error: string | null;
-  seamMode: boolean;
-  setSeamMode: (enabled: boolean) => void;
+  meshEditTool: MeshEditTool;
+  setMeshEditTool: (tool: MeshEditTool) => void;
   clearAllSeams: () => void;
+  cutStrokeCount: number;
+  clearCutStrokes: () => void;
+  deleteLastCutStroke: () => void;
 };
 
 export type AppSidebarFlattenProps = {
