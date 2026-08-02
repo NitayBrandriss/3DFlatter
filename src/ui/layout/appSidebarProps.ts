@@ -30,6 +30,7 @@ export type AppSidebarSessionProps = {
   clearCutStrokes: () => void;
   deleteLastCutStroke: () => void;
   cutDraftActive: boolean;
+  cutDraftCanFinalize: boolean;
   onCutDraftDone: () => void;
   onCutDraftCancel: () => void;
 };

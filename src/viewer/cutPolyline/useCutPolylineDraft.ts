@@ -10,19 +10,12 @@ import {
 } from "react";
 import type { Vec3 } from "../../logic/cuts/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
+import type { DisplayNormalization } from "../displayNormalization";
 import {
-  displayToCanonical,
-  type DisplayNormalization,
-} from "../displayNormalization";
-import {
-  isAtCutStrokePointCap,
-  shouldAppendCutSample,
-} from "../cutDrawSampling";
-import {
+  appendPolylineDraftPoint,
   canFinalizeDraft,
-  isClosedClick,
   stripDblClickDuplicate,
-  CUT_POLYLINE_CLOSE_RADIUS,
+  takeCapToastNotification,
 } from "./cutPolylineHelpers";
 import type {
   DisplayVec3,
@@ -36,7 +29,6 @@ export type CutPolylineFinalizeResult = {
 
 export type AddPointResult =
   | { status: "added" }
-  | { status: "closed"; points: Vec3[] }
   | { status: "rejected" }
   | { status: "capped" }
   | { status: "ignored" };
@@ -53,39 +45,52 @@ export type CutPolylineDraftApi = {
   cancel: () => void;
 };
 
+export type CutPolylineDraftUi = {
+  active: boolean;
+  canFinalize: boolean;
+};
+
 export function useCutPolylineDraft({
   lineRef,
   editTool,
   onCommit,
-  onDraftActiveChange,
+  onDraftUiChange,
   onPointCapReached,
-  closeRadius = CUT_POLYLINE_CLOSE_RADIUS,
+  onFinalizeTooFewPoints,
 }: {
   lineRef: RefObject<InProgressPolylineHandle | null>;
   editTool: MeshEditTool;
   onCommit: (points: Vec3[]) => void;
-  onDraftActiveChange?: (active: boolean) => void;
+  onDraftUiChange?: (ui: CutPolylineDraftUi) => void;
   onPointCapReached?: () => void;
-  closeRadius?: number;
+  onFinalizeTooFewPoints?: () => void;
 }): {
   cutDraftActive: boolean;
+  cutDraftCanFinalize: boolean;
   api: CutPolylineDraftApi;
 } {
   const [cutDraftActive, setCutDraftActive] = useState(false);
+  const [cutDraftCanFinalize, setCutDraftCanFinalize] = useState(false);
   const modeRef = useRef<"idle" | "drafting">("idle");
   const placedDisplayRef = useRef<DisplayVec3[]>([]);
   const placedCanonicalRef = useRef<Vec3[]>([]);
   const lastPointerUpAddedRef = useRef(false);
   const activeRef = useRef(false);
+  const canFinalizeRef = useRef(false);
+  const capToastShownRef = useRef(false);
 
-  const setActive = useCallback(
-    (active: boolean) => {
-      if (activeRef.current === active) return;
+  const setDraftUi = useCallback(
+    (active: boolean, canFinalize: boolean) => {
+      const activeChanged = activeRef.current !== active;
+      const finalizeChanged = canFinalizeRef.current !== canFinalize;
+      if (!activeChanged && !finalizeChanged) return;
       activeRef.current = active;
-      setCutDraftActive(active);
-      onDraftActiveChange?.(active);
+      canFinalizeRef.current = canFinalize;
+      if (activeChanged) setCutDraftActive(active);
+      if (finalizeChanged) setCutDraftCanFinalize(canFinalize);
+      onDraftUiChange?.({ active, canFinalize });
     },
-    [onDraftActiveChange],
+    [onDraftUiChange],
   );
 
   const syncLine = useCallback(
@@ -101,9 +106,10 @@ export function useCutPolylineDraft({
     placedDisplayRef.current = [];
     placedCanonicalRef.current = [];
     lastPointerUpAddedRef.current = false;
+    capToastShownRef.current = false;
     lineRef.current?.clear();
-    setActive(false);
-  }, [lineRef, setActive]);
+    setDraftUi(false, false);
+  }, [lineRef, setDraftUi]);
 
   const cancel = useCallback(() => {
     clearDraft();
@@ -121,9 +127,13 @@ export function useCutPolylineDraft({
 
   const finalize = useCallback((): CutPolylineFinalizeResult | null => {
     const points = placedCanonicalRef.current;
-    if (!canFinalizeDraft(points.length)) return null;
+    if (!canFinalizeDraft(points.length)) {
+      // Idle Enter with no draft stays silent; one-point draft gets feedback.
+      if (points.length > 0) onFinalizeTooFewPoints?.();
+      return null;
+    }
     return commitPoints(points);
-  }, [commitPoints]);
+  }, [commitPoints, onFinalizeTooFewPoints]);
 
   const undoLast = useCallback(() => {
     if (placedDisplayRef.current.length === 0) return;
@@ -134,8 +144,12 @@ export function useCutPolylineDraft({
       clearDraft();
       return;
     }
+    setDraftUi(
+      true,
+      canFinalizeDraft(placedDisplayRef.current.length),
+    );
     syncLine(null);
-  }, [clearDraft, syncLine]);
+  }, [clearDraft, setDraftUi, syncLine]);
 
   const finalizeFromDoubleClick =
     useCallback((): CutPolylineFinalizeResult | null => {
@@ -149,11 +163,16 @@ export function useCutPolylineDraft({
       lastPointerUpAddedRef.current = false;
       if (placedDisplayRef.current.length === 0) {
         clearDraft();
+        onFinalizeTooFewPoints?.();
         return null;
       }
+      setDraftUi(
+        true,
+        canFinalizeDraft(placedDisplayRef.current.length),
+      );
       syncLine(null);
       return finalize();
-    }, [clearDraft, finalize, syncLine]);
+    }, [clearDraft, finalize, onFinalizeTooFewPoints, setDraftUi, syncLine]);
 
   const addPointFromHit = useCallback(
     (
@@ -162,66 +181,37 @@ export function useCutPolylineDraft({
     ): AddPointResult => {
       if (editTool !== "cut") return { status: "ignored" };
 
-      const placed = placedDisplayRef.current;
-      const first = placed[0];
-      if (
-        first &&
-        placed.length >= 2 &&
-        isClosedClick(displayLocal, first, closeRadius)
-      ) {
-        const firstCanonical = placedCanonicalRef.current[0]!;
-        placed.push({ x: first.x, y: first.y, z: first.z });
-        placedCanonicalRef.current.push({
-          x: firstCanonical.x,
-          y: firstCanonical.y,
-          z: firstCanonical.z,
-        });
-        lastPointerUpAddedRef.current = true;
-        const points = placedCanonicalRef.current.map((p) => ({
-          x: p.x,
-          y: p.y,
-          z: p.z,
-        }));
-        const result = commitPoints(points);
-        return { status: "closed", points: result.points };
-      }
+      const result = appendPolylineDraftPoint(
+        placedDisplayRef.current,
+        placedCanonicalRef.current,
+        displayLocal,
+        normalization,
+      );
 
-      const prev = placed[placed.length - 1];
-      if (!shouldAppendCutSample(prev, displayLocal)) {
+      if (result.status === "rejected") {
         lastPointerUpAddedRef.current = false;
         return { status: "rejected" };
       }
-      if (isAtCutStrokePointCap(placed.length)) {
+      if (result.status === "capped") {
         lastPointerUpAddedRef.current = false;
-        onPointCapReached?.();
+        const toast = takeCapToastNotification(capToastShownRef.current);
+        capToastShownRef.current = toast.shown;
+        if (toast.notify) onPointCapReached?.();
         return { status: "capped" };
       }
 
-      const canonical = displayToCanonical(displayLocal, normalization);
-      placed.push({
-        x: displayLocal.x,
-        y: displayLocal.y,
-        z: displayLocal.z,
-      });
-      placedCanonicalRef.current.push({
-        x: canonical.x,
-        y: canonical.y,
-        z: canonical.z,
-      });
+      placedDisplayRef.current = result.display;
+      placedCanonicalRef.current = result.canonical;
       modeRef.current = "drafting";
       lastPointerUpAddedRef.current = true;
-      setActive(true);
+      setDraftUi(
+        true,
+        canFinalizeDraft(result.display.length),
+      );
       syncLine(null);
       return { status: "added" };
     },
-    [
-      closeRadius,
-      commitPoints,
-      editTool,
-      onPointCapReached,
-      setActive,
-      syncLine,
-    ],
+    [editTool, onPointCapReached, setDraftUi, syncLine],
   );
 
   const setHoverTip = useCallback(
@@ -241,12 +231,13 @@ export function useCutPolylineDraft({
 
   useEffect(() => {
     return () => {
-      if (activeRef.current) {
+      if (activeRef.current || canFinalizeRef.current) {
         activeRef.current = false;
-        onDraftActiveChange?.(false);
+        canFinalizeRef.current = false;
+        onDraftUiChange?.({ active: false, canFinalize: false });
       }
     };
-  }, [onDraftActiveChange]);
+  }, [onDraftUiChange]);
 
   useEffect(() => {
     if (editTool !== "cut") return;
@@ -304,5 +295,5 @@ export function useCutPolylineDraft({
     ],
   );
 
-  return { cutDraftActive, api };
+  return { cutDraftActive, cutDraftCanFinalize, api };
 }

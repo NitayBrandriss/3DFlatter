@@ -159,7 +159,8 @@ export function PickableMesh({
         cutDraftApiRef.current?.setHoverTip(null);
       }}
       onPointerLeave={() => {
-        clearPointerDown();
+        // Keep pending click: silhouette leave/re-enter must not cancel place
+        // (POLYCUT-004). Tip clears; pointerup / cancel / document up still clear down.
         if (editTool === "cut") {
           cutDraftApiRef.current?.setHoverTip(null);
         }

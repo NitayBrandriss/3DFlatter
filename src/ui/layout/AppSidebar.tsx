@@ -34,6 +34,7 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
     clearCutStrokes,
     deleteLastCutStroke,
     cutDraftActive,
+    cutDraftCanFinalize,
     onCutDraftDone,
     onCutDraftCancel,
   } = sessionProps;
@@ -226,7 +227,8 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
             {meshEditTool === "cut" ? (
               <div className="muted sidebar-meta-tight">
                 Click mesh to place vertices. Double-click, Enter, or Done to
-                commit. Esc / Cancel discards. Backspace undoes last vertex.
+                commit an open cut. Esc / Cancel discards. Backspace undoes last
+                vertex.
               </div>
             ) : null}
 
@@ -236,6 +238,7 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                   type="button"
                   className="btn btn--block"
                   onClick={onCutDraftDone}
+                  disabled={!cutDraftCanFinalize}
                 >
                   Done
                 </button>
@@ -403,8 +406,14 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     max={3}
                     step={0.05}
                     value={modelScale}
+                    disabled={cutDraftActive}
                     onChange={(e) => setModelScale(Number(e.currentTarget.value))}
                   />
+                  {cutDraftActive ? (
+                    <div className="muted sidebar-meta-tight">
+                      Scale locked while drawing a cut.
+                    </div>
+                  ) : null}
                 </label>
               </PeekThroughControl>
             ) : null}

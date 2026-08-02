@@ -2,6 +2,12 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
+**Active proposals (dialogue — tests not started)**
+
+| Doc | Topic | Status |
+|-----|-------|--------|
+| [qa-proposal-polyline-cut-tool.md](qa-proposal-polyline-cut-tool.md) | Polyline cut draft lifecycle (Slice A+; post-freehand) | Awaiting scope feedback |
+
 **Rules for every audit in this file**
 
 1. Prefer **Vitest in `src/logic/`** (or other pure layers) that try to break the code — do not paper over failures by weakening assertions without recording a finding.

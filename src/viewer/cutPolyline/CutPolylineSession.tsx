@@ -10,6 +10,7 @@ import {
 import {
   useCutPolylineDraft,
   type CutPolylineDraftApi,
+  type CutPolylineDraftUi,
 } from "./useCutPolylineDraft";
 
 export type CutPolylineActions = Pick<
@@ -21,16 +22,18 @@ export function CutPolylineSession({
   editTool,
   modelScale,
   onCommit,
-  onDraftActiveChange,
+  onDraftUiChange,
   onPointCapReached,
+  onFinalizeTooFewPoints,
   draftApiRef,
   actionsRef,
 }: {
   editTool: MeshEditTool;
   modelScale: number;
   onCommit: (points: Vec3[]) => void;
-  onDraftActiveChange?: (active: boolean) => void;
+  onDraftUiChange?: (ui: CutPolylineDraftUi) => void;
   onPointCapReached?: () => void;
+  onFinalizeTooFewPoints?: () => void;
   draftApiRef: RefObject<CutPolylineDraftApi | null>;
   actionsRef?: RefObject<CutPolylineActions | null>;
 }) {
@@ -39,8 +42,9 @@ export function CutPolylineSession({
     lineRef,
     editTool,
     onCommit,
-    onDraftActiveChange,
+    onDraftUiChange,
     onPointCapReached,
+    onFinalizeTooFewPoints,
   });
 
   useEffect(() => {

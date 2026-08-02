@@ -73,6 +73,7 @@ export default function HomePage() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
   const cutStrokeIdSeq = useRef(0);
   const [cutDraftActive, setCutDraftActive] = useState(false);
+  const [cutDraftCanFinalize, setCutDraftCanFinalize] = useState(false);
   const cutDraftActionsRef = useRef<CutPolylineActions | null>(null);
 
   const {
@@ -125,6 +126,14 @@ export default function HomePage() {
     if (last) deleteCutStroke(last.id);
   }, [cutStrokes, deleteCutStroke]);
 
+  const onCutDraftUiChange = useCallback(
+    (ui: { active: boolean; canFinalize: boolean }) => {
+      setCutDraftActive(ui.active);
+      setCutDraftCanFinalize(ui.canFinalize);
+    },
+    [],
+  );
+
   const onCutDraftDone = useCallback(() => {
     cutDraftActionsRef.current?.finalize();
   }, []);
@@ -135,6 +144,10 @@ export default function HomePage() {
 
   const onCutPointCapReached = useCallback(() => {
     notifyToast("Cut stroke point limit (512) reached", "warning");
+  }, [notifyToast]);
+
+  const onCutFinalizeTooFewPoints = useCallback(() => {
+    notifyToast("Place at least two points to finish the cut", "info");
   }, [notifyToast]);
 
   const handleFlatten = useCallback((): boolean => {
@@ -178,6 +191,7 @@ export default function HomePage() {
             clearCutStrokes,
             deleteLastCutStroke,
             cutDraftActive,
+            cutDraftCanFinalize,
             onCutDraftDone,
             onCutDraftCancel,
           }}
@@ -235,9 +249,10 @@ export default function HomePage() {
               editTool={meshEditTool}
               onEdgePick={onEdgePick}
               onCutStrokeCommit={onCutStrokeCommit}
-              onCutDraftActiveChange={setCutDraftActive}
+              onCutDraftUiChange={onCutDraftUiChange}
               cutDraftActionsRef={cutDraftActionsRef}
               onCutPointCapReached={onCutPointCapReached}
+              onCutFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
             />
             {isLoading ? (
               <div className="overlay">

@@ -90,9 +90,10 @@ export function MeshViewport({
   editTool,
   onEdgePick,
   onCutStrokeCommit,
-  onCutDraftActiveChange,
+  onCutDraftUiChange,
   cutDraftActionsRef,
   onCutPointCapReached,
+  onCutFinalizeTooFewPoints,
 }: {
   mesh: MeshModel | null;
   seams: SeamRegistry | null;
@@ -108,9 +109,13 @@ export function MeshViewport({
   editTool: MeshEditTool;
   onEdgePick: (edgeKey: EdgeKey) => void;
   onCutStrokeCommit: (points: Vec3[]) => void;
-  onCutDraftActiveChange?: (active: boolean) => void;
+  onCutDraftUiChange?: (ui: {
+    active: boolean;
+    canFinalize: boolean;
+  }) => void;
   cutDraftActionsRef?: RefObject<CutPolylineActions | null>;
   onCutPointCapReached?: () => void;
+  onCutFinalizeTooFewPoints?: () => void;
 }) {
   // Rebuild display assets only when canonical mesh identity changes (file load).
   const displayAssets = useMemo(() => {
@@ -175,8 +180,9 @@ export function MeshViewport({
             editTool={editTool}
             modelScale={modelScale}
             onCommit={onCutStrokeCommit}
-            onDraftActiveChange={onCutDraftActiveChange}
+            onDraftUiChange={onCutDraftUiChange}
             onPointCapReached={onCutPointCapReached}
+            onFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
             draftApiRef={cutDraftApiRef}
             actionsRef={cutDraftActionsRef}
           />
