@@ -3,16 +3,17 @@
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
 import type { MeshEditTool } from "../state/meshEditTool";
 import { CutStrokesOverlay } from "./CutStrokesOverlay";
 import {
-  InProgressCutStrokeLine,
-  type InProgressCutStrokeHandle,
-} from "./InProgressCutStrokeLine";
+  CutPolylineSession,
+  type CutPolylineActions,
+} from "./cutPolyline/CutPolylineSession";
+import type { CutPolylineDraftApi } from "./cutPolyline/useCutPolylineDraft";
 import { buildDisplayMeshAssets } from "./meshModelToGeometry";
 import { PickableMesh } from "./PickableMesh";
 import { SeamOverlay } from "./SeamOverlay";
@@ -89,6 +90,9 @@ export function MeshViewport({
   editTool,
   onEdgePick,
   onCutStrokeCommit,
+  onCutDraftActiveChange,
+  cutDraftActionsRef,
+  onCutPointCapReached,
 }: {
   mesh: MeshModel | null;
   seams: SeamRegistry | null;
@@ -104,6 +108,9 @@ export function MeshViewport({
   editTool: MeshEditTool;
   onEdgePick: (edgeKey: EdgeKey) => void;
   onCutStrokeCommit: (points: Vec3[]) => void;
+  onCutDraftActiveChange?: (active: boolean) => void;
+  cutDraftActionsRef?: RefObject<CutPolylineActions | null>;
+  onCutPointCapReached?: () => void;
 }) {
   // Rebuild display assets only when canonical mesh identity changes (file load).
   const displayAssets = useMemo(() => {
@@ -111,8 +118,9 @@ export function MeshViewport({
     return buildDisplayMeshAssets(mesh);
   }, [mesh]);
 
-  const inProgressRef = useRef<InProgressCutStrokeHandle | null>(null);
-  const [orbitEnabled, setOrbitEnabled] = useState(true);
+  const cutDraftApiRef = useRef<CutPolylineDraftApi | null>(null);
+  // Orbit stays enabled while drafting; Slice C disables only during node grab.
+  const orbitEnabled = true;
 
   // Release GPU buffers when the mesh is replaced or the viewport unmounts.
   useEffect(() => {
@@ -151,9 +159,7 @@ export function MeshViewport({
             editTool={editTool}
             normalization={displayAssets.normalization}
             onEdgePick={onEdgePick}
-            onCutStrokeCommit={onCutStrokeCommit}
-            inProgressLineRef={inProgressRef}
-            onOrbitEnabledChange={setOrbitEnabled}
+            cutDraftApiRef={cutDraftApiRef}
           />
           <SeamOverlay
             displayVertices={displayAssets.displayMesh.vertices}
@@ -165,9 +171,14 @@ export function MeshViewport({
             normalization={displayAssets.normalization}
             modelScale={modelScale}
           />
-          <InProgressCutStrokeLine
-            ref={inProgressRef}
+          <CutPolylineSession
+            editTool={editTool}
             modelScale={modelScale}
+            onCommit={onCutStrokeCommit}
+            onDraftActiveChange={onCutDraftActiveChange}
+            onPointCapReached={onCutPointCapReached}
+            draftApiRef={cutDraftApiRef}
+            actionsRef={cutDraftActionsRef}
           />
           <FitCameraToMesh
             geometry={displayAssets.geometry}

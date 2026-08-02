@@ -29,6 +29,9 @@ export type AppSidebarSessionProps = {
   cutStrokeCount: number;
   clearCutStrokes: () => void;
   deleteLastCutStroke: () => void;
+  cutDraftActive: boolean;
+  onCutDraftDone: () => void;
+  onCutDraftCancel: () => void;
 };
 
 export type AppSidebarFlattenProps = {

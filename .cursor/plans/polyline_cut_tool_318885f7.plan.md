@@ -4,9 +4,9 @@ overview: "Full lifecycle blueprint for polyline cut drawing and node editing: c
 todos:
   - id: slice-a-draw
     content: "Slice A — Point-to-point draw: useCutPolylineDraft, InProgressPolylineLine (placed+tip), PickableMesh rewire, Done/Cancel/keys, finalize to addCutStroke"
-    status: pending
+    status: completed
   - id: slice-b-markers
-    content: "Slice B — DraftVertexMarkers visual (imperative positions, raycast disabled); shared draft session wiring"
+    content: Slice B — DraftVertexMarkers visual (imperative positions, raycast disabled); shared draft session wiring
     status: pending
   - id: slice-c-drag
     content: "Slice C — Interactive draft node drag: custom pointer capture, mesh-surface raycast on move, orbit disable/enable, 60fps imperative line+marker updates"
@@ -15,7 +15,7 @@ todos:
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
     status: pending
   - id: slice-e-docs-qa
-    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint"
+    content: Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint
     status: pending
 isProject: false
 ---

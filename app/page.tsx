@@ -15,6 +15,7 @@ import { useHomeSession } from "@/ui/hooks/useHomeSession";
 import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
 import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
 import { MeshViewport } from "@/viewer/MeshViewport";
+import type { CutPolylineActions } from "@/viewer/cutPolyline/CutPolylineSession";
 
 export default function HomePage() {
   const {
@@ -71,6 +72,8 @@ export default function HomePage() {
   } = useViewportPreferences();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
   const cutStrokeIdSeq = useRef(0);
+  const [cutDraftActive, setCutDraftActive] = useState(false);
+  const cutDraftActionsRef = useRef<CutPolylineActions | null>(null);
 
   const {
     isDesktop,
@@ -122,6 +125,18 @@ export default function HomePage() {
     if (last) deleteCutStroke(last.id);
   }, [cutStrokes, deleteCutStroke]);
 
+  const onCutDraftDone = useCallback(() => {
+    cutDraftActionsRef.current?.finalize();
+  }, []);
+
+  const onCutDraftCancel = useCallback(() => {
+    cutDraftActionsRef.current?.cancel();
+  }, []);
+
+  const onCutPointCapReached = useCallback(() => {
+    notifyToast("Cut stroke point limit (512) reached", "warning");
+  }, [notifyToast]);
+
   const handleFlatten = useCallback((): boolean => {
     const ok = onFlatten();
     if (ok && !isDesktop) {
@@ -162,6 +177,9 @@ export default function HomePage() {
             cutStrokeCount: cutStrokes.length,
             clearCutStrokes,
             deleteLastCutStroke,
+            cutDraftActive,
+            onCutDraftDone,
+            onCutDraftCancel,
           }}
           flatten={{
             flattening,
@@ -217,6 +235,9 @@ export default function HomePage() {
               editTool={meshEditTool}
               onEdgePick={onEdgePick}
               onCutStrokeCommit={onCutStrokeCommit}
+              onCutDraftActiveChange={setCutDraftActive}
+              cutDraftActionsRef={cutDraftActionsRef}
+              onCutPointCapReached={onCutPointCapReached}
             />
             {isLoading ? (
               <div className="overlay">

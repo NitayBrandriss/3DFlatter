@@ -33,6 +33,9 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
     cutStrokeCount,
     clearCutStrokes,
     deleteLastCutStroke,
+    cutDraftActive,
+    onCutDraftDone,
+    onCutDraftCancel,
   } = sessionProps;
 
   const {
@@ -216,9 +219,35 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
               >
                 <option value="none">Orbit only</option>
                 <option value="seam">Edge seam pick</option>
-                <option value="cut">Draw cut</option>
+                <option value="cut">Draw cut polyline</option>
               </select>
             </label>
+
+            {meshEditTool === "cut" ? (
+              <div className="muted sidebar-meta-tight">
+                Click mesh to place vertices. Double-click, Enter, or Done to
+                commit. Esc / Cancel discards. Backspace undoes last vertex.
+              </div>
+            ) : null}
+
+            {meshEditTool === "cut" && cutDraftActive ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={onCutDraftDone}
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={onCutDraftCancel}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : null}
 
             <div className="muted sidebar-meta-tight">
               {stats ? (
