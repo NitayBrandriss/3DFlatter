@@ -1,7 +1,7 @@
 # QA proposal — Polyline cut tool (viewer draft lifecycle)
 
-**Status:** Proposal / dialogue — findings severity assigned (static review); **characterizing tests not written yet**; awaiting scope feedback.  
-**Date:** 2026-08-02  
+**Status:** Decisions locked; Slice A remediations shipped (POLYCUT-001/002/004/005/006/007). Characterizing tests partial via helper suite; full dated audit block in [qa-audits.md](qa-audits.md) still optional.  
+**Date:** 2026-08-02 (updated 2026-08-03)  
 **Owner posture:** Staff SDET + domain (mesh flatten / Pepakura-style cuts)  
 **Blueprint:** [`.cursor/plans/polyline_cut_tool_318885f7.plan.md`](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md)  
 **ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)  
@@ -227,56 +227,56 @@ User places 3 points, drags **Model scale** in the sidebar, continues clicking. 
 
 ---
 
-## 5. Dialogue — decisions needed from you
+## 5. Dialogue — decisions locked (2026-08-03)
 
-Please react with preferences (even rough):
-
-1. **Close-loop policy:** Keep Euclidean display ball? Switch to screen-space px? Require explicit “close” only via clicking a future first-vertex marker (Slice B)? Disable auto-close until B?
-2. **Dblclick vs close:** If both could fire, which wins — prefer open finalize (strip + finalize, never close on the dblclick’s pointerup) or prefer close?
-3. **Overlay through-volume:** Accept as known (document in Slice E QA) vs schedule surface-preview later vs warn when segment chord length ≫ surface estimate?
-4. **modelScale mid-draft:** Ignore / cancel draft on scale change / freeze scale while `cutDraftActive`?
-5. **Esc:** Cancel draft only / cancel + confirm if ≥N points / leave sidebar Esc alone when drafting?
-6. **Audit timing:** Run adversarial Vitest **now on Slice A only**, or wait until **B (markers)** so close/marker intent is stable?
-7. **Harness style:** Extract pure `CutPolylineDraftSession` for testability, or keep hook + helper tests only?
+| # | Topic | Decision |
+|---|--------|----------|
+| 1 | Close-loop policy | Disable mesh Euclidean auto-close in Slice A; **restore close in Slice B via first-vertex marker click** (not mesh ball). |
+| 2 | Dblclick vs close | Moot while auto-close off; B close is marker-only so mesh dblclick cannot race with close. |
+| 3 | Overlay through-volume | **Accept as known** (POLYCUT-003); document in Slice E QA. No surface preview in this blueprint. |
+| 4 | modelScale mid-draft | **Freeze** scale slider while `cutDraftActive` (shipped). |
+| 5 | Esc | Defer (POLYCUT-009 Low); leave dual Esc as-is for now. |
+| 6 | Audit timing | Slice A remediations + helper tests shipped; promote dated audit when desired. |
+| 7 | Harness style | Hook + helper tests (no pure `CutPolylineDraftSession` extraction). |
 
 ---
 
 ## 6. Findings (static review — Slice A polyline draft)
 
-**Status:** Open — static code + domain review; characterizing Vitest not run yet.  
-**Method:** Staff SDET review of `cutPolyline/*`, `PickableMesh`, session wiring vs ADR 0100 + polyline blueprint. No production fixes in this pass.  
+**Status:** Remediated for in-scope IDs (see table). Static review + helper tests; optional dated `## Audit` in [qa-audits.md](qa-audits.md) still open.  
+**Method:** Staff SDET review of `cutPolyline/*`, `PickableMesh`, session wiring vs ADR 0100 + polyline blueprint; remediations landed 2026-08-03.  
 **Severity scale:** Same as [qa-audits.md](qa-audits.md) — Critical / High / Medium / Low.
 
 ### Executive summary
 
-No **Critical** defect found in the draft path itself (no crash or proven mesh corruption at commit time). Two **High** issues can flip a stroke between **open slit** and **closed loop**, which changes Flatten / island semantics under ADR 0100. Several **Medium** items are UX/trust or silent-input failures. **Low** items are perf, toast hygiene, and preventive Slice C gates.
+No **Critical** defect. High close-loop risks (POLYCUT-001/002) mitigated by disabling mesh auto-close until Slice B markers. Medium UX/input items 004–007 remediated. POLYCUT-003 remains accepted known chord overlay. Low 008–011 deferred (optional / Slice C gates / Esc).
 
-**Verdict:** Do not treat Slice A as audit-closed until POLYCUT-001/002 product rules are decided and characterized. Overlay-through-volume (POLYCUT-003) is expected chord rendering, not a materialize bug — still Medium for user trust.
+**Verdict:** Slice A draft path is remediation-closed for required findings. Continue blueprint B→E; POLYCUT-010/011 remain merge gates for Slice C.
 
 ### Findings count
 
-| Severity | Open |
-|----------|------|
-| Critical | 0 |
-| High | 2 |
-| Medium | 5 |
-| Low | 4 |
+| Severity | Open | Resolved / accepted |
+|----------|------|---------------------|
+| Critical | 0 | — |
+| High | 0 | 2 (mitigated; close restored in B) |
+| Medium | 1 (003 accepted known) | 4 remediated |
+| Low | 4 (deferred) | — |
 
 ### Findings table
 
-| ID | Severity | Issue | Evidence |
-|----|----------|-------|----------|
-| POLYCUT-001 | **High** | Fixed display-space close radius can false-close on thin meshes | `isClosedClick` + `CUT_POLYLINE_CLOSE_RADIUS = 0.06` before min-distance in `addPointFromHit` |
-| POLYCUT-002 | **High** | Dblclick finalize can race with close-loop commit on the same click | `pointerup` → close/add then `onDoubleClick` → `finalizeFromDoubleClick` |
-| POLYCUT-003 | **Medium** | Overlay draws straight chords that tunnel through the solid | `InProgressPolylineLine` / `CutStrokesOverlay` `THREE.Line` segments; user-reported |
-| POLYCUT-004 | **Medium** | `pointerleave` clears pending click → silent missed vertex | `PickableMesh` `onPointerLeave` → `clearPointerDown()` |
-| POLYCUT-005 | **Medium** | Done / Enter / dblclick with &lt;2 points fail silently | `canFinalizeDraft` / `finalize` return `null`; no toast |
-| POLYCUT-006 | **Medium** | `modelScale` change mid-draft desyncs rubber-band vs mesh visually | Mesh + line both `scale={modelScale}`; points stay in prior local frame |
-| POLYCUT-007 | **Medium** | Cap (512) toast can fire per rejected click (spam / hide other toasts) | `onPointCapReached` on every capped `addPointFromHit` |
-| POLYCUT-008 | **Low** | Rubber-band `setPreviewTip` reallocates `BufferAttribute` every move | `InProgressPolylineLine.rebuild` |
-| POLYCUT-009 | **Low** | Esc cancels draft and closes sidebar with no confirm | Dual `keydown` listeners (draft + `useSidebarState`) |
-| POLYCUT-010 | **Low** | Display/canonical twin desync risk when Slice C lands | Two parallel refs; only paired updates today |
-| POLYCUT-011 | **Low** | Closed-stroke endpoint 0 / n−1 not kept in sync yet | Blueprint Slice C; no drag path in A |
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-001 | **High** | Fixed display-space close radius can false-close on thin meshes | **Resolved (mitigated)** — mesh auto-close disabled; marker close in Slice B |
+| POLYCUT-002 | **High** | Dblclick finalize can race with close-loop commit on the same click | **Resolved (mitigated)** — no mesh close path; moot until B marker close |
+| POLYCUT-003 | **Medium** | Overlay draws straight chords that tunnel through the solid | **Accepted known** — document in Slice E |
+| POLYCUT-004 | **Medium** | `pointerleave` clears pending click → silent missed vertex | **Resolved** — leave clears tip only |
+| POLYCUT-005 | **Medium** | Done / Enter / dblclick with &lt;2 points fail silently | **Resolved** — Done gated + toast |
+| POLYCUT-006 | **Medium** | `modelScale` change mid-draft desyncs rubber-band vs mesh visually | **Resolved** — scale frozen while drafting |
+| POLYCUT-007 | **Medium** | Cap (512) toast can fire per rejected click | **Resolved** — once per draft |
+| POLYCUT-008 | **Low** | Rubber-band `setPreviewTip` reallocates every move | Open (optional / Slice E) |
+| POLYCUT-009 | **Low** | Esc cancels draft and closes sidebar with no confirm | Open (deferred) |
+| POLYCUT-010 | **Low** | Display/canonical twin desync risk when Slice C lands | Open — **Slice C merge gate** |
+| POLYCUT-011 | **Low** | Closed-stroke endpoint 0 / n−1 not kept in sync yet | Open — **Slice C merge gate** |
 
 ---
 
@@ -288,7 +288,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Product choose one — (a) disable auto-close until first-vertex marker (Slice B), (b) screen-space px threshold + front-face consistency check, (c) scale close radius by local feature size / forbid close when chord would pierce (ray or winding heuristic). Characterize with a thin-box fixture before remediation.
 
-  **Status:** Open — awaiting §5 close-loop policy.
+  **Status:** **Resolved (mitigated)** — chose (a); mesh auto-close removed; restore via first-vertex marker in Slice B.
 
 ---
 
@@ -300,7 +300,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Decide winner in §5 — e.g. suppress close when a dblclick is plausible (timer / `detail`), or never close on the click that pairs with dblclick (prefer open finalize). Add ordered synthetic-event characterizing test (P0/P1-02).
 
-  **Status:** Open — awaiting §5 dblclick vs close.
+  **Status:** **Resolved (mitigated)** — no mesh close path; marker close in B cannot race with mesh dblclick.
 
 ---
 
@@ -312,7 +312,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Document as known in Slice E QA; optional later surface-preview or warn when segment length ≫ estimated surface path. Bridge Flatten tests for long chords (P0-11) to prove topology, not pixels.
 
-  **Status:** Open — product stance in §5.
+  **Status:** **Accepted known** — Slice E docs / QA matrix.
 
 ---
 
@@ -324,7 +324,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Clear tip on leave but keep `pointerDown` until `pointerup`/`pointercancel`; or use document-level up with last-hit cache. Manual + optional pointer harness.
 
-  **Status:** Open.
+  **Status:** **Resolved** — leave clears tip only.
 
 ---
 
@@ -336,7 +336,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Toast or disable Done until `cutDraftActive && pointCount >= 2` (requires exposing count or a `canFinalize` flag).
 
-  **Status:** Open.
+  **Status:** **Resolved** — Done disabled until `canFinalize`; toast on Enter/dblclick with one point.
 
 ---
 
@@ -348,7 +348,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Freeze scale while `cutDraftActive`, or cancel draft on scale change, or re-sync line after scale (document choice in §5).
 
-  **Status:** Open — awaiting §5.
+  **Status:** **Resolved** — scale slider disabled while drafting.
 
 ---
 
@@ -360,7 +360,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Toast once per draft session when cap first hit; optional line color change.
 
-  **Status:** Open.
+  **Status:** **Resolved** — once-per-draft via `takeCapToastNotification`.
 
 ---
 
@@ -372,7 +372,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Preallocate max buffer + `setDrawRange` / in-place attribute updates (Slice C hot path should share this).
 
-  **Status:** Open (optional).
+  **Status:** Open (optional / Slice E).
 
 ---
 
@@ -384,7 +384,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** When `cutDraftActive`, consume Esc for draft only; or confirm if `placed.length >= N`.
 
-  **Status:** Open — awaiting §5.
+  **Status:** Open (deferred).
 
 ---
 
@@ -396,7 +396,7 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** One `setVertex(i, display, norm)` helper; invariant assert length+pairing in tests (P0-10).
 
-  **Status:** Open (preventive).
+  **Status:** Open — **Slice C merge gate**.
 
 ---
 
@@ -408,18 +408,18 @@ No **Critical** defect found in the draft path itself (no crash or proven mesh c
 
   **Strategy:** Characterizing test before C merge; implement paired update in `moveNodeDrag`.
 
-  **Status:** Open (preventive / Slice C).
+  **Status:** Open — **Slice C merge gate**.
 
 ---
 
-## 7. Recommended next step (after your feedback)
+## 7. Recommended next step
 
-1. Lock answers to §5 (even “defer”) — especially POLYCUT-001/002/003/006/009.
-2. Agree P0 set (trim or extend §3.2).
-3. **Then** implement characterizing tests only — no production fixes in that pass.
-4. Promote this findings block into a dated `## Audit — …` section in [qa-audits.md](qa-audits.md) once tests exist (or mark “static-only”).
-5. Remediation slice(s) separately; continue blueprint B→E with POLYCUT-010/011 as merge gates.
+1. ~~Lock §5~~ — done (see §5 table).
+2. Execute blueprint **Slice B** (markers + first-marker close) per updated [polyline plan](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md).
+3. Slice C with POLYCUT-010/011 as merge gates.
+4. Slice E: document POLYCUT-003; optional Low 008/009.
+5. Optionally promote findings into a dated `## Audit — …` section in [qa-audits.md](qa-audits.md).
 
 ---
 
-*End of proposal. Waiting on feedback before writing tests or changing product code.*
+*End of proposal. Slice A remediations shipped; continue B→E.*

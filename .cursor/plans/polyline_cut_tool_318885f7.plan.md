@@ -6,16 +6,16 @@ todos:
     content: "Slice A — Point-to-point draw: useCutPolylineDraft, InProgressPolylineLine (placed+tip), PickableMesh rewire, Done/Cancel/keys, finalize to addCutStroke"
     status: completed
   - id: slice-b-markers
-    content: Slice B — DraftVertexMarkers visual (imperative positions, raycast disabled); shared draft session wiring
+    content: "Slice B — DraftVertexMarkers visual + restore close via first-vertex marker click (no Euclidean mesh auto-close)"
     status: pending
   - id: slice-c-drag
-    content: "Slice C — Interactive draft node drag: custom pointer capture, mesh-surface raycast on move, orbit disable/enable, 60fps imperative line+marker updates"
+    content: "Slice C — Interactive draft node drag: custom pointer capture, mesh-surface raycast on move, orbit disable/enable, 60fps imperative line+marker updates; POLYCUT-010/011 gates"
     status: pending
   - id: slice-d-committed
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
     status: pending
   - id: slice-e-docs-qa
-    content: Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint
+    content: "Slice E — Update phase-1 plan UX note; manual QA matrix (incl. known chord overlay POLYCUT-003); npm test / lint"
     status: pending
 isProject: false
 ---
@@ -31,14 +31,16 @@ Phase 1 logic + Zustand are done ([ADR 0100](docs/decisions/product/0100-freefor
 | Action | Gesture |
 |--------|---------|
 | Add vertex | Primary click on mesh (`pointerup`, drag ≤ 5px) |
-| Finalize draft | Double-click **or** Enter **or** sidebar **Done** |
-| Close loop | Click near first vertex → append close + finalize |
+| Finalize draft | Double-click **or** Enter **or** sidebar **Done** (requires ≥2 points; Done disabled until then) |
+| Close loop | **Slice B+:** click the **first-vertex marker** → append duplicate of first as last + finalize. **Not** Euclidean “click near first on mesh” (disabled in Slice A after POLYCUT-001/002) |
 | Undo last vertex | Backspace / Delete while drafting (not while dragging a node) |
 | Cancel draft | Escape **or** sidebar **Cancel** **or** leave Cut tool |
 | Drag node | Pointerdown on marker → move on mesh surface → pointerup |
 | Re-edit committed | Click stroke / marker set → enter draft session; commit via Done / Enter → `updateCutStroke` |
 
 Orbit stays **enabled** while drafting or idle in cut tool; disabled **only** for the duration of an active node grab.
+
+**Slice A post-QA locks (shipped):** mesh-click auto-close off until B; `pointerleave` keeps pending click; model scale frozen while `cutDraftActive`; cap toast once per draft; too-few-points toast on Enter/dblclick.
 
 ---
 
@@ -250,8 +252,8 @@ MeshViewport
 | `src/viewer/cutPolyline/InProgressPolylineLine.tsx` | Imperative line (`setPlaced` / `setPreviewTip` / `updatePlacedVertex`) |
 | `src/viewer/cutPolyline/DraftVertexMarkers.tsx` | Imperative markers + pointer handlers (Slice C) |
 | `src/viewer/cutPolyline/raycastDisplayMesh.ts` | Pure helper: camera + NDC + mesh → display hit (unit-tested) |
-| [`MeshViewport.tsx`](src/viewer/MeshViewport.tsx) | Compose session; `orbitEnabled`; `cutDraftActive` upward |
-| [`AppSidebar.tsx`](src/ui/layout/AppSidebar.tsx) | Done / Cancel; later “editing stroke” hint |
+| [`MeshViewport.tsx`](src/viewer/MeshViewport.tsx) | Compose session; `orbitEnabled`; draft UI (`active` / `canFinalize`) upward |
+| [`AppSidebar.tsx`](src/ui/layout/AppSidebar.tsx) | Done (gated) / Cancel; scale freeze while drafting; later “editing stroke” hint |
 | [`cutDrawSampling.ts`](src/viewer/cutDrawSampling.ts) | Cap + min-distance for discrete clicks only |
 | Page / [`useHomeSession`](src/ui/hooks/useHomeSession.ts) | `onCutStrokeCommit` → `addCutStroke`; Slice D → `updateCutStroke` |
 
@@ -267,8 +269,10 @@ endNodeDrag()
 finalize() → { kind: "add" | "update"; id?: string; points: Vec3[] } | null
 undoLast() / cancel()
 enterEditCommitted(stroke: CutStroke)
-isClosedClick(displayLocal, first, radius)
+closeOnFirstMarkerClick()   // Slice B: append first as last + finalize (replaces mesh isClosedClick path)
 ```
+
+`isClosedClick` / `CUT_POLYLINE_CLOSE_RADIUS` remain exported helpers for tests / optional future use; **do not** wire them back into mesh `addPointFromHit`.
 
 ---
 
@@ -276,46 +280,54 @@ isClosedClick(displayLocal, first, radius)
 
 Execute in order; each slice is shippable and testable without unlocking the next.
 
-### Slice A — Point-to-point drawing
+### Slice A — Point-to-point drawing (**shipped**)
 - Replace freehand in `PickableMesh` with click place + rubber-band tip + finalize triad + Escape/Cancel/Backspace.
 - `useCutPolylineDraft` in `drafting` / `idle` only; commit via `addCutStroke`.
 - Orbit remains enabled while drafting.
-- Tests: close-loop helper, min-distance, finalize ≥2, dblclick no duplicate.
+- **QA remediations (POLYCUT):** no mesh auto-close; leave keeps pending click; Done gated + too-few toast; scale freeze while drafting; cap toast once per draft.
+- Tests: append/min-distance/finalize ≥2, near-first stays open, dblclick strip open finalize, twin lengths, cap toast once.
 
-### Slice B — Draft vertex markers (visual)
+### Slice B — Draft vertex markers + marker close
 - `DraftVertexMarkers` imperative positions synced on `setPlaced` / undo / cancel.
-- `raycast={() => undefined}` — non-interactive.
-- Proves hierarchy and handle APIs before gesture complexity.
+- First vertex visually distinct (affordance for close).
+- **Close loop:** primary click on first-vertex marker (with ≥2 points) → append duplicate of first as last + finalize. Mesh clicks never auto-close.
+- Markers otherwise `raycast={() => undefined}` until Slice C (except first marker needs pick for close — enable raycast on first only, or all markers with close-only handler on index 0).
+- Proves hierarchy and handle APIs before full drag complexity.
+- Tests: marker close commits closed polyline; mesh near-first still appends open; help copy mentions marker close.
 
 ### Slice C — Node editing (drag) on draft
 - Enable marker raycast; implement custom drag sequence (capture, mesh Raycaster, `updatePlacedVertex`).
 - Orbit disable on grab / enable on release via shared `endDrag()`.
-- Closed-loop paired endpoint update.
-- Tests: `raycastDisplayMesh` hits; drag move updates index without store calls (logic/unit where pure).
+- Closed-loop paired endpoint update (**POLYCUT-011** merge gate).
+- Single write path for display+canonical twins (**POLYCUT-010** merge gate).
+- Tests: `raycastDisplayMesh` hits; drag move updates index without store calls (logic/unit where pure); twin length + closed endpoint pairing invariants.
 - Manual: drag middle vertex at 60fps feel; orbit works between edits; finalize still adds one stroke.
 
 ### Slice D — Committed stroke re-edit
 - Pick a committed stroke (overlay or per-stroke pick proxies) → `enterEditCommitted` (copy points into refs, hide or dim that stroke in overlay while editing).
-- Same markers + drag path as Slice C.
+- Same markers + drag path as Slice C (incl. marker close when editing).
 - Finalize → `updateCutStroke`; Cancel → discard; Delete selected stroke → existing `deleteCutStroke`.
 - Does **not** change ADR materialize rules.
 
 ### Slice E — Docs + QA
-- Update [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) key files / UX note (polyline + node edit lifecycle).
-- QA matrix: draw, orbit between clicks, rubber-band, drag node, finalize, re-edit committed, Flatten, base mesh unchanged until Flatten.
+- Update [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) key files / UX note (polyline + node edit lifecycle; marker close).
+- QA matrix: draw, orbit between clicks, rubber-band, marker close, drag node, finalize, re-edit committed, Flatten, base mesh unchanged until Flatten.
+- Document **POLYCUT-003** as known: overlay uses straight 3D chords (may tunnel through volume); Flatten still chord-walks the surface (ADR 0100) — not a materialize bug.
+- Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar.
 - `npm test` / `npm run lint`.
 
-**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
+**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, surface-projected overlay preview, new npm dependencies unless later approved.
 
 ---
 
 ## 7. Risks / edge cases (explicit)
 
 - Double-click vs drag: if pointerdown on marker moves past threshold, treat as drag not finalize; dblclick finalize only from mesh / Done / Enter.
+- First-marker close vs drag (Slice C): short click on index 0 closes; drag past threshold moves endpoint (and paired last if closed).
 - Marker vs mesh event races: markers always `stopPropagation` on pointerdown.
 - Orbit stuck disabled: every exit path calls `endDrag()` (cancel, tool switch, unmount, pointercancel).
 - Drag off-mesh: freeze last hit; do not place air points (aligns with VIEW-S3-005 fix intent).
-- Cap 512: refuse add with user-visible feedback (VIEW-S3-001).
-- Closed stroke drag on endpoint 0/n−1: keep both ends synchronized.
+- Cap 512: refuse add; toast once per draft (POLYCUT-007).
+- Closed stroke drag on endpoint 0/n−1: keep both ends synchronized (POLYCUT-011).
 - Slice D overlay flicker: while editing committed id, filter that id out of `CutStrokesOverlay` and show draft line instead so the user does not see double geometry.
 - No `@use-gesture/react` unless product later approves a direct dependency — architecture does not require it.
