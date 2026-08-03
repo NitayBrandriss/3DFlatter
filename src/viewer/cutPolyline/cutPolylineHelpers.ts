@@ -9,8 +9,8 @@ import {
 } from "../displayNormalization";
 
 /**
- * Display-space radius for click-near-first close-loop detection.
- * Auto-close on mesh click is disabled until Slice B (first-vertex marker).
+ * Display-space radius for legacy Euclidean near-first checks (tests / optional).
+ * Mesh-click auto-close stays off; close is via first-vertex marker (Slice B).
  */
 export const CUT_POLYLINE_CLOSE_RADIUS = 0.06;
 
@@ -64,8 +64,36 @@ export type AppendDraftPointResult =
   | { status: "capped" };
 
 /**
+ * Build a closed polyline by appending a duplicate of the first vertex as last.
+ * Returns null when there are fewer than two points or twin lengths diverge.
+ * If already closed (first === last by exact coords), returns deep copies as-is.
+ */
+export function closePolylineByDuplicatingFirst(
+  display: readonly Vec3Like[],
+  canonical: readonly Vec3[],
+): { display: Vec3[]; canonical: Vec3[] } | null {
+  if (display.length < 2 || display.length !== canonical.length) {
+    return null;
+  }
+  const firstD = display[0]!;
+  const firstC = canonical[0]!;
+  const lastD = display[display.length - 1]!;
+  const alreadyClosed =
+    firstD.x === lastD.x && firstD.y === lastD.y && firstD.z === lastD.z;
+
+  const displayCopy = display.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  const canonicalCopy = canonical.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  if (alreadyClosed) {
+    return { display: displayCopy, canonical: canonicalCopy };
+  }
+  displayCopy.push({ x: firstD.x, y: firstD.y, z: firstD.z });
+  canonicalCopy.push({ x: firstC.x, y: firstC.y, z: firstC.z });
+  return { display: displayCopy, canonical: canonicalCopy };
+}
+
+/**
  * Append one display/canonical twin pair. Does not auto-close near the first
- * vertex (POLYCUT-001/002 — close deferred to Slice B markers).
+ * vertex on mesh click (POLYCUT-001/002 — close via first-vertex marker).
  */
 export function appendPolylineDraftPoint(
   display: readonly Vec3Like[],

@@ -2,11 +2,12 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
-**Active proposals (dialogue — tests not started)**
+**Active proposals (dialogue — tests not started / partial)**
 
 | Doc | Topic | Status |
 |-----|-------|--------|
-| [qa-proposal-polyline-cut-tool.md](qa-proposal-polyline-cut-tool.md) | Polyline cut draft lifecycle (Slice A+; post-freehand) | Awaiting scope feedback |
+| [qa-proposal-polyline-cut-tool.md](qa-proposal-polyline-cut-tool.md) | Polyline cut Slice A (draft lifecycle) | Slice A remediations shipped; optional formal audit block |
+| [qa-proposal-polyline-cut-slice-b.md](qa-proposal-polyline-cut-slice-b.md) | Polyline cut Slice B (markers + closed ring → islands) | Awaiting scope feedback |
 
 **Rules for every audit in this file**
 

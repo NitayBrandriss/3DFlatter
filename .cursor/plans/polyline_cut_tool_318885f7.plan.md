@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: slice-b-markers
     content: "Slice B — DraftVertexMarkers visual + restore close via first-vertex marker click (no Euclidean mesh auto-close)"
-    status: pending
+    status: completed
   - id: slice-c-drag
     content: "Slice C — Interactive draft node drag: custom pointer capture, mesh-surface raycast on move, orbit disable/enable, 60fps imperative line+marker updates; POLYCUT-010/011 gates"
     status: pending
@@ -287,13 +287,12 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - **QA remediations (POLYCUT):** no mesh auto-close; leave keeps pending click; Done gated + too-few toast; scale freeze while drafting; cap toast once per draft.
 - Tests: append/min-distance/finalize ≥2, near-first stays open, dblclick strip open finalize, twin lengths, cap toast once.
 
-### Slice B — Draft vertex markers + marker close
+### Slice B — Draft vertex markers + marker close (**shipped**)
 - `DraftVertexMarkers` imperative positions synced on `setPlaced` / undo / cancel.
-- First vertex visually distinct (affordance for close).
+- First vertex visually distinct (amber affordance for close).
 - **Close loop:** primary click on first-vertex marker (with ≥2 points) → append duplicate of first as last + finalize. Mesh clicks never auto-close.
-- Markers otherwise `raycast={() => undefined}` until Slice C (except first marker needs pick for close — enable raycast on first only, or all markers with close-only handler on index 0).
-- Proves hierarchy and handle APIs before full drag complexity.
-- Tests: marker close commits closed polyline; mesh near-first still appends open; help copy mentions marker close.
+- Markers otherwise `raycast={() => undefined}` until Slice C (first marker pickable for close only).
+- Tests: `closePolylineByDuplicatingFirst`; mesh near-first still appends open; sidebar help mentions marker close.
 
 ### Slice C — Node editing (drag) on draft
 - Enable marker raycast; implement custom drag sequence (capture, mesh Raycaster, `updatePlacedVertex`).

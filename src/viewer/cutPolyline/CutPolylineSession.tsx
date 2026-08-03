@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { Vec3 } from "../../logic/cuts/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
+import {
+  DraftVertexMarkers,
+  type DraftVertexMarkersHandle,
+} from "./DraftVertexMarkers";
 import {
   InProgressPolylineLine,
   type InProgressPolylineHandle,
@@ -38,8 +42,10 @@ export function CutPolylineSession({
   actionsRef?: RefObject<CutPolylineActions | null>;
 }) {
   const lineRef = useRef<InProgressPolylineHandle | null>(null);
+  const markersRef = useRef<DraftVertexMarkersHandle | null>(null);
   const { api } = useCutPolylineDraft({
     lineRef,
+    markersRef,
     editTool,
     onCommit,
     onDraftUiChange,
@@ -69,5 +75,18 @@ export function CutPolylineSession({
     };
   }, [actionsRef, api]);
 
-  return <InProgressPolylineLine ref={lineRef} modelScale={modelScale} />;
+  const onFirstMarkerClick = useCallback(() => {
+    api.closeOnFirstMarkerClick();
+  }, [api]);
+
+  return (
+    <>
+      <InProgressPolylineLine ref={lineRef} modelScale={modelScale} />
+      <DraftVertexMarkers
+        ref={markersRef}
+        modelScale={modelScale}
+        onFirstMarkerClick={onFirstMarkerClick}
+      />
+    </>
+  );
 }

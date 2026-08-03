@@ -14,9 +14,11 @@ import type { DisplayNormalization } from "../displayNormalization";
 import {
   appendPolylineDraftPoint,
   canFinalizeDraft,
+  closePolylineByDuplicatingFirst,
   stripDblClickDuplicate,
   takeCapToastNotification,
 } from "./cutPolylineHelpers";
+import type { DraftVertexMarkersHandle } from "./DraftVertexMarkers";
 import type {
   DisplayVec3,
   InProgressPolylineHandle,
@@ -41,6 +43,8 @@ export type CutPolylineDraftApi = {
   setHoverTip: (tip: DisplayVec3 | null) => void;
   finalize: () => CutPolylineFinalizeResult | null;
   finalizeFromDoubleClick: () => CutPolylineFinalizeResult | null;
+  /** Slice B: click first-vertex marker → closed polyline commit. */
+  closeOnFirstMarkerClick: () => CutPolylineFinalizeResult | null;
   undoLast: () => void;
   cancel: () => void;
 };
@@ -52,6 +56,7 @@ export type CutPolylineDraftUi = {
 
 export function useCutPolylineDraft({
   lineRef,
+  markersRef,
   editTool,
   onCommit,
   onDraftUiChange,
@@ -59,6 +64,7 @@ export function useCutPolylineDraft({
   onFinalizeTooFewPoints,
 }: {
   lineRef: RefObject<InProgressPolylineHandle | null>;
+  markersRef: RefObject<DraftVertexMarkersHandle | null>;
   editTool: MeshEditTool;
   onCommit: (points: Vec3[]) => void;
   onDraftUiChange?: (ui: CutPolylineDraftUi) => void;
@@ -93,12 +99,13 @@ export function useCutPolylineDraft({
     [onDraftUiChange],
   );
 
-  const syncLine = useCallback(
+  const syncVisuals = useCallback(
     (tip: DisplayVec3 | null = null) => {
       lineRef.current?.setPlaced(placedDisplayRef.current);
       lineRef.current?.setPreviewTip(tip);
+      markersRef.current?.setPositions(placedDisplayRef.current);
     },
-    [lineRef],
+    [lineRef, markersRef],
   );
 
   const clearDraft = useCallback(() => {
@@ -108,8 +115,9 @@ export function useCutPolylineDraft({
     lastPointerUpAddedRef.current = false;
     capToastShownRef.current = false;
     lineRef.current?.clear();
+    markersRef.current?.clear();
     setDraftUi(false, false);
-  }, [lineRef, setDraftUi]);
+  }, [lineRef, markersRef, setDraftUi]);
 
   const cancel = useCallback(() => {
     clearDraft();
@@ -148,8 +156,8 @@ export function useCutPolylineDraft({
       true,
       canFinalizeDraft(placedDisplayRef.current.length),
     );
-    syncLine(null);
-  }, [clearDraft, setDraftUi, syncLine]);
+    syncVisuals(null);
+  }, [clearDraft, setDraftUi, syncVisuals]);
 
   const finalizeFromDoubleClick =
     useCallback((): CutPolylineFinalizeResult | null => {
@@ -170,9 +178,24 @@ export function useCutPolylineDraft({
         true,
         canFinalizeDraft(placedDisplayRef.current.length),
       );
-      syncLine(null);
+      syncVisuals(null);
       return finalize();
-    }, [clearDraft, finalize, onFinalizeTooFewPoints, setDraftUi, syncLine]);
+    }, [clearDraft, finalize, onFinalizeTooFewPoints, setDraftUi, syncVisuals]);
+
+  const closeOnFirstMarkerClick =
+    useCallback((): CutPolylineFinalizeResult | null => {
+      if (editTool !== "cut" || modeRef.current !== "drafting") return null;
+      const closed = closePolylineByDuplicatingFirst(
+        placedDisplayRef.current,
+        placedCanonicalRef.current,
+      );
+      if (!closed) {
+        if (placedCanonicalRef.current.length > 0) onFinalizeTooFewPoints?.();
+        return null;
+      }
+      lastPointerUpAddedRef.current = false;
+      return commitPoints(closed.canonical);
+    }, [commitPoints, editTool, onFinalizeTooFewPoints]);
 
   const addPointFromHit = useCallback(
     (
@@ -208,10 +231,10 @@ export function useCutPolylineDraft({
         true,
         canFinalizeDraft(result.display.length),
       );
-      syncLine(null);
+      syncVisuals(null);
       return { status: "added" };
     },
-    [editTool, onPointCapReached, setDraftUi, syncLine],
+    [editTool, onPointCapReached, setDraftUi, syncVisuals],
   );
 
   const setHoverTip = useCallback(
@@ -282,6 +305,7 @@ export function useCutPolylineDraft({
       setHoverTip,
       finalize,
       finalizeFromDoubleClick,
+      closeOnFirstMarkerClick,
       undoLast,
       cancel,
     }),
@@ -290,6 +314,7 @@ export function useCutPolylineDraft({
       setHoverTip,
       finalize,
       finalizeFromDoubleClick,
+      closeOnFirstMarkerClick,
       undoLast,
       cancel,
     ],

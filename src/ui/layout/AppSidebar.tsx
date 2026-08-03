@@ -227,8 +227,8 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
             {meshEditTool === "cut" ? (
               <div className="muted sidebar-meta-tight">
                 Click mesh to place vertices. Double-click, Enter, or Done to
-                commit an open cut. Esc / Cancel discards. Backspace undoes last
-                vertex.
+                commit an open cut. Click the amber first-vertex marker to close
+                the loop. Esc / Cancel discards. Backspace undoes last vertex.
               </div>
             ) : null}
 

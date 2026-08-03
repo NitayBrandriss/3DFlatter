@@ -8,6 +8,7 @@ import {
   CUT_POLYLINE_CLOSE_RADIUS,
   appendPolylineDraftPoint,
   canFinalizeDraft,
+  closePolylineByDuplicatingFirst,
   isClosedClick,
   stripDblClickDuplicate,
   takeCapToastNotification,
@@ -189,5 +190,99 @@ describe("cutPolylineHelpers", () => {
     expect(first.x === last.x && first.y === last.y && first.z === last.z).toBe(
       false,
     );
+  });
+
+  it("closePolylineByDuplicatingFirst appends first as last for open stroke", () => {
+    const display = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 1, y: 1, z: 0 },
+    ];
+    const canonical = [
+      { x: 0, y: 0, z: 0 },
+      { x: 10, y: 0, z: 0 },
+      { x: 10, y: 10, z: 0 },
+    ];
+    const closed = closePolylineByDuplicatingFirst(display, canonical);
+    expect(closed).not.toBeNull();
+    expect(closed!.display).toHaveLength(4);
+    expect(closed!.canonical).toHaveLength(4);
+    expect(closed!.display[3]).toEqual(display[0]);
+    expect(closed!.canonical[3]).toEqual(canonical[0]);
+    // Inputs not mutated.
+    expect(display).toHaveLength(3);
+    expect(canonical).toHaveLength(3);
+  });
+
+  it("closePolylineByDuplicatingFirst returns null for fewer than two points", () => {
+    expect(closePolylineByDuplicatingFirst([], [])).toBeNull();
+    expect(
+      closePolylineByDuplicatingFirst([{ x: 0, y: 0, z: 0 }], [
+        { x: 0, y: 0, z: 0 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("closePolylineByDuplicatingFirst returns null on twin length mismatch", () => {
+    expect(
+      closePolylineByDuplicatingFirst(
+        [
+          { x: 0, y: 0, z: 0 },
+          { x: 1, y: 0, z: 0 },
+        ],
+        [{ x: 0, y: 0, z: 0 }],
+      ),
+    ).toBeNull();
+  });
+
+  it("closePolylineByDuplicatingFirst keeps already-closed stroke without extra point", () => {
+    const display = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const canonical = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const closed = closePolylineByDuplicatingFirst(display, canonical);
+    expect(closed).not.toBeNull();
+    expect(closed!.display).toHaveLength(3);
+    expect(closed!.canonical).toHaveLength(3);
+    expect(closed!.display[0]).toEqual(closed!.display[2]);
+  });
+
+  it("marker close of open stroke yields first≈last; mesh near-first append stays open", () => {
+    const open = appendPolylineDraftPoint(
+      [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+      [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+      { x: 0.01, y: 0, z: 0 },
+      IDENTITY_NORM,
+    );
+    expect(open.status).toBe("added");
+    if (open.status !== "added") return;
+    expect(open.display).toHaveLength(3);
+
+    const closed = closePolylineByDuplicatingFirst(
+      [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+      [
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ],
+    );
+    expect(closed).not.toBeNull();
+    expect(closed!.display).toHaveLength(3);
+    expect(closed!.display[0]).toEqual(closed!.display[2]);
+    expect(closed!.canonical[0]).toEqual(closed!.canonical[2]);
   });
 });
