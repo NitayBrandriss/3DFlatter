@@ -9,8 +9,12 @@ import {
   type RefObject,
 } from "react";
 import type { Vec3 } from "../../logic/cuts/types";
+import type { MeshModel } from "../../logic/mesh/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
-import type { DisplayNormalization } from "../displayNormalization";
+import {
+  displayToCanonical,
+  type DisplayNormalization,
+} from "../displayNormalization";
 import {
   appendPolylineDraftPoint,
   canFinalizeDraft,
@@ -18,6 +22,7 @@ import {
   stripDblClickDuplicate,
   takeCapToastNotification,
 } from "./cutPolylineHelpers";
+import { tessellateDraftDisplayPath } from "./tessellateDraftDisplayPath";
 import type { DraftVertexMarkersHandle } from "./DraftVertexMarkers";
 import type {
   DisplayVec3,
@@ -55,6 +60,7 @@ export type CutPolylineDraftUi = {
 };
 
 export function useCutPolylineDraft({
+  mesh,
   lineRef,
   markersRef,
   editTool,
@@ -63,6 +69,7 @@ export function useCutPolylineDraft({
   onPointCapReached,
   onFinalizeTooFewPoints,
 }: {
+  mesh: MeshModel;
   lineRef: RefObject<InProgressPolylineHandle | null>;
   markersRef: RefObject<DraftVertexMarkersHandle | null>;
   editTool: MeshEditTool;
@@ -84,6 +91,7 @@ export function useCutPolylineDraft({
   const activeRef = useRef(false);
   const canFinalizeRef = useRef(false);
   const capToastShownRef = useRef(false);
+  const normalizationRef = useRef<DisplayNormalization | null>(null);
 
   const setDraftUi = useCallback(
     (active: boolean, canFinalize: boolean) => {
@@ -100,12 +108,29 @@ export function useCutPolylineDraft({
   );
 
   const syncVisuals = useCallback(
-    (tip: DisplayVec3 | null = null) => {
-      lineRef.current?.setPlaced(placedDisplayRef.current);
-      lineRef.current?.setPreviewTip(tip);
+    (tipDisplay: DisplayVec3 | null = null) => {
       markersRef.current?.setPositions(placedDisplayRef.current);
+
+      const norm = normalizationRef.current;
+      if (!norm) {
+        lineRef.current?.setPlaced(placedDisplayRef.current);
+        lineRef.current?.setPreviewTip(tipDisplay);
+        return;
+      }
+
+      const tipCanonical = tipDisplay
+        ? (displayToCanonical(tipDisplay, norm) as Vec3)
+        : null;
+      const linePoints = tessellateDraftDisplayPath(
+        mesh,
+        placedCanonicalRef.current,
+        tipCanonical,
+        norm,
+      );
+      lineRef.current?.setPlaced(linePoints);
+      lineRef.current?.setPreviewTip(null);
     },
-    [lineRef, markersRef],
+    [lineRef, markersRef, mesh],
   );
 
   const clearDraft = useCallback(() => {
@@ -114,6 +139,7 @@ export function useCutPolylineDraft({
     placedCanonicalRef.current = [];
     lastPointerUpAddedRef.current = false;
     capToastShownRef.current = false;
+    normalizationRef.current = null;
     lineRef.current?.clear();
     markersRef.current?.clear();
     setDraftUi(false, false);
@@ -225,6 +251,7 @@ export function useCutPolylineDraft({
 
       placedDisplayRef.current = result.display;
       placedCanonicalRef.current = result.canonical;
+      normalizationRef.current = normalization;
       modeRef.current = "drafting";
       lastPointerUpAddedRef.current = true;
       setDraftUi(
@@ -240,9 +267,9 @@ export function useCutPolylineDraft({
   const setHoverTip = useCallback(
     (tip: DisplayVec3 | null) => {
       if (modeRef.current !== "drafting") return;
-      lineRef.current?.setPreviewTip(tip);
+      syncVisuals(tip);
     },
-    [lineRef],
+    [syncVisuals],
   );
 
   // Leaving the cut tool discards the draft.

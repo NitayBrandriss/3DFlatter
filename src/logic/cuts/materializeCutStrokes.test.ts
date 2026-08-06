@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeEdgeKey } from "../mesh/edgeKey";
 import {
   findClosestVertex,
+  foldedDihedralQuad,
   stroke,
   unitQuad,
   unitTriangle,
@@ -135,5 +136,35 @@ describe("materializeCutStrokes", () => {
     expect(result.topology.neighborFaceAcrossEdge.length).toBe(
       result.mesh.faceCount * 3,
     );
+  });
+
+  it("dihedral segment: wing A to wing B marks seam across shared edge", () => {
+    const mesh = foldedDihedralQuad();
+    const result = materializeCutStrokes(
+      mesh,
+      [stroke("dihedral", [v(0.5, 0.3, 0), v(0, 0.3, 0.5)])],
+      new Set(),
+    );
+
+    expect(
+      result.warnings.filter((w) => w.includes("could not connect")),
+    ).toEqual([]);
+    expect(result.seams.seams.size).toBeGreaterThanOrEqual(1);
+    expect(result.manifest[0]!.edgeKeys.length).toBeGreaterThanOrEqual(1);
+    expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
+  });
+
+  it("dihedral segment: two points on wing B marks seam in-plane", () => {
+    const mesh = foldedDihedralQuad();
+    const result = materializeCutStrokes(
+      mesh,
+      [stroke("wing-b", [v(0, 0.2, 0.3), v(0, 0.4, 0.3)])],
+      new Set(),
+    );
+
+    expect(
+      result.warnings.filter((w) => w.includes("could not connect")),
+    ).toEqual([]);
+    expect(result.manifest[0]!.edgeKeys.length).toBeGreaterThanOrEqual(1);
   });
 });

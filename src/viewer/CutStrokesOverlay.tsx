@@ -3,6 +3,7 @@
 import * as THREE from "three";
 import { useEffect, useMemo } from "react";
 import type { CutStroke } from "../logic/cuts/types";
+import type { MeshModel } from "../logic/mesh/types";
 import type { DisplayNormalization } from "./displayNormalization";
 import { packCutStrokeDisplaySegments } from "./packCutStrokeDisplaySegments";
 
@@ -11,22 +12,28 @@ import { packCutStrokeDisplaySegments } from "./packCutStrokeDisplaySegments";
  * stroke list identity changes — not on in-progress pointermove samples.
  */
 export function CutStrokesOverlay({
+  mesh,
   cutStrokes,
   normalization,
   modelScale,
 }: {
+  mesh: MeshModel;
   cutStrokes: readonly CutStroke[];
   normalization: DisplayNormalization;
   modelScale: number;
 }) {
   const lineGeometry = useMemo(() => {
-    const positions = packCutStrokeDisplaySegments(cutStrokes, normalization);
+    const positions = packCutStrokeDisplaySegments(
+      mesh,
+      cutStrokes,
+      normalization,
+    );
     if (!positions) return null;
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     return geometry;
-  }, [cutStrokes, normalization]);
+  }, [mesh, cutStrokes, normalization]);
 
   useEffect(() => {
     return () => lineGeometry?.dispose();

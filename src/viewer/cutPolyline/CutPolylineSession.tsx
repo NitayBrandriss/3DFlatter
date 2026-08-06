@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { Vec3 } from "../../logic/cuts/types";
+import type { MeshModel } from "../../logic/mesh/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
 import {
   DraftVertexMarkers,
@@ -23,6 +24,7 @@ export type CutPolylineActions = Pick<
 >;
 
 export function CutPolylineSession({
+  mesh,
   editTool,
   modelScale,
   onCommit,
@@ -32,6 +34,7 @@ export function CutPolylineSession({
   draftApiRef,
   actionsRef,
 }: {
+  mesh: MeshModel;
   editTool: MeshEditTool;
   modelScale: number;
   onCommit: (points: Vec3[]) => void;
@@ -44,6 +47,7 @@ export function CutPolylineSession({
   const lineRef = useRef<InProgressPolylineHandle | null>(null);
   const markersRef = useRef<DraftVertexMarkersHandle | null>(null);
   const { api } = useCutPolylineDraft({
+    mesh,
     lineRef,
     markersRef,
     editTool,
@@ -63,9 +67,7 @@ export function CutPolylineSession({
   useEffect(() => {
     if (!actionsRef) return;
     actionsRef.current = {
-      finalize: () => {
-        api.finalize();
-      },
+      finalize: () => api.finalize(),
       cancel: () => {
         api.cancel();
       },

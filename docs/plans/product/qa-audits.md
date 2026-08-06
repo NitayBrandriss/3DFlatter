@@ -2,12 +2,12 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
-**Active proposals (dialogue — tests not started / partial)**
+**Polyline cut audits (promoted from proposals)**
 
-| Doc | Topic | Status |
-|-----|-------|--------|
-| [qa-proposal-polyline-cut-tool.md](qa-proposal-polyline-cut-tool.md) | Polyline cut Slice A (draft lifecycle) | Slice A remediations shipped; optional formal audit block |
-| [qa-proposal-polyline-cut-slice-b.md](qa-proposal-polyline-cut-slice-b.md) | Polyline cut Slice B (markers + closed ring → islands) | Awaiting scope feedback |
+| Audit | Topic | Status |
+|-------|-------|--------|
+| [2026-08-03 Slice B](#audit--2026-08-03--polyline-cut-slice-b-markers--closed-rings--islands) | Markers + closed rings → islands | Remediated / regression-guarded |
+| [2026-08-02 Slice A](#audit--2026-08-02--polyline-cut-slice-a-draft-lifecycle) | Draft lifecycle | Remediated for required findings |
 
 **Rules for every audit in this file**
 
@@ -33,6 +33,173 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 2. Insert a new `## Audit — <date> — <slice/title>` section **above** older audits (newest first).
 3. Fill: Scope, Method, Test baseline, Executive summary, Findings table, per-finding detail, Structural risks, Recommended next steps.
 4. Link characterizing tests under `src/logic/**/*.audit.test.ts` (or colocated `*.test.ts`).
+
+---
+
+## Audit — 2026-08-03 — Polyline cut Slice B (markers + closed rings → islands)
+
+**Status:** Remediated (2026-08-03) — characterizing suite green; B-001/B-004/B-005 shipped; B-002 regression-guarded (fixtures pass).  
+**Date:** 2026-08-03 (revised same day after exact manual QA)  
+**Scope:** Slice B markers + first-vertex close; Flatten / island contract for closed rings; overlay chords. Not Slice C/D.  
+**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Blueprint:** [`.cursor/plans/polyline_cut_tool_318885f7.plan.md`](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md)  
+**Method:** Static + domain review; exact manual QA correction (single-tri OK / multi-tri fail).  
+**Characterizing tests:** [`src/logic/cuts/polylineClosedLoop.audit.test.ts`](../../../src/logic/cuts/polylineClosedLoop.audit.test.ts) (P0-B01 / B02 / B02b / **B02c** / B03 + B-004).
+
+### Remediation (2026-08-03)
+
+| ID | Status | Fix summary |
+|----|--------|-------------|
+| POLYCUT-B-001 | **Resolved** | Sidebar label “Islands (base / edge seams)”; hint cuts apply on Flatten |
+| POLYCUT-B-002 | **Resolved** | Face-local 2D surface walk in `findExitEdge` (was 3D chord proximity; missed dihedral edges). P0-B02c `foldedDihedralQuad` regression |
+| POLYCUT-B-003 | **Resolved** | Overlay tessellates via `surfacePath.ts` (same face-local walk as materialize) |
+| POLYCUT-B-004 | **Resolved** | Warn on gapped closed cycle / closed-no-island-increase |
+| POLYCUT-B-005 | **Resolved** | Marker `depthTest={false}` |
+| POLYCUT-B-006 | Deferred | Optional flash fix |
+| POLYCUT-B-007 | Deferred | Digon min-3 |
+| POLYCUT-B-008 | **Resolved** | Covered by audit test file |
+| POLYCUT-B-009 | **Resolved** | Flatten card shows `flattenResult.islands.length` |
+
+### Manual QA correction
+
+| Observation | Finding |
+|-------------|---------|
+| Sidebar Islands never updates on loop close | **POLYCUT-B-001** — ADR-expected; UX labeling |
+| Closed loop entirely inside one triangle → Flatten separates | Happy path (not a Flatten bug) |
+| Closed loop spanning ≥2 triangles → no separation; 2D overlaps | **POLYCUT-B-002 High** — coplanar fixtures passed; dihedral (D20) failed until surface walk |
+| Through-volume overlay chords | **POLYCUT-B-003** — **Resolved** (surface tessellation preview) |
+
+### Executive summary
+
+**Critical: 0.** B-002 remediated: `connectCut` exit-edge discovery now uses face-local 2D clip + plane projection (not Euclidean 3D chord proximity). Coplanar multi-face loops and 90° dihedral loops (`foldedDihedralQuad` / D20-class) regression-guarded. Overlay chords remain Medium trust (B-003).
+
+**Verdict:** B-002 fixed in `cutSurfaceWalk.ts` / `materializeCutStrokes`; B-001/B-004/B-005/B-009 shipped; B-006/B-007 deferred.
+
+### Findings count
+
+| Severity | Open (audit) | Notes |
+|----------|--------------|-------|
+| Critical | 0 | — |
+| High | 0 | B-002 resolved |
+| Medium | 5 | B-001, B-003–B-006 |
+| Low | 3 | B-007–B-009 |
+
+### Findings table
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-B-001 | **Medium** | Sidebar / session `islandCount` ignores `cutStrokes` | **Resolved** — label + Flatten-card count |
+| POLYCUT-B-002 | **High** | Multi-tri closed loop: no Flatten split on dihedral meshes (D20); coplanar fixtures falsely green | **Resolved** — surface walk + P0-B02c |
+| POLYCUT-B-003 | **Medium** | Overlay chords may tunnel through volume | **Resolved** — surface path preview |
+| POLYCUT-B-004 | **Medium** | Closed-but-gapped seam cycle (quiet open-loop) | **Resolved** — warn |
+| POLYCUT-B-005 | **Medium** | First-vertex marker hard to pick (`depthTest`) | **Resolved** — `depthTest={false}` |
+| POLYCUT-B-006 | **Medium** | Marker spawn flash at origin | Deferred (optional) |
+| POLYCUT-B-007 | **Low** | Digon close `A,B,A` allowed | Deferred |
+| POLYCUT-B-008 | **Low** | No island/overlap Vitest for multi-face closed loops | **Resolved** — audit tests |
+| POLYCUT-B-009 | **Low** | Post-Flatten sidebar still shows base islands | **Resolved** — Flatten-card count |
+
+### POLYCUT-B-001 — Session / sidebar islands ignore cut strokes
+
+- **Issue:** After marker-close → `addCutStroke`, sidebar Islands does not increase. Stats use base mesh + manual seams only (ADR 0100). Confirmed even when Flatten/2D correctly adds an island (single-triangle case).
+- **Severity:** Medium (UX).
+- **Root Cause & Proposed Strategy:** `computeSessionStats` never feeds `cutStrokes` into `partitionIslands`.
+
+  **Fix:** Label Islands as base / edge-seam only; show Flatten island count on Flatten card when `flattenResult` exists. Do not live-materialize for sidebar preview.
+
+  **Status:** Resolved (remediation).
+
+### POLYCUT-B-002 — Multi-triangle closed loop fails Flatten split (+ overlaps)
+
+- **Issue:** Closed loop inside one triangle Flatten-separates correctly. Closed loop spanning ≥2 triangles on **non-coplanar** meshes (e.g. D20 adjacent faces) subdivided but did not separate — coplanar fixtures (`unitQuad`, grid, cube face) passed.
+- **Severity:** High.
+- **Root Cause & Proposed Strategy:** `findExitEdge` used 3D segment–segment proximity (`bbox * 1e-4`). Across a dihedral, the straight chord tunnels through the solid and misses the shared edge → gapped seam cycle. Not primarily B-003 (overlay).
+
+  **Fix:** Face-local 2D clip walk in [`cutSurfaceWalk.ts`](../../../src/logic/cuts/cutSurfaceWalk.ts): project goal onto each incident face plane, intersect in 2D, pick smallest forward exit. P0-B02c `foldedDihedralQuad` (90° hinge) regression.
+
+  **Status:** Resolved (2026-08-06).
+
+### POLYCUT-B-003 — Through-volume stroke overlay
+
+- **Issue:** Viewer drew straight 3D chords between on-surface samples; could tunnel through solids across dihedrals.
+- **Severity:** Medium (trust). Not primary B-002 cause.
+- **Fix:** Display-only tessellation in [`surfacePath.ts`](../../../src/logic/cuts/surfacePath.ts) wired to [`CutStrokesOverlay`](../../../src/viewer/CutStrokesOverlay.tsx) and draft line via [`tessellateDraftDisplayPath`](../../../src/viewer/cutPolyline/tessellateDraftDisplayPath.ts). Storage stays sparse clicks.
+- **Status:** Resolved (2026-08-06).
+
+### POLYCUT-B-004 — Closed-but-gapped seam cycle
+
+- **Issue:** Geometrically closed (`first≈last`) suppresses open-loop warnings while segments may skip/collapse → single island / overlaps without clear toast.
+- **Severity:** Medium.
+- **Fix:** Warn when a closed stroke leaves empty segment seams or does not increase derived island count.
+- **Status:** Resolved (remediation).
+
+### POLYCUT-B-005 — First marker pick occlusion
+
+- **Issue:** Amber first marker with `depthTest` can be half-buried; click falls through to mesh → append instead of close.
+- **Severity:** Medium.
+- **Fix:** Marker `depthTest={false}`; keep `stopPropagation`.
+- **Status:** Resolved (remediation).
+
+### POLYCUT-B-006 / B-007 — Deferred
+
+- B-006 marker flash at origin — optional / Slice C-friendly pool.
+- B-007 digon close — Low; leave min length 2 for now.
+
+### POLYCUT-B-008 / B-009
+
+- B-008: coverage gap closed by characterizing tests.
+- B-009: worsener of B-001; fixed with Flatten-card island count.
+
+### Recommended next steps
+
+1. Manual D20: closed loop on two adjacent faces → Flatten ≥2 islands; single-face loop still OK.
+2. Continue blueprint Slice C→E.
+
+---
+
+## Audit — 2026-08-02 — Polyline cut Slice A (draft lifecycle)
+
+**Status:** Remediated for required findings (2026-08-03).  
+**Date:** 2026-08-02 (updated 2026-08-03)  
+**Scope:** Click-to-place polyline draft (`cutPolyline/*`, `PickableMesh`, session wiring). Not freehand Slice 3 path.  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Blueprint:** [polyline_cut_tool plan](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md)  
+**Method:** Static SDET review + helper Vitest; product decisions locked then remediated.  
+**Tests:** [`src/viewer/cutPolyline/cutPolylineHelpers.test.ts`](../../../src/viewer/cutPolyline/cutPolylineHelpers.test.ts)
+
+### Locked decisions (remediation)
+
+| Topic | Decision |
+|-------|----------|
+| Close-loop | Disable mesh Euclidean auto-close; restore via first-vertex marker (Slice B) |
+| Overlay through-volume | **Resolved** (POLYCUT-003) — surface tessellation preview |
+| modelScale mid-draft | Freeze slider while `cutDraftActive` |
+| Esc dual handler | Deferred (POLYCUT-009 Low) |
+
+### Executive summary
+
+No Critical. High false-close / dblclick-close races mitigated by disabling mesh auto-close. Medium UX/input items 004–007 remediated. POLYCUT-003 overlay surface path shipped. Low 008–011 deferred / Slice C gates.
+
+**Verdict:** Slice A draft path remediation-closed for required findings.
+
+### Findings table
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-001 | **High** | Display-space close radius false-close on thin meshes | **Resolved (mitigated)** — mesh auto-close off; marker close in B |
+| POLYCUT-002 | **High** | Dblclick finalize races with close-loop commit | **Resolved (mitigated)** — no mesh close path |
+| POLYCUT-003 | **Medium** | Overlay straight chords tunnel through solid | **Resolved** — surface tessellation |
+| POLYCUT-004 | **Medium** | `pointerleave` clears pending click | **Resolved** — tip only |
+| POLYCUT-005 | **Medium** | Done/Enter/dblclick &lt;2 points silent | **Resolved** — Done gated + toast |
+| POLYCUT-006 | **Medium** | modelScale mid-draft visual desync | **Resolved** — scale frozen |
+| POLYCUT-007 | **Medium** | Cap toast spam | **Resolved** — once per draft |
+| POLYCUT-008 | **Low** | Rubber-band buffer realloc every move | Open (optional) |
+| POLYCUT-009 | **Low** | Esc cancels draft and closes sidebar | Open (deferred) |
+| POLYCUT-010 | **Low** | Display/canonical twin desync (Slice C) | Open — **Slice C gate** |
+| POLYCUT-011 | **Low** | Closed endpoints 0/n−1 not paired under drag | Open — **Slice C gate** |
+
+### Recommended next steps
+
+Continue blueprint B→E; keep POLYCUT-010/011 as Slice C merge gates.
 
 ---
 

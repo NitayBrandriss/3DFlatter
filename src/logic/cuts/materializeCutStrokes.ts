@@ -1,4 +1,5 @@
 import { buildTopology } from "../mesh/buildTopology";
+import { partitionIslands } from "../mesh/partitionIslands";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../mesh/types";
 import type {
   CutManifestEntry,
@@ -9,10 +10,10 @@ import type {
 } from "./types";
 import {
   distSq,
-  PARAM_EPS,
   snapEpsilonForMesh,
   surfaceEpsilonForMesh,
 } from "./vec3";
+import { findExitEdgeSurfaceWalk } from "./cutSurfaceWalk";
 import { WorkingMesh, type PointLocation } from "./workingMesh";
 export type { CutStroke, MaterializeCutStrokesResult, Vec3 } from "./types";
 
@@ -49,13 +50,23 @@ export function materializeCutStrokes(
       continue;
     }
 
+    const closed =
+      distSq(stroke.points[0]!, stroke.points[stroke.points.length - 1]!) <=
+      working.epsSq;
+
+    const islandsBefore = closed
+      ? countWorkingIslands(working)
+      : 0;
+
     const endpointVerts: (number | null)[] = [null, null];
+    let emptySegmentCount = 0;
 
     for (let seg = 0; seg < stroke.points.length - 1; seg++) {
       const p0 = stroke.points[seg]!;
       const p1 = stroke.points[seg + 1]!;
       const keys = cutSegment(working, p0, p1, warnings, stroke.id);
       manifest.push({ strokeId: stroke.id, segmentIndex: seg, edgeKeys: keys });
+      if (keys.length === 0) emptySegmentCount += 1;
 
       if (seg === 0) {
         endpointVerts[0] = resolveEndpointVertex(working, p0);
@@ -64,10 +75,6 @@ export function materializeCutStrokes(
         endpointVerts[1] = resolveEndpointVertex(working, p1);
       }
     }
-
-    const closed =
-      distSq(stroke.points[0]!, stroke.points[stroke.points.length - 1]!) <=
-      working.epsSq;
 
     if (!closed) {
       const interiorEndpoints: (0 | 1)[] = [];
@@ -81,6 +88,19 @@ export function materializeCutStrokes(
         openLoops.push({ strokeId: stroke.id, interiorEndpoints });
         warnings.push(
           `Cut stroke "${stroke.id}" is an open loop (endpoint not on a free boundary); may not split a closed shell`,
+        );
+      }
+    } else {
+      // POLYCUT-B-004: closed flag is point-based; separability is seam-graph-based.
+      if (emptySegmentCount > 0) {
+        warnings.push(
+          `Cut stroke "${stroke.id}" is closed but ${emptySegmentCount} segment(s) produced no cut edges (gapped seam cycle); may not separate islands`,
+        );
+      }
+      const islandsAfter = countWorkingIslands(working);
+      if (islandsAfter <= islandsBefore) {
+        warnings.push(
+          `Cut stroke "${stroke.id}" is closed but did not increase island count (${islandsBefore} → ${islandsAfter})`,
         );
       }
     }
@@ -100,6 +120,13 @@ export function materializeCutStrokes(
     manifest,
     validation: { openLoops },
   };
+}
+
+function countWorkingIslands(working: WorkingMesh): number {
+  const snap = working.toMeshModel();
+  if (snap.faceCount === 0) return 0;
+  const topology = buildTopology(snap);
+  return partitionIslands(snap, topology, { seams: working.seams }).length;
 }
 
 function resolveEndpointVertex(working: WorkingMesh, p: Vec3): number | null {
@@ -211,7 +238,7 @@ function connectCut(
       return keys;
     }
 
-    const exit = findExitEdge(working, current, goal, prev);
+    const exit = findExitEdgeSurfaceWalk(working, current, goal, prev);
     if (!exit) {
       warnings.push(
         `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
@@ -249,103 +276,6 @@ function connectCut(
     `Cut stroke "${strokeId}": could not connect segment across faces; skipped`,
   );
   return keys;
-}
-
-/**
- * Among faces incident to `current`, find the opposite-edge intersection with
- * the chord current→goal that has the smallest forward parameter.
- */
-function findExitEdge(
-  working: WorkingMesh,
-  current: number,
-  goal: Vec3,
-  prev: number | null,
-): { a: number; b: number; t: number } | null {
-  const origin = working.getVertex(current);
-  let best: { a: number; b: number; t: number; tSeg: number } | null = null;
-  const hitEps = Math.max(working.surfaceEps, working.eps);
-
-  for (const fi of working.facesOfVertex(current)) {
-    const [x, y, z] = working.faces[fi]!;
-    for (const [u, v] of [
-      [x, y],
-      [y, z],
-      [z, x],
-    ] as const) {
-      if (u === current || v === current) continue;
-      if (prev !== null && (u === prev || v === prev)) continue;
-
-      const hit = segmentSegmentHit(
-        origin,
-        goal,
-        working.getVertex(u),
-        working.getVertex(v),
-        hitEps,
-      );
-      if (!hit) continue;
-      if (hit.tSeg <= PARAM_EPS || hit.tSeg >= 1 - PARAM_EPS) continue;
-      const t = Math.max(PARAM_EPS, Math.min(1 - PARAM_EPS, hit.tEdge));
-      if (best === null || hit.tSeg < best.tSeg) {
-        best = { a: u, b: v, t, tSeg: hit.tSeg };
-      }
-    }
-  }
-
-  if (!best) return null;
-  return { a: best.a, b: best.b, t: best.t };
-}
-
-/** Closest-point hit between two 3D segments; null if too far apart. */
-function segmentSegmentHit(
-  a: Vec3,
-  b: Vec3,
-  c: Vec3,
-  d: Vec3,
-  eps: number,
-): { tSeg: number; tEdge: number } | null {
-  const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
-  const cd = { x: d.x - c.x, y: d.y - c.y, z: d.z - c.z };
-  const ac = { x: a.x - c.x, y: a.y - c.y, z: a.z - c.z };
-  const abab = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
-  const cdcd = cd.x * cd.x + cd.y * cd.y + cd.z * cd.z;
-  const abcd = ab.x * cd.x + ab.y * cd.y + ab.z * cd.z;
-  const abac = ab.x * ac.x + ab.y * ac.y + ab.z * ac.z;
-  const cdac = cd.x * ac.x + cd.y * ac.y + cd.z * ac.z;
-  const denom = abab * cdcd - abcd * abcd;
-  const denomEps = Math.max(eps * eps, 1e-30);
-  let tSeg: number;
-  let tEdge: number;
-  if (Math.abs(denom) < denomEps) {
-    // Parallel / degenerate — project midpoint approach
-    if (cdcd < denomEps) return null;
-    tEdge = Math.max(0, Math.min(1, cdac / cdcd));
-    if (abab < denomEps) return null;
-    const cx = c.x + cd.x * tEdge - a.x;
-    const cy = c.y + cd.y * tEdge - a.y;
-    const cz = c.z + cd.z * tEdge - a.z;
-    tSeg = Math.max(
-      0,
-      Math.min(1, (cx * ab.x + cy * ab.y + cz * ab.z) / abab),
-    );
-  } else {
-    tSeg = (abcd * cdac - cdcd * abac) / denom;
-    tEdge = (abab * cdac - abcd * abac) / denom;
-  }
-  if (tSeg < -PARAM_EPS || tSeg > 1 + PARAM_EPS) return null;
-  if (tEdge < -PARAM_EPS || tEdge > 1 + PARAM_EPS) return null;
-  tSeg = Math.max(0, Math.min(1, tSeg));
-  tEdge = Math.max(0, Math.min(1, tEdge));
-  const px = a.x + ab.x * tSeg;
-  const py = a.y + ab.y * tSeg;
-  const pz = a.z + ab.z * tSeg;
-  const qx = c.x + cd.x * tEdge;
-  const qy = c.y + cd.y * tEdge;
-  const qz = c.z + cd.z * tEdge;
-  const dx = px - qx;
-  const dy = py - qy;
-  const dz = pz - qz;
-  if (dx * dx + dy * dy + dz * dz > eps * eps) return null;
-  return { tSeg, tEdge };
 }
 
 /** Whole-stroke 3D proper self-intersection (ADR 0100 Phase 1). */

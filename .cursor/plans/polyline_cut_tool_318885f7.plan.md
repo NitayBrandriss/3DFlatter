@@ -15,7 +15,7 @@ todos:
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
     status: pending
   - id: slice-e-docs-qa
-    content: "Slice E — Update phase-1 plan UX note; manual QA matrix (incl. known chord overlay POLYCUT-003); npm test / lint"
+    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint"
     status: pending
 isProject: false
 ---
@@ -311,11 +311,11 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 ### Slice E — Docs + QA
 - Update [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) key files / UX note (polyline + node edit lifecycle; marker close).
 - QA matrix: draw, orbit between clicks, rubber-band, marker close, drag node, finalize, re-edit committed, Flatten, base mesh unchanged until Flatten.
-- Document **POLYCUT-003** as known: overlay uses straight 3D chords (may tunnel through volume); Flatten still chord-walks the surface (ADR 0100) — not a materialize bug.
+- **POLYCUT-003 (resolved):** overlay uses surface tessellation (`surfacePath.ts`); same walk as materialize.
 - Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar.
 - `npm test` / `npm run lint`.
 
-**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, surface-projected overlay preview, new npm dependencies unless later approved.
+**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
 
 ---
 
@@ -327,6 +327,7 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Orbit stuck disabled: every exit path calls `endDrag()` (cancel, tool switch, unmount, pointercancel).
 - Drag off-mesh: freeze last hit; do not place air points (aligns with VIEW-S3-005 fix intent).
 - Cap 512: refuse add; toast once per draft (POLYCUT-007).
+- **POLYCUT-B-002 / POLYCUT-003 (resolved):** materialize + overlay use face-local 2D surface walk (`cutSurfaceWalk.ts` / `surfacePath.ts`).
 - Closed stroke drag on endpoint 0/n−1: keep both ends synchronized (POLYCUT-011).
 - Slice D overlay flicker: while editing committed id, filter that id out of `CutStrokesOverlay` and show draft line instead so the user does not see double geometry.
 - No `@use-gesture/react` unless product later approves a direct dependency — architecture does not require it.

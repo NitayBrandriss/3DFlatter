@@ -265,7 +265,9 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     {cutStrokeCount.toLocaleString()}
                   </div>
                   <div>
-                    <span className="sidebar-meta-label">Islands:</span>{" "}
+                    <span className="sidebar-meta-label">
+                      Islands (base / edge seams):
+                    </span>{" "}
                     {stats.islandCount.toLocaleString()}
                     {stats.islandFaceCounts.length > 1 ? (
                       <span className="sidebar-meta-secondary">
@@ -274,6 +276,11 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                       </span>
                     ) : null}
                   </div>
+                  {cutStrokeCount > 0 ? (
+                    <div className="muted sidebar-meta-tight">
+                      Cut strokes apply on Flatten — not counted above.
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 "Load a mesh to edit seams and cuts."
@@ -319,6 +326,12 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
             >
               {flattening ? "Flattening…" : "Flatten"}
             </button>
+            {flattenResult && !flattenResult.error ? (
+              <div className="muted sidebar-meta-tight">
+                <span className="sidebar-meta-label">Flatten islands:</span>{" "}
+                {flattenResult.islands.length.toLocaleString()}
+              </div>
+            ) : null}
             {qualityCounts?.hasIssues ? (
               <div className="muted sidebar-meta-tight">
                 {formatQualityIssueSummary(qualityCounts)}

@@ -46,6 +46,14 @@ export function unitCube(): MeshModel {
   return makeMesh(verts, faces);
 }
 
+/** Two triangles sharing edge (0,0,0)–(0,1,0) at 90° (z=0 wing + x=0 wing). */
+export function foldedDihedralQuad(): MeshModel {
+  return makeMesh(
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+    [0, 1, 2, 0, 2, 3],
+  );
+}
+
 export function stroke(id: string, points: Vec3[]): CutStroke {
   return { id, points };
 }

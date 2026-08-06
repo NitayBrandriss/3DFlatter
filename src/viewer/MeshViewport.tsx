@@ -172,11 +172,13 @@ export function MeshViewport({
             modelScale={modelScale}
           />
           <CutStrokesOverlay
+            mesh={mesh}
             cutStrokes={cutStrokes}
             normalization={displayAssets.normalization}
             modelScale={modelScale}
           />
           <CutPolylineSession
+            mesh={mesh}
             editTool={editTool}
             modelScale={modelScale}
             onCommit={onCutStrokeCommit}

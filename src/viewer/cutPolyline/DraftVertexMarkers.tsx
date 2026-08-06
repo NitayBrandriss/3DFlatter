@@ -131,7 +131,7 @@ export const DraftVertexMarkers = forwardRef<
             />
             <meshBasicMaterial
               color={isFirst ? FIRST_MARKER_COLOR : MARKER_COLOR}
-              depthTest
+              depthTest={false}
               toneMapped={false}
             />
           </mesh>
