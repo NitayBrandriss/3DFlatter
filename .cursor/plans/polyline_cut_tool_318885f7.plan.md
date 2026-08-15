@@ -9,7 +9,7 @@ todos:
     content: "Slice B — DraftVertexMarkers visual + restore close via first-vertex marker click (no Euclidean mesh auto-close)"
     status: completed
   - id: slice-c-drag
-    content: "Slice C — Interactive draft node drag: custom pointer capture, mesh-surface raycast on move, orbit disable/enable, 60fps imperative line+marker updates; POLYCUT-010/011 gates"
+    content: "Slice C — Draft node drag: custom capture + mesh Raycaster; retessellate incident surface segments (not setXYZ); restore orbitEnabled; POLYCUT-010/011; optional B-006 pool"
     status: pending
   - id: slice-d-committed
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
@@ -41,6 +41,8 @@ Phase 1 logic + Zustand are done ([ADR 0100](docs/decisions/product/0100-freefor
 Orbit stays **enabled** while drafting or idle in cut tool; disabled **only** for the duration of an active node grab.
 
 **Slice A post-QA locks (shipped):** mesh-click auto-close off until B; `pointerleave` keeps pending click; model scale frozen while `cutDraftActive`; cap toast once per draft; too-few-points toast on Enter/dblclick.
+
+**Slice B post-QA locks (shipped):** first-vertex marker close; overlay + materialize use face-local surface walk ([`surfacePath.ts`](src/logic/cuts/surfacePath.ts) / [`cutSurfaceWalk.ts`](src/logic/cuts/cutSurfaceWalk.ts)); draft line is tessellated sparse clicks via [`tessellateDraftDisplayPath.ts`](src/viewer/cutPolyline/tessellateDraftDisplayPath.ts). [`MeshViewport`](src/viewer/MeshViewport.tsx) currently hardcodes `orbitEnabled = true` — Slice C restores grab-gated orbit.
 
 ---
 
@@ -104,8 +106,8 @@ flowchart TB
   meshClick --> tip
   markerPtr --> drag
   drag -->|"move: mesh raycast"| placed
-  placed --> line
-  tip --> line
+  placed -->|"tessellateDraftDisplayPath"| line
+  tip -->|"tessellate last segment"| line
   placed --> markers
   drag --> orbit
   keys --> session
@@ -141,22 +143,29 @@ flowchart TB
 
 ## 2. Rubber-band and drag updates without Zustand / React thrash
 
-### Line API
+### Line API (post–POLYCUT-003)
 
-Extend [`InProgressCutStrokeLine`](src/viewer/InProgressCutStrokeLine.tsx) into an imperative polyline:
+The draft overlay is **not** a sparse click polyline. [`useCutPolylineDraft`](src/viewer/cutPolyline/useCutPolylineDraft.ts) already feeds [`tessellateDraftDisplayPath`](src/viewer/cutPolyline/tessellateDraftDisplayPath.ts) into [`InProgressPolylineLine`](src/viewer/cutPolyline/InProgressPolylineLine.tsx) (`setPlaced` of tessellated samples; `setPreviewTip(null)`). Storage stays sparse `placedDisplay` / `placedCanonical`.
+
+**Do not** treat `updatePlacedVertex` as `attr.setXYZ(index)` on the GPU buffer. Tessellated vertex count ≠ click index; a single-index write would desync the overlay and reintroduce through-volume chords.
 
 ```ts
 type InProgressPolylineHandle = {
-  setPlaced(points: readonly DisplayVec3[]): void;
-  setPreviewTip(tip: DisplayVec3 | null): void;
-  /** Hot path: mutate one vertex + rewrite adjacent segment endpoints in the buffer. */
-  updatePlacedVertex(index: number, point: DisplayVec3): void;
+  setPlaced(points: readonly DisplayVec3[]): void; // tessellated samples
+  setPreviewTip(tip: DisplayVec3 | null): void;    // unused while tessellating
   clear(): void;
 };
 ```
 
-- `setPlaced` / `setPreviewTip`: used on click, undo, mode enter — may allocate a new `Float32Array`.
-- `updatePlacedVertex`: **drag hot path** — write xyz into the existing position attribute at `index`, update only the two incident segment endpoints if using `LineSegments`, or the single shared vertex if using `THREE.Line`; `attributes.position.needsUpdate = true`; skip `computeBoundingSphere` every move (recompute on pointerup).
+**Drag hot path (no Zustand, no React vertex state):**
+
+1. Write the hit into `placedDisplay[i]` + `placedCanonical[i]` (one helper — **POLYCUT-010**).
+2. If the stroke is closed, also write the paired endpoint 0 ↔ n−1 (**POLYCUT-011**).
+3. Retessellate **incident sparse segments only** (i−1→i and i→i+1; wrap if closed) via `tessellateSurfaceSegment` / a small helper; splice those samples into the line buffer. Full-path `tessellateDraftDisplayPath` is the correctness fallback if splicing is messy.
+4. `markers.updatePosition(i)` (and paired index if closed).
+5. Skip `computeBoundingSphere` every move; recompute on `endDrag()`.
+
+Throttle: event-driven pointermove is enough. If tessellation hitch is visible on dense meshes, throttle to rAF **after** profiling — not a v1 requirement.
 
 ### Marker API
 
@@ -173,7 +182,7 @@ Markers are a small pool of `THREE.Mesh` spheres (or `InstancedMesh`) owned impe
 ### React state that *is* allowed (coarse only)
 
 - `cutDraftActive: boolean` — sidebar Done/Cancel
-- `orbitEnabled: boolean` — already in [`MeshViewport`](src/viewer/MeshViewport.tsx)
+- `orbitEnabled: boolean` — **restore** in [`MeshViewport`](src/viewer/MeshViewport.tsx) (today hardcoded `true` after Slice B)
 - Optional: `selectedStrokeId` for committed-edit highlight
 
 **Never** put `placedPoints` or drag tip into Zustand or `useState` on move.
@@ -199,12 +208,14 @@ Reasons:
    - `onOrbitEnabledChange(false)`.
 2. **pointermove** (document / canvas listener while captured)  
    - Build NDC from client coords; `Raycaster.setFromCamera` → intersect pickable mesh.  
-   - If hit with `faceIndex`: write display local into `placedDisplay[i]` + canonical twin; `line.updatePlacedVertex(i, …)`; `markers.updatePosition(i, …)`.  
+   - If hit with `faceIndex`: write display local + canonical twin (POLYCUT-010); pair closed endpoints (POLYCUT-011); retessellate incident surface segments into the line; `markers.updatePosition`.  
    - If no hit: keep last on-surface position (no air drag).
 3. **pointerup / pointercancel**  
    - Release capture; `dragIndex = null`; `onOrbitEnabledChange(true)`.  
    - Recompute line bounding sphere once.  
    - Still **no Zustand** if mode is `drafting` / mid `editingCommitted` — commit only on explicit finalize.
+
+**First-marker close vs drag:** pointerdown on index 0 does **not** close. If movement ≤ 5px through pointerup → `closeOnFirstMarkerClick()`. If movement exceeds threshold → drag that endpoint (and paired last if already closed). Other markers: short click is a no-op (do not add a mesh vertex).
 
 ### Distinguishing click-to-place vs click-on-marker
 
@@ -218,7 +229,7 @@ If the draft is closed (`first ≈ last` by construction), dragging vertex `0` a
 
 ## 4. OrbitControls integration
 
-Reuse the existing `orbitEnabled` React state in [`MeshViewport`](src/viewer/MeshViewport.tsx) (`OrbitControls enabled={orbitEnabled}`).
+Restore `orbitEnabled` React state in [`MeshViewport`](src/viewer/MeshViewport.tsx) (`OrbitControls enabled={orbitEnabled}`). Slice B left it hardcoded `true`; Slice C must reintroduce `onOrbitEnabledChange` from the draft session / `endDrag()`.
 
 | Phase | Orbit |
 |-------|-------|
@@ -249,8 +260,9 @@ MeshViewport
 |------|------|
 | [`PickableMesh.tsx`](src/viewer/PickableMesh.tsx) | Seam + cut place/hover; no freehand; no long-lived orbit disable |
 | `src/viewer/cutPolyline/useCutPolylineDraft.ts` | Modes, refs, add/undo/cancel/finalize, drag start/move/end, close-loop, keyboard |
-| `src/viewer/cutPolyline/InProgressPolylineLine.tsx` | Imperative line (`setPlaced` / `setPreviewTip` / `updatePlacedVertex`) |
-| `src/viewer/cutPolyline/DraftVertexMarkers.tsx` | Imperative markers + pointer handlers (Slice C) |
+| `src/viewer/cutPolyline/InProgressPolylineLine.tsx` | Imperative tessellated line (`setPlaced` of surface samples) |
+| `src/viewer/cutPolyline/DraftVertexMarkers.tsx` | All markers pickable in Slice C; close vs drag on index 0 |
+| `src/viewer/cutPolyline/tessellateDraftDisplayPath.ts` | Sparse clicks → display overlay; drag retessellates incident segments |
 | `src/viewer/cutPolyline/raycastDisplayMesh.ts` | Pure helper: camera + NDC + mesh → display hit (unit-tested) |
 | [`MeshViewport.tsx`](src/viewer/MeshViewport.tsx) | Compose session; `orbitEnabled`; draft UI (`active` / `canFinalize`) upward |
 | [`AppSidebar.tsx`](src/ui/layout/AppSidebar.tsx) | Done (gated) / Cancel; scale freeze while drafting; later “editing stroke” hint |
@@ -264,8 +276,8 @@ MeshViewport
 addPointFromHit(displayLocal, normalization)
 setHoverTip(displayLocal | null)
 beginNodeDrag(index, pointerId)
-moveNodeDrag(ndc, camera, mesh)   // → imperative line + markers
-endNodeDrag()
+moveNodeDrag(ndc, camera, pickableMesh) // raycast → twins + retessellate + markers
+endNodeDrag() // orbit on; bounds once
 finalize() → { kind: "add" | "update"; id?: string; points: Vec3[] } | null
 undoLast() / cancel()
 enterEditCommitted(stroke: CutStroke)
@@ -295,12 +307,15 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Tests: `closePolylineByDuplicatingFirst`; mesh near-first still appends open; sidebar help mentions marker close.
 
 ### Slice C — Node editing (drag) on draft
-- Enable marker raycast; implement custom drag sequence (capture, mesh Raycaster, `updatePlacedVertex`).
-- Orbit disable on grab / enable on release via shared `endDrag()`.
+- Enable raycast on **all** draft markers; custom drag (capture → NDC Raycaster vs pickable mesh → `endDrag()`).
+- Restore [`MeshViewport`](src/viewer/MeshViewport.tsx) `orbitEnabled` (false on grab, true on every `endDrag()` path).
+- **Hot path:** update sparse twins + retessellate incident surface segments — **not** `updatePlacedVertex` / `setXYZ` on tessellated buffer.
 - Closed-loop paired endpoint update (**POLYCUT-011** merge gate).
 - Single write path for display+canonical twins (**POLYCUT-010** merge gate).
-- Tests: `raycastDisplayMesh` hits; drag move updates index without store calls (logic/unit where pure); twin length + closed endpoint pairing invariants.
-- Manual: drag middle vertex at 60fps feel; orbit works between edits; finalize still adds one stroke.
+- Index-0: ≤5px click still closes; drag past threshold moves (no accidental close).
+- Optional fold-in: **POLYCUT-B-006** hide/pool markers at origin until first `setPositions` (spawn flash). **Do not** change digon min-length (**POLYCUT-B-007** stays deferred).
+- Tests: `raycastDisplayMesh` hits; twin length; closed 0/n−1 pairing; incident retessellate helper if extracted.
+- Manual: drag middle vertex; overlay stays on-surface across a dihedral; orbit between edits; first-marker click still closes; finalize still one stroke.
 
 ### Slice D — Committed stroke re-edit
 - Pick a committed stroke (overlay or per-stroke pick proxies) → `enterEditCommitted` (copy points into refs, hide or dim that stroke in overlay while editing).
@@ -312,7 +327,7 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Update [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) key files / UX note (polyline + node edit lifecycle; marker close).
 - QA matrix: draw, orbit between clicks, rubber-band, marker close, drag node, finalize, re-edit committed, Flatten, base mesh unchanged until Flatten.
 - **POLYCUT-003 (resolved):** overlay uses surface tessellation (`surfacePath.ts`); same walk as materialize.
-- Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar.
+- Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar; POLYCUT-B-007 digon min-3.
 - `npm test` / `npm run lint`.
 
 **Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
@@ -322,7 +337,8 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 ## 7. Risks / edge cases (explicit)
 
 - Double-click vs drag: if pointerdown on marker moves past threshold, treat as drag not finalize; dblclick finalize only from mesh / Done / Enter.
-- First-marker close vs drag (Slice C): short click on index 0 closes; drag past threshold moves endpoint (and paired last if closed).
+- First-marker close vs drag (Slice C): short click on index 0 closes; drag past threshold moves endpoint (and paired last if closed). Do not close on pointerdown.
+- Drag overlay: retessellate incident segments; never `setXYZ` a click index into the tessellated buffer.
 - Marker vs mesh event races: markers always `stopPropagation` on pointerdown.
 - Orbit stuck disabled: every exit path calls `endDrag()` (cancel, tool switch, unmount, pointercancel).
 - Drag off-mesh: freeze last hit; do not place air points (aligns with VIEW-S3-005 fix intent).
