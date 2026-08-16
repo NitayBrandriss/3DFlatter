@@ -6,8 +6,8 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
-| [2026-08-16 Slice D](#audit--2026-08-16--polyline-cut-slice-d-committed-re-edit) | Committed stroke re-edit (drag / append-end / cancel / Done+Flatten) | Characterizing tests green; two Medium viewer issues (unsaved discard, accidental append) |
-| [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | Chord-through-volume remediated; opposite-face walk still incomplete |
+| [2026-08-16 Slice D](#audit--2026-08-16--polyline-cut-slice-d-committed-re-edit) | Committed stroke re-edit (drag / append-end / cancel / Done+Flatten) | D-001/D-002 remediated; D-003 accepted (tip-in-edit) |
+| [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | C-001 remediated; C-003 remediated; C-002 frozen (incomplete opposite-face walk) |
 | [2026-08-03 Slice B](#audit--2026-08-03--polyline-cut-slice-b-markers--closed-rings--islands) | Markers + closed rings → islands | Remediated / regression-guarded |
 | [2026-08-02 Slice A](#audit--2026-08-02--polyline-cut-slice-a-draft-lifecycle) | Draft lifecycle | Remediated for required findings |
 
@@ -31,8 +31,9 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ## Audit — 2026-08-16 — Polyline cut Slice D (committed re-edit)
 
-**Status:** Intended-scope contracts hold in logic/store (characterizing Vitest green). Viewer has two Medium issues that affect re-edit. **No production code was changed in this pass.**  
+**Status:** Intended-scope contracts hold in logic/store. Viewer Medium issues D-001/D-002 remediated; D-003 accepted (tip-in-edit as append preview).  
 **Date:** 2026-08-16  
+**Remediation:** 2026-08-16 (2A) — pick gate, draft-line raycast block, tip accepted.  
 **Scope (only):** (1) marker drag updates the mesh overlay path; (2) mesh click in edit appends **strictly at the end**; (3) Esc / Cancel restores the original committed stroke; (4) Done/`updateCutStroke` persists points and Flatten uses the new polyline for 2D islands.  
 **Out of scope (do not treat as bugs):** mid-segment insert (**CUT-UX-001**), general undo stack (**CUT-UX-002**), snap/weld (**CUT-UX-003**). Slice C overlay walk limits (**POLYCUT-C-002**, **POLYCUT-C-003**) are inherited, not new Slice D defects. Slice E QA matrix is still on hold.  
 **ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
@@ -64,11 +65,11 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | ID | Severity | Issue | Status |
 |----|----------|-------|--------|
-| POLYCUT-D-001 | **Medium** | Picking a **different** committed stroke while editing **silently discards** unsaved edits | Open |
-| POLYCUT-D-002 | **Medium** | Draft polyline `raycast` is disabled, so a click on the edited stroke body hits the mesh and **appends a tail vertex** | Open |
-| POLYCUT-D-003 | **Low** | Rubber-band tip runs in `editingCommitted` (plan said tip only in `drafting`) | Open — plan deviation; supports append preview |
-| POLYCUT-C-002 | **Medium** | Opposite-face walk incomplete while dragging in re-edit | Inherited — not a D regression |
-| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first | Inherited |
+| POLYCUT-D-001 | **Medium** | Picking a **different** committed stroke while editing **silently discards** unsaved edits | **Resolved** — `canPickCommittedStroke` false while any draft active |
+| POLYCUT-D-002 | **Medium** | Draft polyline `raycast` is disabled, so a click on the edited stroke body hits the mesh and **appends a tail vertex** | **Resolved** — fat-line raycast + stopPropagation on draft line |
+| POLYCUT-D-003 | **Low** | Rubber-band tip runs in `editingCommitted` (plan said tip only in `drafting`) | **Resolved (accepted)** — tip kept as append-at-end preview |
+| POLYCUT-C-002 | **Medium** | Opposite-face walk incomplete while dragging in re-edit | Inherited — frozen |
+| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first | Inherited — remediated in Slice C section |
 
 ### POLYCUT-D-001 — Switching committed strokes drops the in-progress edit
 
@@ -77,7 +78,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 - **Root cause:** Re-entry is “load this stroke into refs.” There is no dirty flag or “commit or discard current edit first.”
 - **Proposed strategy (for the remediation agent, not implemented here):** Ignore picks of other strokes while `editingCommitted`; or treat pick as cancel-then-enter; or prompt. Same class: switching **off** the Cut tool already `cancel()`s.
 - **Tests:** `sliceD.committedEdit.audit.test.ts` documents the pick gate; discard is viewer-only (no failing unit).
-- **Status:** Open.
+- **Status:** **Resolved** (2026-08-16) — ignore other committed picks while any draft is active (`canPickCommittedStroke` → false when `draftActive`).
 
 ### POLYCUT-D-002 — Click on the edited line appends at the end
 
@@ -85,13 +86,13 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 - **Severity:** Medium (wrong vertex list until Cancel; Done would persist the extra point and change Flatten).
 - **Root cause:** Mesh is the only click target for append; the visible draft polyline does not consume the pick.
 - **Proposed strategy:** Optionally raycast-block the draft line (still append only via explicit mesh hits away from the polyline), or require a modifier / “add point” mode. Do **not** interpret this as a request for mid-segment insert.
-- **Status:** Open.
+- **Status:** **Resolved** (2026-08-16) — `InProgressPolylineLine` uses shared `fatLineRaycast` and `stopPropagation` so stroke-body clicks do not append.
 
 ### POLYCUT-D-003 — Rubber-band during committed edit
 
 - **Issue:** Plan: rubber-band only in `drafting`; clear tip in `editingCommitted` / drag. Code: `setHoverTip` uses `isLiveMode`, so edit mode also shows a tip from the **last** vertex to the hover hit (`tessellateDraftDisplayPath`).
 - **Severity:** Low (preview of the in-scope append-at-end gesture; not insert-on-segment).
-- **Status:** Open — decide whether to match the plan (no tip) or keep tip as append affordance.
+- **Status:** **Resolved (accepted)** (2026-08-16) — tip in `editingCommitted` kept as intentional append affordance.
 
 ### Not bugs / expected
 
@@ -112,7 +113,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ### Recommended next steps
 
-This audit does **not** include a remediation implementation or a fix plan beyond the per-finding strategy notes. A separate agent should triage **D-001** / **D-002** (and optionally **D-003**) before Slice E. Manual QA should still walk the four-row table above on a real mesh.
+D-001 / D-002 / D-003 remediated (2026-08-16 2A). Manual QA should still walk the four-row table above on a real mesh before Slice E. C-002 remains frozen.
 
 ---
 
@@ -127,7 +128,7 @@ This audit does **not** include a remediation implementation or a fix plan beyon
 
 ## Audit — 2026-08-16 — Polyline cut Slice C (node drag)
 
-**Status:** POLYCUT-C-001 remediated (no piercing overlay chord). Opposite-face surface walk still cannot leave the start face (documented).  
+**Status:** POLYCUT-C-001 remediated (no piercing overlay chord). C-003 remediated (no duplicate last marker). Opposite-face surface walk (C-002) still cannot leave the start face — frozen.  
 **Date:** 2026-08-16  
 **Scope:** Slice C draft node drag (`beginNodeDrag` / `applyNodeDragHit` / `endNodeDrag`), marker capture, orbit gate, overlay retessellate via `tessellateDraftDisplayPath` / `tessellateSurfaceSegment`. Not Slice D.  
 **ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
@@ -148,7 +149,7 @@ This audit does **not** include a remediation implementation or a fix plan beyon
 |----|--------|-------------|
 | POLYCUT-C-001 | **Resolved** | `tessellateSurfaceSegment` joins `p1` only if current and goal share an incident face (or walk reached `p1`). No volume chord on walk/locate fail. |
 | POLYCUT-C-002 | Open | Face-local 2D clip cannot leave a face when the 3D goal projects inside that face (opposite cube faces). Overlay now **stops** (incomplete) instead of tunneling. Full geodesic around the shell is not in this slice. |
-| POLYCUT-C-003 | Open (Low) | Closed draft: last duplicate marker sits on top of first; short-click close only if `index === 0`. |
+| POLYCUT-C-003 | **Resolved** | Closed draft omits duplicate last marker (`draftMarkerCount`); short-click close remains on index 0. |
 | POLYCUT-010/011 | **Resolved** (Slice C gates) | `writePlacedTwin` + `pairClosedOnDragRef` |
 
 ### Executive summary
@@ -163,7 +164,7 @@ This audit does **not** include a remediation implementation or a fix plan beyon
 |----|----------|-------|--------|
 | POLYCUT-C-001 | **Medium** | Overlay / draft line chords through the volume when tessellate walk fails | **Resolved** — no piercing `p1` append |
 | POLYCUT-C-002 | **Medium** | Opposite-face (and similar) segments do not tessellate around the shell | Open — freeze; geodesic later |
-| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first; click may not close | Open |
+| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first; click may not close | **Resolved** — omit last marker when exactly closed |
 | POLYCUT-010 | **Low** (gate) | Display/canonical twin write | **Resolved** — `writePlacedTwin` |
 | POLYCUT-011 | **Low** (gate) | Closed 0 / n−1 pairing while dragging | **Resolved** — `pairClosedOnDragRef` |
 
@@ -187,7 +188,7 @@ This audit does **not** include a remediation implementation or a fix plan beyon
 - **Issue:** Marker-close duplicates first as last. Both spheres are pickable; the last is drawn later. `pointerup` calls `closeOnFirstMarkerClick` only when `index === 0` and the gesture did not move. A click on the stacked pair may hit `n−1` and neither close nor drag usefully.
 - **Severity:** Low.
 - **Strategy:** Treat `index === last` on a closed draft as close, or skip drawing the duplicate last marker.
-- **Status:** Open.
+- **Status:** **Resolved** (2026-08-16) — `DraftVertexMarkers` uses `draftMarkerCount` / `isExactlyClosedPolyline` and does not mount the duplicate last sphere.
 
 ### Recommended next steps
 

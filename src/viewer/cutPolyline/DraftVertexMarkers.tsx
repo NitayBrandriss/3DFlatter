@@ -10,6 +10,10 @@ import {
   useState,
 } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import {
+  draftMarkerCount,
+  isExactlyClosedPolyline,
+} from "./cutPolylineHelpers";
 import type { DisplayVec3 } from "./InProgressPolylineLine";
 
 const MARKER_RADIUS = 0.028;
@@ -26,7 +30,8 @@ export type DraftVertexMarkersHandle = {
 /**
  * Draft polyline vertices as spheres (display space). All markers are pickable
  * (Slice C drag). Index 0 stays amber (close affordance). Hidden until placed
- * (POLYCUT-B-006 origin flash).
+ * (POLYCUT-B-006 origin flash). Closed strokes omit the duplicate last marker
+ * (POLYCUT-C-003); draft refs still keep the full point list for pairing.
  */
 export const DraftVertexMarkers = forwardRef<
   DraftVertexMarkersHandle,
@@ -62,7 +67,8 @@ export const DraftVertexMarkers = forwardRef<
     () => ({
       setPositions(points: readonly DisplayVec3[]) {
         pointsRef.current = points.map((p) => ({ x: p.x, y: p.y, z: p.z }));
-        const nextCount = points.length;
+        const closed = isExactlyClosedPolyline(pointsRef.current);
+        const nextCount = draftMarkerCount(points.length, closed);
         if (nextCount === count) {
           for (let i = 0; i < nextCount; i++) {
             applyMeshPose(meshRefs.current[i], i);
@@ -74,7 +80,10 @@ export const DraftVertexMarkers = forwardRef<
       updatePosition(index: number, point: DisplayVec3) {
         if (index < 0 || index >= pointsRef.current.length) return;
         pointsRef.current[index] = { x: point.x, y: point.y, z: point.z };
-        applyMeshPose(meshRefs.current[index], index);
+        // Closed last twin is not mounted; only update visible markers.
+        if (index < count) {
+          applyMeshPose(meshRefs.current[index], index);
+        }
       },
       clear() {
         pointsRef.current = [];

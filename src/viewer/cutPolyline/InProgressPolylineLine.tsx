@@ -1,7 +1,15 @@
 "use client";
 
 import * as THREE from "three";
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
+import type { ThreeEvent } from "@react-three/fiber";
+import { fatLineRaycast } from "./fatLineRaycast";
 
 export type DisplayVec3 = { x: number; y: number; z: number };
 
@@ -14,6 +22,8 @@ export type InProgressPolylineHandle = {
 /**
  * Imperative in-progress cut polyline (display space): placed vertices plus
  * optional rubber-band tip. Mutates BufferGeometry without React re-renders.
+ * Fat-line raycast + stopPropagation blocks mesh append on the stroke body
+ * (POLYCUT-D-002); does not insert mid-segment.
  */
 export const InProgressPolylineLine = forwardRef<
   InProgressPolylineHandle,
@@ -34,7 +44,7 @@ export const InProgressPolylineLine = forwardRef<
       depthTest: true,
     });
     const lineObj = new THREE.Line(geo, material);
-    lineObj.raycast = () => undefined;
+    lineObj.raycast = fatLineRaycast;
     return { line: lineObj, geometry: geo };
   }, []);
 
@@ -107,5 +117,15 @@ export const InProgressPolylineLine = forwardRef<
     [geometry],
   );
 
-  return <primitive object={line} />;
+  const stopPick = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <primitive
+      object={line}
+      onPointerDown={stopPick}
+      onPointerUp={stopPick}
+    />
+  );
 });

@@ -10,6 +10,7 @@ import {
   canFinalizeDraft,
   canPickCommittedStroke,
   closePolylineByDuplicatingFirst,
+  draftMarkerCount,
   excludeCutStrokeById,
   incidentSparseSegmentStarts,
   isClosedClick,
@@ -402,10 +403,18 @@ describe("cutPolylineHelpers", () => {
     expect(excludeCutStrokeById(strokes, "a").map((s) => s.id)).toEqual(["b"]);
   });
 
-  it("canPickCommittedStroke blocks pick during a new draft, allows while idle or editing", () => {
+  it("canPickCommittedStroke blocks pick during any draft, including committed edit (POLYCUT-D-001)", () => {
     expect(canPickCommittedStroke(false, null, false)).toBe(true);
     expect(canPickCommittedStroke(true, null, false)).toBe(false);
-    expect(canPickCommittedStroke(true, "s1", false)).toBe(true);
+    expect(canPickCommittedStroke(true, "s1", false)).toBe(false);
     expect(canPickCommittedStroke(false, null, true)).toBe(false);
+  });
+
+  it("draftMarkerCount hides the duplicate last vertex when closed (POLYCUT-C-003)", () => {
+    expect(draftMarkerCount(0, false)).toBe(0);
+    expect(draftMarkerCount(3, false)).toBe(3);
+    expect(draftMarkerCount(3, true)).toBe(2);
+    expect(draftMarkerCount(4, true)).toBe(3);
+    expect(draftMarkerCount(2, true)).toBe(2);
   });
 });

@@ -105,8 +105,8 @@ describe("Slice D committed re-edit (characterizing)", () => {
   });
 
   describe("committed-stroke pick while editing (viewer gate)", () => {
-    it("canPickCommittedStroke stays true in editingCommitted so other strokes remain pickable", () => {
-      expect(canPickCommittedStroke(true, "editing-id", false)).toBe(true);
+    it("canPickCommittedStroke is false in editingCommitted so other strokes are not pickable (POLYCUT-D-001)", () => {
+      expect(canPickCommittedStroke(true, "editing-id", false)).toBe(false);
     });
   });
 

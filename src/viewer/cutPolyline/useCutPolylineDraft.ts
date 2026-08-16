@@ -379,6 +379,7 @@ export function useCutPolylineDraft({
 
   const setHoverTip = useCallback(
     (tip: DisplayVec3 | null) => {
+      // POLYCUT-D-003 accepted: tip also runs in editingCommitted as append-at-end preview.
       if (!isLiveMode(modeRef.current)) return;
       if (dragIndexRef.current != null) return;
       syncVisuals(tip, false);

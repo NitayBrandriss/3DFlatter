@@ -219,13 +219,29 @@ export function excludeCutStrokeById<T extends { id: string }>(
   return strokes.filter((s) => s.id !== id);
 }
 
-/** New in-progress draft blocks committed-stroke pick so mesh clicks still place. */
+/**
+ * Visible draft-marker count. Closed strokes hide the duplicate last vertex
+ * so it does not occlude the amber first marker (POLYCUT-C-003).
+ */
+export function draftMarkerCount(
+  pointCount: number,
+  closed: boolean,
+): number {
+  if (pointCount <= 0) return 0;
+  if (closed && pointCount >= 3) return pointCount - 1;
+  return pointCount;
+}
+
+/**
+ * Any in-progress draft (new or committed re-edit) blocks committed-stroke pick
+ * so mesh clicks still place / unsaved edits are not discarded (POLYCUT-D-001).
+ * `editingStrokeId` is retained for call-site clarity; pick is gated on draftActive.
+ */
 export function canPickCommittedStroke(
   draftActive: boolean,
-  editingStrokeId: string | null,
+  _editingStrokeId: string | null,
   dragging: boolean,
 ): boolean {
   if (dragging) return false;
-  if (!draftActive) return true;
-  return editingStrokeId != null;
+  return !draftActive;
 }

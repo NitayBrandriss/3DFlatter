@@ -7,23 +7,10 @@ import type { CutStroke } from "../logic/cuts/types";
 import type { MeshModel } from "../logic/mesh/types";
 import type { DisplayNormalization } from "./displayNormalization";
 import { canonicalToDisplay } from "./displayNormalization";
+import { fatLineRaycast } from "./cutPolyline/fatLineRaycast";
 import { tessellateStrokeCanonicalPath } from "./packCutStrokeDisplaySegments";
 
 const DRAG_THRESHOLD_PX = 5;
-const LINE_PICK_THRESHOLD = 0.06;
-
-function fatLineRaycast(
-  this: THREE.Line,
-  raycaster: THREE.Raycaster,
-  intersects: THREE.Intersection[],
-) {
-  const lineParams = raycaster.params.Line ?? { threshold: 1 };
-  const prev = lineParams.threshold;
-  lineParams.threshold = LINE_PICK_THRESHOLD;
-  raycaster.params.Line = lineParams;
-  THREE.Line.prototype.raycast.call(this, raycaster, intersects);
-  lineParams.threshold = prev;
-}
 
 /**
  * Invisible per-stroke pick proxies for committed cuts (Slice D).
