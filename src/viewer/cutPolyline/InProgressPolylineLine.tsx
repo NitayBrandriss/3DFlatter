@@ -6,10 +6,8 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "rea
 export type DisplayVec3 = { x: number; y: number; z: number };
 
 export type InProgressPolylineHandle = {
-  setPlaced(points: readonly DisplayVec3[]): void;
+  setPlaced(points: readonly DisplayVec3[], recomputeBounds?: boolean): void;
   setPreviewTip(tip: DisplayVec3 | null): void;
-  /** Hot path (Slice C): mutate one vertex in the existing buffer. */
-  updatePlacedVertex(index: number, point: DisplayVec3): void;
   clear(): void;
 };
 
@@ -91,32 +89,13 @@ export const InProgressPolylineLine = forwardRef<
       };
 
       return {
-        setPlaced(points: readonly DisplayVec3[]) {
+        setPlaced(points: readonly DisplayVec3[], recomputeBounds = true) {
           placedRef.current = points.map((p) => ({ x: p.x, y: p.y, z: p.z }));
-          rebuild(true);
+          rebuild(recomputeBounds);
         },
         setPreviewTip(tip: DisplayVec3 | null) {
           tipRef.current = tip ? { x: tip.x, y: tip.y, z: tip.z } : null;
           rebuild(false);
-        },
-        updatePlacedVertex(index: number, point: DisplayVec3) {
-          const placed = placedRef.current;
-          if (index < 0 || index >= placed.length) return;
-          placed[index] = { x: point.x, y: point.y, z: point.z };
-
-          const attr = geometry.getAttribute("position");
-          if (!(attr instanceof THREE.BufferAttribute)) {
-            rebuild(false);
-            return;
-          }
-          const tip = tipRef.current;
-          const drawCount = tip && placed.length >= 1 ? placed.length + 1 : placed.length;
-          if (attr.count < drawCount) {
-            rebuild(false);
-            return;
-          }
-          attr.setXYZ(index, point.x, point.y, point.z);
-          attr.needsUpdate = true;
         },
         clear() {
           placedRef.current = [];

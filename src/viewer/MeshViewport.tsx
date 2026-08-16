@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
@@ -124,8 +124,8 @@ export function MeshViewport({
   }, [mesh]);
 
   const cutDraftApiRef = useRef<CutPolylineDraftApi | null>(null);
-  // Orbit stays enabled while drafting; Slice C disables only during node grab.
-  const orbitEnabled = true;
+  const pickableMeshRef = useRef<THREE.Mesh | null>(null);
+  const [orbitEnabled, setOrbitEnabled] = useState(true);
 
   // Release GPU buffers when the mesh is replaced or the viewport unmounts.
   useEffect(() => {
@@ -165,6 +165,7 @@ export function MeshViewport({
             normalization={displayAssets.normalization}
             onEdgePick={onEdgePick}
             cutDraftApiRef={cutDraftApiRef}
+            meshRef={pickableMeshRef}
           />
           <SeamOverlay
             displayVertices={displayAssets.displayMesh.vertices}
@@ -185,6 +186,8 @@ export function MeshViewport({
             onDraftUiChange={onCutDraftUiChange}
             onPointCapReached={onCutPointCapReached}
             onFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
+            onOrbitEnabledChange={setOrbitEnabled}
+            pickableMeshRef={pickableMeshRef}
             draftApiRef={cutDraftApiRef}
             actionsRef={cutDraftActionsRef}
           />

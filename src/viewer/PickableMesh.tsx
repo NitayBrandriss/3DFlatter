@@ -20,6 +20,7 @@ export function PickableMesh({
   normalization,
   onEdgePick,
   cutDraftApiRef,
+  meshRef,
 }: {
   geometry: THREE.BufferGeometry;
   /** Display-normalized mesh aligned with `geometry` positions for raycast resolve. */
@@ -30,6 +31,7 @@ export function PickableMesh({
   normalization: DisplayNormalization;
   onEdgePick: (edgeKey: EdgeKey) => void;
   cutDraftApiRef: RefObject<CutPolylineDraftApi | null>;
+  meshRef: RefObject<THREE.Mesh | null>;
 }) {
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   const displayMeshRef = useRef(displayMesh);
@@ -50,19 +52,20 @@ export function PickableMesh({
   const onPointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (editTool === "none") return;
+      if (cutDraftApiRef.current?.isNodeDragging()) return;
       pointerDown.current = {
         x: e.nativeEvent.clientX,
         y: e.nativeEvent.clientY,
       };
     },
-    [editTool],
+    [cutDraftApiRef, editTool],
   );
 
   const onPointerMove = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (editTool !== "cut") return;
       const api = cutDraftApiRef.current;
-      if (!api) return;
+      if (!api || api.isNodeDragging()) return;
 
       if (e.faceIndex == null || !e.point) {
         api.setHoverTip(null);
@@ -92,6 +95,7 @@ export function PickableMesh({
       if (e.faceIndex == null || !e.point) return;
 
       if (editTool === "cut") {
+        if (cutDraftApiRef.current?.isNodeDragging()) return;
         e.stopPropagation();
         const local = e.object.worldToLocal(e.point.clone());
         cutDraftApiRef.current?.addPointFromHit(
@@ -122,6 +126,7 @@ export function PickableMesh({
   const onDoubleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
       if (editTool !== "cut") return;
+      if (cutDraftApiRef.current?.isNodeDragging()) return;
       e.stopPropagation();
       cutDraftApiRef.current?.finalizeFromDoubleClick();
     },
@@ -148,6 +153,7 @@ export function PickableMesh({
 
   return (
     <mesh
+      ref={meshRef}
       geometry={geometry}
       scale={modelScale}
       onPointerDown={onPointerDown}

@@ -9,9 +9,12 @@ import {
   appendPolylineDraftPoint,
   canFinalizeDraft,
   closePolylineByDuplicatingFirst,
+  incidentSparseSegmentStarts,
   isClosedClick,
+  isExactlyClosedPolyline,
   stripDblClickDuplicate,
   takeCapToastNotification,
+  writePlacedTwin,
 } from "./cutPolylineHelpers";
 
 const IDENTITY_NORM: DisplayNormalization = {
@@ -284,5 +287,107 @@ describe("cutPolylineHelpers", () => {
     expect(closed!.display).toHaveLength(3);
     expect(closed!.display[0]).toEqual(closed!.display[2]);
     expect(closed!.canonical[0]).toEqual(closed!.canonical[2]);
+  });
+
+  it("isExactlyClosedPolyline requires ≥3 points and identical endpoints", () => {
+    expect(
+      isExactlyClosedPolyline([
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+      ]),
+    ).toBe(false);
+    expect(
+      isExactlyClosedPolyline([
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+      ]),
+    ).toBe(true);
+    expect(
+      isExactlyClosedPolyline([
+        { x: 0, y: 0, z: 0 },
+        { x: 1, y: 0, z: 0 },
+        { x: 1, y: 1, z: 0 },
+      ]),
+    ).toBe(false);
+  });
+
+  it("writePlacedTwin updates both twins at the same index (POLYCUT-010)", () => {
+    const display = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 1, y: 1, z: 0 },
+    ];
+    const canonical = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 1, y: 1, z: 0 },
+    ];
+    writePlacedTwin(
+      display,
+      canonical,
+      1,
+      { x: 0.5, y: 0.25, z: 0 },
+      IDENTITY_NORM,
+      false,
+    );
+    expect(display).toHaveLength(canonical.length);
+    expect(display[1]).toEqual({ x: 0.5, y: 0.25, z: 0 });
+    expect(canonical[1]).toEqual({ x: 0.5, y: 0.25, z: 0 });
+    expect(display[0]).toEqual({ x: 0, y: 0, z: 0 });
+    expect(display[2]).toEqual({ x: 1, y: 1, z: 0 });
+  });
+
+  it("writePlacedTwin pairs closed endpoints 0 and n−1 (POLYCUT-011)", () => {
+    const display = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const canonical = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    writePlacedTwin(
+      display,
+      canonical,
+      0,
+      { x: 0.2, y: 0.1, z: 0 },
+      IDENTITY_NORM,
+      true,
+    );
+    expect(display[0]).toEqual(display[2]);
+    expect(canonical[0]).toEqual(canonical[2]);
+    expect(display[0]).toEqual({ x: 0.2, y: 0.1, z: 0 });
+    expect(canonical).toHaveLength(display.length);
+  });
+
+  it("writePlacedTwin does not pair an open stroke even if pairClosed is true", () => {
+    const display = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+    ];
+    const canonical = [
+      { x: 0, y: 0, z: 0 },
+      { x: 1, y: 0, z: 0 },
+    ];
+    writePlacedTwin(
+      display,
+      canonical,
+      0,
+      { x: 0.2, y: 0, z: 0 },
+      IDENTITY_NORM,
+      true,
+    );
+    expect(display[1]).toEqual({ x: 1, y: 0, z: 0 });
+    expect(canonical[1]).toEqual({ x: 1, y: 0, z: 0 });
+  });
+
+  it("incidentSparseSegmentStarts lists segments touching the dragged vertex", () => {
+    expect(incidentSparseSegmentStarts(4, 1, false)).toEqual([0, 1]);
+    expect(incidentSparseSegmentStarts(4, 0, false)).toEqual([0]);
+    expect(incidentSparseSegmentStarts(4, 0, true)).toEqual([0, 2]);
+    expect(incidentSparseSegmentStarts(4, 3, true)).toEqual([0, 2]);
   });
 });

@@ -7,7 +7,12 @@ import {
 } from "../displayNormalization";
 import type { DisplayVec3 } from "./InProgressPolylineLine";
 
-/** Tessellate draft polyline + optional rubber-band tip into display-space line points. */
+/**
+ * Tessellate draft polyline + optional rubber-band tip into display-space line
+ * points. Drag uses this full-path rebuild (incident splice is messy when
+ * sample counts change); `incidentSparseSegmentStarts` documents which sparse
+ * segments actually moved.
+ */
 export function tessellateDraftDisplayPath(
   mesh: MeshModel,
   canonicalPlaced: readonly Vec3[],

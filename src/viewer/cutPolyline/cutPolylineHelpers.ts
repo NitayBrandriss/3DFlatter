@@ -138,3 +138,75 @@ export function takeCapToastNotification(alreadyShown: boolean): {
 }
 
 export { shouldAppendCutSample };
+
+/** Exact first===last close (marker-close / POLYCUT-011 pairing). */
+export function isExactlyClosedPolyline(
+  display: readonly Vec3Like[],
+): boolean {
+  if (display.length < 3) return false;
+  const first = display[0]!;
+  const last = display[display.length - 1]!;
+  return first.x === last.x && first.y === last.y && first.z === last.z;
+}
+
+/**
+ * POLYCUT-010: write one display/canonical twin. If `pairClosed`, also copy
+ * endpoint 0 ↔ n−1 (POLYCUT-011). Mutates in place.
+ */
+export function writePlacedTwin(
+  display: Vec3[],
+  canonical: Vec3[],
+  index: number,
+  displayLocal: Vec3Like,
+  normalization: DisplayNormalization,
+  pairClosed: boolean,
+): void {
+  if (index < 0 || index >= display.length || display.length !== canonical.length) {
+    return;
+  }
+  display[index] = {
+    x: displayLocal.x,
+    y: displayLocal.y,
+    z: displayLocal.z,
+  };
+  const nextCanonical = displayToCanonical(displayLocal, normalization);
+  canonical[index] = {
+    x: nextCanonical.x,
+    y: nextCanonical.y,
+    z: nextCanonical.z,
+  };
+  if (!pairClosed || display.length < 3) return;
+  const last = display.length - 1;
+  if (index === 0) {
+    display[last] = { x: display[0]!.x, y: display[0]!.y, z: display[0]!.z };
+    canonical[last] = {
+      x: canonical[0]!.x,
+      y: canonical[0]!.y,
+      z: canonical[0]!.z,
+    };
+  } else if (index === last) {
+    display[0] = { x: display[last]!.x, y: display[last]!.y, z: display[last]!.z };
+    canonical[0] = {
+      x: canonical[last]!.x,
+      y: canonical[last]!.y,
+      z: canonical[last]!.z,
+    };
+  }
+}
+
+/** Sparse segment start indices incident to `index` (for overlay retessellate). */
+export function incidentSparseSegmentStarts(
+  pointCount: number,
+  index: number,
+  closed: boolean,
+): number[] {
+  if (pointCount < 2 || index < 0 || index >= pointCount) return [];
+  const starts = new Set<number>();
+  if (index > 0) starts.add(index - 1);
+  if (index < pointCount - 1) starts.add(index);
+  if (closed && pointCount >= 3) {
+    if (index === 0) starts.add(pointCount - 2);
+    if (index === pointCount - 1) starts.add(0);
+  }
+  return [...starts].sort((a, b) => a - b);
+}

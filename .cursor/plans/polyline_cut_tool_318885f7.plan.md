@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: slice-c-drag
     content: "Slice C — Draft node drag: custom capture + mesh Raycaster; retessellate incident surface segments (not setXYZ); restore orbitEnabled; POLYCUT-010/011; optional B-006 pool"
-    status: pending
+    status: completed
   - id: slice-d-committed
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
     status: pending
@@ -306,7 +306,7 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Markers otherwise `raycast={() => undefined}` until Slice C (first marker pickable for close only).
 - Tests: `closePolylineByDuplicatingFirst`; mesh near-first still appends open; sidebar help mentions marker close.
 
-### Slice C — Node editing (drag) on draft
+### Slice C — Node editing (drag) on draft (**shipped**)
 - Enable raycast on **all** draft markers; custom drag (capture → NDC Raycaster vs pickable mesh → `endDrag()`).
 - Restore [`MeshViewport`](src/viewer/MeshViewport.tsx) `orbitEnabled` (false on grab, true on every `endDrag()` path).
 - **Hot path:** update sparse twins + retessellate incident surface segments — **not** `updatePlacedVertex` / `setXYZ` on tessellated buffer.

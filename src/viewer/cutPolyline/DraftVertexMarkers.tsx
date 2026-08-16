@@ -16,7 +16,6 @@ const MARKER_RADIUS = 0.028;
 const FIRST_MARKER_RADIUS = 0.038;
 const MARKER_COLOR = "#7dd3fc";
 const FIRST_MARKER_COLOR = "#fbbf24";
-const DRAG_THRESHOLD_PX = 5;
 
 export type DraftVertexMarkersHandle = {
   setPositions(points: readonly DisplayVec3[]): void;
@@ -25,35 +24,36 @@ export type DraftVertexMarkersHandle = {
 };
 
 /**
- * Draft polyline vertices as spheres (display space). Positions update
- * imperatively; only the first marker is pickable (Slice B close-loop).
- * Remaining markers have raycast disabled until Slice C drag.
+ * Draft polyline vertices as spheres (display space). All markers are pickable
+ * (Slice C drag). Index 0 stays amber (close affordance). Hidden until placed
+ * (POLYCUT-B-006 origin flash).
  */
 export const DraftVertexMarkers = forwardRef<
   DraftVertexMarkersHandle,
   {
     modelScale: number;
-    onFirstMarkerClick: () => void;
+    onMarkerPointerDown: (index: number, event: ThreeEvent<PointerEvent>) => void;
   }
->(function DraftVertexMarkers({ modelScale, onFirstMarkerClick }, ref) {
+>(function DraftVertexMarkers({ modelScale, onMarkerPointerDown }, ref) {
   const [count, setCount] = useState(0);
   const pointsRef = useRef<DisplayVec3[]>([]);
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
-  const onFirstClickRef = useRef(onFirstMarkerClick);
-  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  const onDownRef = useRef(onMarkerPointerDown);
 
   useEffect(() => {
-    onFirstClickRef.current = onFirstMarkerClick;
-  }, [onFirstMarkerClick]);
+    onDownRef.current = onMarkerPointerDown;
+  }, [onMarkerPointerDown]);
+
+  const applyMeshPose = (mesh: THREE.Mesh | null, index: number) => {
+    const p = pointsRef.current[index];
+    if (!mesh || !p) return;
+    mesh.position.set(p.x, p.y, p.z);
+    mesh.visible = true;
+  };
 
   useLayoutEffect(() => {
-    const points = pointsRef.current;
     for (let i = 0; i < count; i++) {
-      const mesh = meshRefs.current[i];
-      const p = points[i];
-      if (!mesh || !p) continue;
-      mesh.position.set(p.x, p.y, p.z);
-      mesh.visible = true;
+      applyMeshPose(meshRefs.current[i], i);
     }
   }, [count]);
 
@@ -65,9 +65,7 @@ export const DraftVertexMarkers = forwardRef<
         const nextCount = points.length;
         if (nextCount === count) {
           for (let i = 0; i < nextCount; i++) {
-            const mesh = meshRefs.current[i];
-            const p = pointsRef.current[i]!;
-            if (mesh) mesh.position.set(p.x, p.y, p.z);
+            applyMeshPose(meshRefs.current[i], i);
           }
           return;
         }
@@ -76,8 +74,7 @@ export const DraftVertexMarkers = forwardRef<
       updatePosition(index: number, point: DisplayVec3) {
         if (index < 0 || index >= pointsRef.current.length) return;
         pointsRef.current[index] = { x: point.x, y: point.y, z: point.z };
-        const mesh = meshRefs.current[index];
-        if (mesh) mesh.position.set(point.x, point.y, point.z);
+        applyMeshPose(meshRefs.current[index], index);
       },
       clear() {
         pointsRef.current = [];
@@ -87,24 +84,6 @@ export const DraftVertexMarkers = forwardRef<
     [count],
   );
 
-  const onFirstPointerDown = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    pointerDownRef.current = {
-      x: e.nativeEvent.clientX,
-      y: e.nativeEvent.clientY,
-    };
-  };
-
-  const onFirstPointerUp = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation();
-    if (!pointerDownRef.current) return;
-    const dx = e.nativeEvent.clientX - pointerDownRef.current.x;
-    const dy = e.nativeEvent.clientY - pointerDownRef.current.y;
-    pointerDownRef.current = null;
-    if (dx * dx + dy * dy > DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
-    onFirstClickRef.current();
-  };
-
   return (
     <group scale={modelScale}>
       {Array.from({ length: count }, (_, index) => {
@@ -112,19 +91,15 @@ export const DraftVertexMarkers = forwardRef<
         return (
           <mesh
             key={index}
+            visible={false}
             ref={(mesh) => {
               meshRefs.current[index] = mesh;
+              applyMeshPose(mesh, index);
             }}
-            raycast={isFirst ? undefined : () => undefined}
-            onPointerDown={isFirst ? onFirstPointerDown : undefined}
-            onPointerUp={isFirst ? onFirstPointerUp : undefined}
-            onPointerCancel={
-              isFirst
-                ? () => {
-                    pointerDownRef.current = null;
-                  }
-                : undefined
-            }
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onDownRef.current(index, e);
+            }}
           >
             <sphereGeometry
               args={[isFirst ? FIRST_MARKER_RADIUS : MARKER_RADIUS, 16, 12]}
