@@ -6,6 +6,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
+| [2026-08-16 Slice D](#audit--2026-08-16--polyline-cut-slice-d-committed-re-edit) | Committed stroke re-edit (drag / append-end / cancel / Done+Flatten) | Characterizing tests green; two Medium viewer issues (unsaved discard, accidental append) |
 | [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | Chord-through-volume remediated; opposite-face walk still incomplete |
 | [2026-08-03 Slice B](#audit--2026-08-03--polyline-cut-slice-b-markers--closed-rings--islands) | Markers + closed rings → islands | Remediated / regression-guarded |
 | [2026-08-02 Slice A](#audit--2026-08-02--polyline-cut-slice-a-draft-lifecycle) | Draft lifecycle | Remediated for required findings |
@@ -25,6 +26,93 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-08-16 — Polyline cut Slice D (committed re-edit)
+
+**Status:** Intended-scope contracts hold in logic/store (characterizing Vitest green). Viewer has two Medium issues that affect re-edit. **No production code was changed in this pass.**  
+**Date:** 2026-08-16  
+**Scope (only):** (1) marker drag updates the mesh overlay path; (2) mesh click in edit appends **strictly at the end**; (3) Esc / Cancel restores the original committed stroke; (4) Done/`updateCutStroke` persists points and Flatten uses the new polyline for 2D islands.  
+**Out of scope (do not treat as bugs):** mid-segment insert (**CUT-UX-001**), general undo stack (**CUT-UX-002**), snap/weld (**CUT-UX-003**). Slice C overlay walk limits (**POLYCUT-C-002**, **POLYCUT-C-003**) are inherited, not new Slice D defects. Slice E QA matrix is still on hold.  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Blueprint:** [polyline_cut_tool plan](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md) (`editingCommitted` → `updateCutStroke` on finalize; discard on cancel; overlay hides edited id).  
+**Method:** Static review of `useCutPolylineDraft`, `MeshViewport`, `PickableMesh`, `CommittedStrokePickables`, store + flatten snapshot; characterizing Vitest (no source fixes).  
+**Characterizing tests:** [`src/logic/cuts/sliceD.committedEdit.audit.test.ts`](../../../src/logic/cuts/sliceD.committedEdit.audit.test.ts) — **9/9 passed** (`vitest run src/logic/cuts/sliceD.committedEdit.audit.test.ts`).
+
+### Intended-scope results
+
+| Check | Result |
+|-------|--------|
+| **1. Marker drag** | **Pass (logic).** `writePlacedTwin` mutates only the edit clones; store copy unchanged until Done. Overlay rebuilds via `tessellateDraftDisplayPath` / `tessellateSurfaceSegment` (same path as Slice C). Drag uses pointer capture + `raycastDisplayMesh` on the pickable mesh (`CutPolylineSession`). |
+| **2. Append at end** | **Pass (logic).** `addPointFromHit` in `editingCommitted` still calls `appendPolylineDraftPoint` (tail only; no mid-segment splice). Characterizing test asserts prefix preserved and a “would-be mid-edge” hit is still appended as last. |
+| **3. Cancel / Esc** | **Pass (store).** `cancel` → `clearDraft` only; no `updateCutStroke`. Zustand points and `patternRevision` stay as committed. Leaving the Cut tool also calls `cancel` (same discard). |
+| **4. Done + Flatten** | **Pass (store + pipeline).** `finalize` / Done → `{ kind: "update", id, points }` → `updateCutStroke` (deep copy, `patternRevision++`, `meshLoadVersion` unchanged). `flattenWithCutStrokes` on the updated polyline changes island topology vs a closed loop vs an open dart. 2D panel **does not auto-run**; snapshot stales on `patternRevision` until the user clicks Flatten (ADR 0100 / `useFlattenExport`) — **expected**, not a Slice D miss. |
+
+### Manual / triggered (for the parallel manual QA)
+
+| Gesture | Expected if Slice D is correct |
+|---------|--------------------------------|
+| Cut tool idle → click a committed stroke | Enters `editingCommitted`; committed overlay for that id hidden (`excludeCutStrokeById`); draft line + markers show a clone. |
+| Drag a marker on the mesh | Line retessellates with the new vertex; other committed strokes unchanged; Flatten/2D unchanged until Done. |
+| Click empty mesh (not a marker) | New vertex **only at the tail**. No insert on a segment. |
+| Esc or Cancel | Stroke looks and stores as before the pick; `patternRevision` unchanged. |
+| Done (or Enter) then Flatten | Store points match the edit; 2D islands follow the new cut. |
+| Opposite-face drag | Incomplete overlay (**C-002**), must not tunnel (**C-001**). Do not file as D. |
+
+### Findings table
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-D-001 | **Medium** | Picking a **different** committed stroke while editing **silently discards** unsaved edits | Open |
+| POLYCUT-D-002 | **Medium** | Draft polyline `raycast` is disabled, so a click on the edited stroke body hits the mesh and **appends a tail vertex** | Open |
+| POLYCUT-D-003 | **Low** | Rubber-band tip runs in `editingCommitted` (plan said tip only in `drafting`) | Open — plan deviation; supports append preview |
+| POLYCUT-C-002 | **Medium** | Opposite-face walk incomplete while dragging in re-edit | Inherited — not a D regression |
+| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first | Inherited |
+
+### POLYCUT-D-001 — Switching committed strokes drops the in-progress edit
+
+- **Issue:** `canPickCommittedStroke(true, editingId, false)` is **true**, so other strokes stay pickable. `enterEditCommitted` overwrites refs when `stroke.id` differs; it never writes the previous clone. The previous stroke remains as last committed in Zustand (good for cancel semantics) but **unsaved drags/appends are lost** with no confirm.
+- **Severity:** Medium (data loss of the current edit session, not of the stored stroke).
+- **Root cause:** Re-entry is “load this stroke into refs.” There is no dirty flag or “commit or discard current edit first.”
+- **Proposed strategy (for the remediation agent, not implemented here):** Ignore picks of other strokes while `editingCommitted`; or treat pick as cancel-then-enter; or prompt. Same class: switching **off** the Cut tool already `cancel()`s.
+- **Tests:** `sliceD.committedEdit.audit.test.ts` documents the pick gate; discard is viewer-only (no failing unit).
+- **Status:** Open.
+
+### POLYCUT-D-002 — Click on the edited line appends at the end
+
+- **Issue:** `InProgressPolylineLine` sets `lineObj.raycast = () => undefined`. Committed pick proxies exclude the stroke being edited. A click that looks like “click the stroke” often hits `PickableMesh` → `addPointFromHit` → **tail append**. That matches “append at end” mechanically, but it is easy to add an accidental vertex while trying to select the line or orbit-adjacent mesh.
+- **Severity:** Medium (wrong vertex list until Cancel; Done would persist the extra point and change Flatten).
+- **Root cause:** Mesh is the only click target for append; the visible draft polyline does not consume the pick.
+- **Proposed strategy:** Optionally raycast-block the draft line (still append only via explicit mesh hits away from the polyline), or require a modifier / “add point” mode. Do **not** interpret this as a request for mid-segment insert.
+- **Status:** Open.
+
+### POLYCUT-D-003 — Rubber-band during committed edit
+
+- **Issue:** Plan: rubber-band only in `drafting`; clear tip in `editingCommitted` / drag. Code: `setHoverTip` uses `isLiveMode`, so edit mode also shows a tip from the **last** vertex to the hover hit (`tessellateDraftDisplayPath`).
+- **Severity:** Low (preview of the in-scope append-at-end gesture; not insert-on-segment).
+- **Status:** Open — decide whether to match the plan (no tip) or keep tip as append affordance.
+
+### Not bugs / expected
+
+| Topic | Why it is not a Slice D defect |
+|-------|--------------------------------|
+| No mid-segment insert, undo stack, or snap/weld | Explicit v2 backlog (CUT-UX-001/002/003). |
+| 2D view clears until Flatten | `updateCutStroke` bumps `patternRevision`; `useFlattenExport` stales the snapshot. User must Flatten again. |
+| Cancel “revert” is vacuous until Done | Edits live only in refs; Esc never needs to restore Zustand. |
+| First-vertex marker click / Enter / double-click also finalize | Same as new-draft Slice B; `commitPoints` then `updateCutStroke`. Done is not the only commit path. |
+| Backspace removes the last vertex of the **edit clone** | Draft vertex undo, not the v2 undo stack. Empty clone → `clearDraft` (same as cancel). |
+| Append after a closed ring | New point is after the duplicate close vertex → loop is no longer closed until the user closes again. Matches “end of stroke.” |
+| Overlay gap on opposite faces | **POLYCUT-C-002**. |
+
+### Structural risks (Slice D)
+
+- Dirty state exists only in `placedCanonicalRef` / `placedDisplayRef`. Any path that calls `enterEditCommitted` or `clearDraft` without `commitPoints` drops it (**D-001**, tool switch, Backspace-to-empty).
+- Flatten correctness after Done is the existing materialize pipeline; Slice D only swaps `cutStrokes[id].points`. Island bugs that appear on **unedited** closed loops are Slice B, not D.
+
+### Recommended next steps
+
+This audit does **not** include a remediation implementation or a fix plan beyond the per-finding strategy notes. A separate agent should triage **D-001** / **D-002** (and optionally **D-003**) before Slice E. Manual QA should still walk the four-row table above on a real mesh.
 
 ---
 
