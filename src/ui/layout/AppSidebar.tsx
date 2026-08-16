@@ -33,6 +33,8 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
     cutStrokeCount,
     clearCutStrokes,
     deleteLastCutStroke,
+    deleteEditingCutStroke,
+    editingStrokeId,
     cutDraftActive,
     cutDraftCanFinalize,
     onCutDraftDone,
@@ -226,15 +228,20 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
 
             {meshEditTool === "cut" ? (
               <div className="muted sidebar-meta-tight">
-                Click mesh to place vertices. Drag cyan markers to move them.
-                Double-click, Enter, or Done to commit an open cut. Click the
-                amber first-vertex marker to close the loop (drag it to move).
+                Click mesh to place vertices. Click a committed cut to edit it.
+                Drag cyan markers to move them. Double-click, Enter, or Done to
+                commit. Click the amber first-vertex marker to close the loop.
                 Esc / Cancel discards. Backspace undoes last vertex.
               </div>
             ) : null}
 
             {meshEditTool === "cut" && cutDraftActive ? (
               <>
+                {editingStrokeId ? (
+                  <div className="muted sidebar-meta-tight">
+                    Editing a committed cut. Done saves; Cancel discards.
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="btn btn--block"
@@ -250,6 +257,15 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                 >
                   Cancel
                 </button>
+                {editingStrokeId ? (
+                  <button
+                    type="button"
+                    className="btn btn--block"
+                    onClick={deleteEditingCutStroke}
+                  >
+                    Delete this cut
+                  </button>
+                ) : null}
               </>
             ) : null}
 

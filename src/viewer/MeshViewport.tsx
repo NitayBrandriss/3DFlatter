@@ -5,15 +5,23 @@ import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { CutStroke, Vec3 } from "../logic/cuts/types";
+import type { CutStroke } from "../logic/cuts/types";
 import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
 import type { MeshEditTool } from "../state/meshEditTool";
 import { CutStrokesOverlay } from "./CutStrokesOverlay";
+import { CommittedStrokePickables } from "./CommittedStrokePickables";
 import {
   CutPolylineSession,
   type CutPolylineActions,
 } from "./cutPolyline/CutPolylineSession";
-import type { CutPolylineDraftApi } from "./cutPolyline/useCutPolylineDraft";
+import type {
+  CutPolylineDraftApi,
+  CutPolylineFinalizeResult,
+} from "./cutPolyline/useCutPolylineDraft";
+import {
+  canPickCommittedStroke,
+  excludeCutStrokeById,
+} from "./cutPolyline/cutPolylineHelpers";
 import { buildDisplayMeshAssets } from "./meshModelToGeometry";
 import { PickableMesh } from "./PickableMesh";
 import { SeamOverlay } from "./SeamOverlay";
@@ -89,7 +97,7 @@ export function MeshViewport({
   modelScale,
   editTool,
   onEdgePick,
-  onCutStrokeCommit,
+  onDraftFinalize,
   onCutDraftUiChange,
   cutDraftActionsRef,
   onCutPointCapReached,
@@ -108,10 +116,11 @@ export function MeshViewport({
   modelScale: number;
   editTool: MeshEditTool;
   onEdgePick: (edgeKey: EdgeKey) => void;
-  onCutStrokeCommit: (points: Vec3[]) => void;
+  onDraftFinalize: (result: CutPolylineFinalizeResult) => void;
   onCutDraftUiChange?: (ui: {
     active: boolean;
     canFinalize: boolean;
+    editingStrokeId: string | null;
   }) => void;
   cutDraftActionsRef?: RefObject<CutPolylineActions | null>;
   onCutPointCapReached?: () => void;
@@ -126,6 +135,21 @@ export function MeshViewport({
   const cutDraftApiRef = useRef<CutPolylineDraftApi | null>(null);
   const pickableMeshRef = useRef<THREE.Mesh | null>(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
+  const [editingStrokeId, setEditingStrokeId] = useState<string | null>(null);
+  const [cutDraftActive, setCutDraftActive] = useState(false);
+
+  const visibleCutStrokes = useMemo(
+    () => excludeCutStrokeById(cutStrokes, editingStrokeId),
+    [cutStrokes, editingStrokeId],
+  );
+
+  const pickCommittedEnabled =
+    editTool === "cut" &&
+    canPickCommittedStroke(
+      cutDraftActive,
+      editingStrokeId,
+      !orbitEnabled,
+    );
 
   // Release GPU buffers when the mesh is replaced or the viewport unmounts.
   useEffect(() => {
@@ -174,16 +198,34 @@ export function MeshViewport({
           />
           <CutStrokesOverlay
             mesh={mesh}
-            cutStrokes={cutStrokes}
+            cutStrokes={visibleCutStrokes}
             normalization={displayAssets.normalization}
             modelScale={modelScale}
+          />
+          <CommittedStrokePickables
+            mesh={mesh}
+            cutStrokes={visibleCutStrokes}
+            normalization={displayAssets.normalization}
+            modelScale={modelScale}
+            enabled={pickCommittedEnabled}
+            onPickStroke={(stroke) => {
+              if (cutDraftApiRef.current?.isNodeDragging()) return;
+              cutDraftApiRef.current?.enterEditCommitted(
+                stroke,
+                displayAssets.normalization,
+              );
+            }}
           />
           <CutPolylineSession
             mesh={mesh}
             editTool={editTool}
             modelScale={modelScale}
-            onCommit={onCutStrokeCommit}
-            onDraftUiChange={onCutDraftUiChange}
+            onFinalize={onDraftFinalize}
+            onDraftUiChange={(ui) => {
+              setCutDraftActive(ui.active);
+              setEditingStrokeId(ui.editingStrokeId);
+              onCutDraftUiChange?.(ui);
+            }}
             onPointCapReached={onCutPointCapReached}
             onFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
             onOrbitEnabledChange={setOrbitEnabled}

@@ -15,7 +15,10 @@ import { useHomeSession } from "@/ui/hooks/useHomeSession";
 import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
 import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
 import { MeshViewport } from "@/viewer/MeshViewport";
-import type { CutPolylineActions } from "@/viewer/cutPolyline/CutPolylineSession";
+import type {
+  CutPolylineActions,
+} from "@/viewer/cutPolyline/CutPolylineSession";
+import type { CutPolylineFinalizeResult } from "@/viewer/cutPolyline/useCutPolylineDraft";
 
 export default function HomePage() {
   const {
@@ -34,6 +37,7 @@ export default function HomePage() {
     toggleSeamAt,
     clearAllSeams,
     addCutStroke,
+    updateCutStroke,
     deleteCutStroke,
     clearCutStrokes,
     setMeshEditTool,
@@ -74,6 +78,7 @@ export default function HomePage() {
   const cutStrokeIdSeq = useRef(0);
   const [cutDraftActive, setCutDraftActive] = useState(false);
   const [cutDraftCanFinalize, setCutDraftCanFinalize] = useState(false);
+  const [editingStrokeId, setEditingStrokeId] = useState<string | null>(null);
   const cutDraftActionsRef = useRef<CutPolylineActions | null>(null);
 
   const {
@@ -110,26 +115,51 @@ export default function HomePage() {
     [toggleSeamAt],
   );
 
-  const onCutStrokeCommit = useCallback(
-    (points: Parameters<typeof addCutStroke>[0]["points"]) => {
+  const onDraftFinalize = useCallback(
+    (result: CutPolylineFinalizeResult) => {
+      if (result.kind === "update") {
+        updateCutStroke(result.id, result.points);
+        return;
+      }
       cutStrokeIdSeq.current += 1;
       addCutStroke({
         id: `cut-${meshLoadVersion}-${cutStrokeIdSeq.current}`,
-        points,
+        points: result.points,
       });
     },
-    [addCutStroke, meshLoadVersion],
+    [addCutStroke, meshLoadVersion, updateCutStroke],
   );
 
   const deleteLastCutStroke = useCallback(() => {
     const last = cutStrokes[cutStrokes.length - 1];
-    if (last) deleteCutStroke(last.id);
-  }, [cutStrokes, deleteCutStroke]);
+    if (!last) return;
+    if (editingStrokeId === last.id) {
+      cutDraftActionsRef.current?.cancel();
+    }
+    deleteCutStroke(last.id);
+  }, [cutStrokes, deleteCutStroke, editingStrokeId]);
+
+  const deleteEditingCutStroke = useCallback(() => {
+    if (!editingStrokeId) return;
+    const id = editingStrokeId;
+    cutDraftActionsRef.current?.cancel();
+    deleteCutStroke(id);
+  }, [deleteCutStroke, editingStrokeId]);
+
+  const onClearCutStrokes = useCallback(() => {
+    cutDraftActionsRef.current?.cancel();
+    clearCutStrokes();
+  }, [clearCutStrokes]);
 
   const onCutDraftUiChange = useCallback(
-    (ui: { active: boolean; canFinalize: boolean }) => {
+    (ui: {
+      active: boolean;
+      canFinalize: boolean;
+      editingStrokeId: string | null;
+    }) => {
       setCutDraftActive(ui.active);
       setCutDraftCanFinalize(ui.canFinalize);
+      setEditingStrokeId(ui.editingStrokeId);
     },
     [],
   );
@@ -188,8 +218,10 @@ export default function HomePage() {
             setMeshEditTool,
             clearAllSeams,
             cutStrokeCount: cutStrokes.length,
-            clearCutStrokes,
+            clearCutStrokes: onClearCutStrokes,
             deleteLastCutStroke,
+            deleteEditingCutStroke,
+            editingStrokeId,
             cutDraftActive,
             cutDraftCanFinalize,
             onCutDraftDone,
@@ -248,7 +280,7 @@ export default function HomePage() {
               modelScale={modelScale}
               editTool={meshEditTool}
               onEdgePick={onEdgePick}
-              onCutStrokeCommit={onCutStrokeCommit}
+              onDraftFinalize={onDraftFinalize}
               onCutDraftUiChange={onCutDraftUiChange}
               cutDraftActionsRef={cutDraftActionsRef}
               onCutPointCapReached={onCutPointCapReached}

@@ -47,12 +47,11 @@ describe("surfacePath", () => {
   });
 
   describe("fallback", () => {
-    it("returns at least endpoints when goal is off-surface", () => {
+    it("does not append an off-surface goal as a piercing chord", () => {
       const mesh = unitQuad();
       const path = tessellateSurfaceSegment(mesh, v(0.2, 0.2), v(0.8, 0.8, 5));
-      expect(path.length).toBeGreaterThanOrEqual(2);
-      expect(path[0]).toEqual(v(0.2, 0.2));
-      expect(path[path.length - 1]).toEqual(v(0.8, 0.8, 5));
+      expect(path.length).toBeGreaterThanOrEqual(1);
+      expect(path[path.length - 1]).toEqual(v(0.2, 0.2));
     });
   });
 });

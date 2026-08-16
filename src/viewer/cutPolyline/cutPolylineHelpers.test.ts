@@ -8,7 +8,9 @@ import {
   CUT_POLYLINE_CLOSE_RADIUS,
   appendPolylineDraftPoint,
   canFinalizeDraft,
+  canPickCommittedStroke,
   closePolylineByDuplicatingFirst,
+  excludeCutStrokeById,
   incidentSparseSegmentStarts,
   isClosedClick,
   isExactlyClosedPolyline,
@@ -389,5 +391,21 @@ describe("cutPolylineHelpers", () => {
     expect(incidentSparseSegmentStarts(4, 0, false)).toEqual([0]);
     expect(incidentSparseSegmentStarts(4, 0, true)).toEqual([0, 2]);
     expect(incidentSparseSegmentStarts(4, 3, true)).toEqual([0, 2]);
+  });
+
+  it("excludeCutStrokeById hides the stroke being edited", () => {
+    const strokes = [
+      { id: "a", points: [] },
+      { id: "b", points: [] },
+    ];
+    expect(excludeCutStrokeById(strokes, null)).toEqual(strokes);
+    expect(excludeCutStrokeById(strokes, "a").map((s) => s.id)).toEqual(["b"]);
+  });
+
+  it("canPickCommittedStroke blocks pick during a new draft, allows while idle or editing", () => {
+    expect(canPickCommittedStroke(false, null, false)).toBe(true);
+    expect(canPickCommittedStroke(true, null, false)).toBe(false);
+    expect(canPickCommittedStroke(true, "s1", false)).toBe(true);
+    expect(canPickCommittedStroke(false, null, true)).toBe(false);
   });
 });

@@ -8,10 +8,11 @@ import {
   useState,
   type RefObject,
 } from "react";
-import type { Vec3 } from "../../logic/cuts/types";
+import type { CutStroke, Vec3 } from "../../logic/cuts/types";
 import type { MeshModel } from "../../logic/mesh/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
 import {
+  canonicalToDisplay,
   displayToCanonical,
   type DisplayNormalization,
 } from "../displayNormalization";
@@ -31,10 +32,9 @@ import type {
   InProgressPolylineHandle,
 } from "./InProgressPolylineLine";
 
-export type CutPolylineFinalizeResult = {
-  kind: "add";
-  points: Vec3[];
-};
+export type CutPolylineFinalizeResult =
+  | { kind: "add"; points: Vec3[] }
+  | { kind: "update"; id: string; points: Vec3[] };
 
 export type AddPointResult =
   | { status: "added" }
@@ -52,6 +52,10 @@ export type CutPolylineDraftApi = {
   finalizeFromDoubleClick: () => CutPolylineFinalizeResult | null;
   /** Slice B: click first-vertex marker → closed polyline commit. */
   closeOnFirstMarkerClick: () => CutPolylineFinalizeResult | null;
+  enterEditCommitted: (
+    stroke: CutStroke,
+    normalization: DisplayNormalization,
+  ) => void;
   beginNodeDrag: (index: number) => void;
   applyNodeDragHit: (displayLocal: DisplayVec3) => void;
   endNodeDrag: () => void;
@@ -63,14 +67,21 @@ export type CutPolylineDraftApi = {
 export type CutPolylineDraftUi = {
   active: boolean;
   canFinalize: boolean;
+  editingStrokeId: string | null;
 };
+
+function isLiveMode(
+  mode: "idle" | "drafting" | "editingCommitted",
+): boolean {
+  return mode === "drafting" || mode === "editingCommitted";
+}
 
 export function useCutPolylineDraft({
   mesh,
   lineRef,
   markersRef,
   editTool,
-  onCommit,
+  onFinalize,
   onDraftUiChange,
   onPointCapReached,
   onFinalizeTooFewPoints,
@@ -80,7 +91,7 @@ export function useCutPolylineDraft({
   lineRef: RefObject<InProgressPolylineHandle | null>;
   markersRef: RefObject<DraftVertexMarkersHandle | null>;
   editTool: MeshEditTool;
-  onCommit: (points: Vec3[]) => void;
+  onFinalize: (result: CutPolylineFinalizeResult) => void;
   onDraftUiChange?: (ui: CutPolylineDraftUi) => void;
   onPointCapReached?: () => void;
   onFinalizeTooFewPoints?: () => void;
@@ -92,27 +103,32 @@ export function useCutPolylineDraft({
 } {
   const [cutDraftActive, setCutDraftActive] = useState(false);
   const [cutDraftCanFinalize, setCutDraftCanFinalize] = useState(false);
-  const modeRef = useRef<"idle" | "drafting">("idle");
+  const modeRef = useRef<"idle" | "drafting" | "editingCommitted">("idle");
   const placedDisplayRef = useRef<DisplayVec3[]>([]);
   const placedCanonicalRef = useRef<Vec3[]>([]);
   const lastPointerUpAddedRef = useRef(false);
   const activeRef = useRef(false);
   const canFinalizeRef = useRef(false);
+  const editingUiRef = useRef<string | null>(null);
   const capToastShownRef = useRef(false);
   const normalizationRef = useRef<DisplayNormalization | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const pairClosedOnDragRef = useRef(false);
+  const editingStrokeIdRef = useRef<string | null>(null);
 
   const setDraftUi = useCallback(
     (active: boolean, canFinalize: boolean) => {
+      const editingStrokeId = active ? editingStrokeIdRef.current : null;
       const activeChanged = activeRef.current !== active;
       const finalizeChanged = canFinalizeRef.current !== canFinalize;
-      if (!activeChanged && !finalizeChanged) return;
+      const editingChanged = editingUiRef.current !== editingStrokeId;
+      if (!activeChanged && !finalizeChanged && !editingChanged) return;
       activeRef.current = active;
       canFinalizeRef.current = canFinalize;
+      editingUiRef.current = editingStrokeId;
       if (activeChanged) setCutDraftActive(active);
       if (finalizeChanged) setCutDraftCanFinalize(canFinalize);
-      onDraftUiChange?.({ active, canFinalize });
+      onDraftUiChange?.({ active, canFinalize, editingStrokeId });
     },
     [onDraftUiChange],
   );
@@ -152,6 +168,7 @@ export function useCutPolylineDraft({
     normalizationRef.current = null;
     dragIndexRef.current = null;
     pairClosedOnDragRef.current = false;
+    editingStrokeIdRef.current = null;
     lineRef.current?.clear();
     markersRef.current?.clear();
     onOrbitEnabledChange?.(true);
@@ -165,11 +182,15 @@ export function useCutPolylineDraft({
   const commitPoints = useCallback(
     (points: Vec3[]): CutPolylineFinalizeResult => {
       const cloned = points.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+      const editingId = editingStrokeIdRef.current;
       clearDraft();
-      onCommit(cloned);
-      return { kind: "add", points: cloned };
+      const result: CutPolylineFinalizeResult = editingId
+        ? { kind: "update", id: editingId, points: cloned }
+        : { kind: "add", points: cloned };
+      onFinalize(result);
+      return result;
     },
-    [clearDraft, onCommit],
+    [clearDraft, onFinalize],
   );
 
   const finalize = useCallback((): CutPolylineFinalizeResult | null => {
@@ -224,7 +245,7 @@ export function useCutPolylineDraft({
 
   const closeOnFirstMarkerClick =
     useCallback((): CutPolylineFinalizeResult | null => {
-      if (editTool !== "cut" || modeRef.current !== "drafting") return null;
+      if (editTool !== "cut" || !isLiveMode(modeRef.current)) return null;
       if (dragIndexRef.current != null) return null;
       const closed = closePolylineByDuplicatingFirst(
         placedDisplayRef.current,
@@ -238,9 +259,37 @@ export function useCutPolylineDraft({
       return commitPoints(closed.canonical);
     }, [commitPoints, editTool, onFinalizeTooFewPoints]);
 
+  const enterEditCommitted = useCallback(
+    (stroke: CutStroke, normalization: DisplayNormalization) => {
+      if (editTool !== "cut") return;
+      if (stroke.points.length < 2) return;
+      if (dragIndexRef.current != null) return;
+      if (modeRef.current === "drafting") return;
+      if (editingStrokeIdRef.current === stroke.id) return;
+
+      editingStrokeIdRef.current = stroke.id;
+      modeRef.current = "editingCommitted";
+      placedCanonicalRef.current = stroke.points.map((p) => ({
+        x: p.x,
+        y: p.y,
+        z: p.z,
+      }));
+      placedDisplayRef.current = stroke.points.map((p) => {
+        const d = canonicalToDisplay(p, normalization);
+        return { x: d.x, y: d.y, z: d.z };
+      });
+      normalizationRef.current = normalization;
+      lastPointerUpAddedRef.current = false;
+      capToastShownRef.current = false;
+      setDraftUi(true, canFinalizeDraft(placedDisplayRef.current.length));
+      syncVisuals(null);
+    },
+    [editTool, setDraftUi, syncVisuals],
+  );
+
   const beginNodeDrag = useCallback(
     (index: number) => {
-      if (editTool !== "cut" || modeRef.current !== "drafting") return;
+      if (editTool !== "cut" || !isLiveMode(modeRef.current)) return;
       if (index < 0 || index >= placedDisplayRef.current.length) return;
       dragIndexRef.current = index;
       pairClosedOnDragRef.current = isExactlyClosedPolyline(
@@ -314,7 +363,9 @@ export function useCutPolylineDraft({
       placedDisplayRef.current = result.display;
       placedCanonicalRef.current = result.canonical;
       normalizationRef.current = normalization;
-      modeRef.current = "drafting";
+      if (modeRef.current !== "editingCommitted") {
+        modeRef.current = "drafting";
+      }
       lastPointerUpAddedRef.current = true;
       setDraftUi(
         true,
@@ -328,7 +379,7 @@ export function useCutPolylineDraft({
 
   const setHoverTip = useCallback(
     (tip: DisplayVec3 | null) => {
-      if (modeRef.current !== "drafting") return;
+      if (!isLiveMode(modeRef.current)) return;
       if (dragIndexRef.current != null) return;
       syncVisuals(tip, false);
     },
@@ -347,7 +398,11 @@ export function useCutPolylineDraft({
       if (activeRef.current || canFinalizeRef.current) {
         activeRef.current = false;
         canFinalizeRef.current = false;
-        onDraftUiChange?.({ active: false, canFinalize: false });
+        onDraftUiChange?.({
+          active: false,
+          canFinalize: false,
+          editingStrokeId: null,
+        });
       }
     };
   }, [onDraftUiChange]);
@@ -378,7 +433,7 @@ export function useCutPolylineDraft({
       }
       if (
         (event.key === "Backspace" || event.key === "Delete") &&
-        modeRef.current === "drafting" &&
+        isLiveMode(modeRef.current) &&
         dragIndexRef.current == null
       ) {
         event.preventDefault();
@@ -397,6 +452,7 @@ export function useCutPolylineDraft({
       finalize,
       finalizeFromDoubleClick,
       closeOnFirstMarkerClick,
+      enterEditCommitted,
       beginNodeDrag,
       applyNodeDragHit,
       endNodeDrag,
@@ -410,6 +466,7 @@ export function useCutPolylineDraft({
       finalize,
       finalizeFromDoubleClick,
       closeOnFirstMarkerClick,
+      enterEditCommitted,
       beginNodeDrag,
       applyNodeDragHit,
       endNodeDrag,

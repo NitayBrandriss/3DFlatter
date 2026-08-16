@@ -210,3 +210,22 @@ export function incidentSparseSegmentStarts(
   }
   return [...starts].sort((a, b) => a - b);
 }
+
+export function excludeCutStrokeById<T extends { id: string }>(
+  strokes: readonly T[],
+  id: string | null,
+): readonly T[] {
+  if (!id) return strokes;
+  return strokes.filter((s) => s.id !== id);
+}
+
+/** New in-progress draft blocks committed-stroke pick so mesh clicks still place. */
+export function canPickCommittedStroke(
+  draftActive: boolean,
+  editingStrokeId: string | null,
+  dragging: boolean,
+): boolean {
+  if (dragging) return false;
+  if (!draftActive) return true;
+  return editingStrokeId != null;
+}

@@ -6,6 +6,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
+| [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | Chord-through-volume remediated; opposite-face walk still incomplete |
 | [2026-08-03 Slice B](#audit--2026-08-03--polyline-cut-slice-b-markers--closed-rings--islands) | Markers + closed rings → islands | Remediated / regression-guarded |
 | [2026-08-02 Slice A](#audit--2026-08-02--polyline-cut-slice-a-draft-lifecycle) | Draft lifecycle | Remediated for required findings |
 
@@ -33,6 +34,77 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 2. Insert a new `## Audit — <date> — <slice/title>` section **above** older audits (newest first).
 3. Fill: Scope, Method, Test baseline, Executive summary, Findings table, per-finding detail, Structural risks, Recommended next steps.
 4. Link characterizing tests under `src/logic/**/*.audit.test.ts` (or colocated `*.test.ts`).
+
+---
+
+## Audit — 2026-08-16 — Polyline cut Slice C (node drag)
+
+**Status:** POLYCUT-C-001 remediated (no piercing overlay chord). Opposite-face surface walk still cannot leave the start face (documented).  
+**Date:** 2026-08-16  
+**Scope:** Slice C draft node drag (`beginNodeDrag` / `applyNodeDragHit` / `endNodeDrag`), marker capture, orbit gate, overlay retessellate via `tessellateDraftDisplayPath` / `tessellateSurfaceSegment`. Not Slice D.  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Blueprint:** [polyline_cut_tool plan](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md)  
+**Method:** Static review + characterizing Vitest. User report: intermittent line through the solid after Slice C; could not re-trigger by hand.  
+**Characterizing tests:** [`src/logic/cuts/sliceC.polylineDrag.audit.test.ts`](../../../src/logic/cuts/sliceC.polylineDrag.audit.test.ts)
+
+### Manual / triggered
+
+| Observation | Finding |
+|-------------|---------|
+| Line through the model (hard to reproduce) | **POLYCUT-C-001** — overlay tessellate appended a straight 3D chord whenever the face-local walk failed (`pushDedupe(p1)`). Opposite cube faces: walk length 2 (no hops) → chord through the origin. Adjacent dihedral still tessellates on-surface (does not reproduce). |
+| Drag / rubber-band to the far side of a solid | Same C-001; one-frame / one-gesture then hop succeeds on a nearer face → “can’t do it again.” |
+
+### Remediation (2026-08-16)
+
+| ID | Status | Fix summary |
+|----|--------|-------------|
+| POLYCUT-C-001 | **Resolved** | `tessellateSurfaceSegment` joins `p1` only if current and goal share an incident face (or walk reached `p1`). No volume chord on walk/locate fail. |
+| POLYCUT-C-002 | Open | Face-local 2D clip cannot leave a face when the 3D goal projects inside that face (opposite cube faces). Overlay now **stops** (incomplete) instead of tunneling. Full geodesic around the shell is not in this slice. |
+| POLYCUT-C-003 | Open (Low) | Closed draft: last duplicate marker sits on top of first; short-click close only if `index === 0`. |
+| POLYCUT-010/011 | **Resolved** (Slice C gates) | `writePlacedTwin` + `pairClosedOnDragRef` |
+
+### Executive summary
+
+**Critical: 0.** User-visible through-model line is the old tessellate **chord fallback**, not a new drag Raycaster bug. It is intermittent because it needs a **failed** surface walk (opposite/far faces, off-surface locate) — adjacent-face drags stay on-surface. Freeze-on-fail removes the tunnel; opposite-face sparse segments still do not wrap around the solid.
+
+**Verdict:** C-001 overlay tunnel fixed and regression-guarded. C-002 is remaining walk limitation (incomplete line, not a chord). C-003 optional.
+
+### Findings table
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-C-001 | **Medium** | Overlay / draft line chords through the volume when tessellate walk fails | **Resolved** — no piercing `p1` append |
+| POLYCUT-C-002 | **Medium** | Opposite-face (and similar) segments do not tessellate around the shell | Open — freeze; geodesic later |
+| POLYCUT-C-003 | **Low** | Closed-loop last marker occludes first; click may not close | Open |
+| POLYCUT-010 | **Low** (gate) | Display/canonical twin write | **Resolved** — `writePlacedTwin` |
+| POLYCUT-011 | **Low** (gate) | Closed 0 / n−1 pairing while dragging | **Resolved** — `pairClosedOnDragRef` |
+
+### POLYCUT-C-001 — Tessellate fallback chord through the solid
+
+- **Issue:** `tessellateSurfaceSegment` always appended `p1` after a failed walk (`if (!exit) break` then `pushDedupe(path, p1)`), and returned `[p0, p1]` when locate failed. On a cube, +Z interior → −Z interior produces a 2-point path through the origin. Same path is used for **drag retessellate** and **rubber-band tip**, so Slice C made the old POLYCUT-003 class visible again during node move / hover.
+- **Severity:** Medium (preview/trust). Flatten still uses sparse clicks + materialize walk (separate).
+- **Root cause:** Face-local 2D clip has no exit when the goal projects inside the current face (goal is “through” the volume). Fallback treated “cannot walk” as “draw the 3D chord.”
+- **Fix:** Append `p1` only when it shares an incident face with the current sample (on-face join) or the walk reached `p1`. Off-surface / opposite-face → keep last on-surface point.
+- **Tests:** `sliceC.polylineDrag.audit.test.ts` (cube opposite, drag +Z→−Z, rubber-band tip, interior goal); packing test that off-mesh points do not emit a segment.
+- **Status:** Resolved (2026-08-16).
+
+### POLYCUT-C-002 — Opposite-face walk does not wrap the shell
+
+- **Issue:** After C-001, +Z→−Z tessellate stays on the start face (incomplete polyline). Markers still jump to the far hit; the line does not follow the surface around the cube.
+- **Severity:** Medium (honest but incomplete overlay). Product may later want a geodesic / multi-face search that is not “project goal onto current plane.”
+- **Status:** Open — characterized (`characterizes opposite-face walk…`).
+
+### POLYCUT-C-003 — Closed stroke duplicate marker vs close click
+
+- **Issue:** Marker-close duplicates first as last. Both spheres are pickable; the last is drawn later. `pointerup` calls `closeOnFirstMarkerClick` only when `index === 0` and the gesture did not move. A click on the stacked pair may hit `n−1` and neither close nor drag usefully.
+- **Severity:** Low.
+- **Strategy:** Treat `index === last` on a closed draft as close, or skip drawing the duplicate last marker.
+- **Status:** Open.
+
+### Recommended next steps
+
+1. Manual: drag a node onto the **opposite** side of a cube — line must not tunnel; it may stop short (C-002). Drag across a **fold / adjacent faces** — line should hug the surface.
+2. Slice D re-edit; optional geodesic for C-002; optional C-003.
 
 ---
 

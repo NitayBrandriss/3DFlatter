@@ -1,7 +1,6 @@
 import type { MeshModel } from "../logic/mesh/types";
-import type { Vec3 } from "../logic/cuts/types";
+import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import { tessellateSurfaceSegment } from "../logic/cuts/surfacePath";
-import type { CutStroke } from "../logic/cuts/types";
 import {
   canonicalToDisplay,
   type DisplayNormalization,
@@ -11,6 +10,25 @@ import {
  * Pack committed cut strokes into LineSegments xyz pairs (display space).
  * Tessellates each sparse segment along the mesh surface before display mapping.
  */
+export function tessellateStrokeCanonicalPath(
+  mesh: MeshModel,
+  stroke: CutStroke,
+): Vec3[] {
+  const out: Vec3[] = [];
+  for (let i = 0; i < stroke.points.length - 1; i++) {
+    const segment = tessellateSurfaceSegment(
+      mesh,
+      stroke.points[i]!,
+      stroke.points[i + 1]!,
+    );
+    for (let j = 0; j < segment.length; j++) {
+      if (j === 0 && out.length > 0) continue;
+      out.push(segment[j]!);
+    }
+  }
+  return out;
+}
+
 export function packCutStrokeDisplaySegments(
   mesh: MeshModel,
   cutStrokes: readonly CutStroke[],
@@ -21,7 +39,7 @@ export function packCutStrokeDisplaySegments(
 
   for (const stroke of cutStrokes) {
     if (stroke.points.length < 2) continue;
-    const dense = tessellateStrokeDense(mesh, stroke);
+    const dense = tessellateStrokeCanonicalPath(mesh, stroke);
     if (dense.length < 2) continue;
     densePaths.push(dense);
     segmentCount += dense.length - 1;
@@ -44,20 +62,4 @@ export function packCutStrokeDisplaySegments(
     }
   }
   return positions;
-}
-
-function tessellateStrokeDense(mesh: MeshModel, stroke: CutStroke): Vec3[] {
-  const out: Vec3[] = [];
-  for (let i = 0; i < stroke.points.length - 1; i++) {
-    const segment = tessellateSurfaceSegment(
-      mesh,
-      stroke.points[i]!,
-      stroke.points[i + 1]!,
-    );
-    for (let j = 0; j < segment.length; j++) {
-      if (j === 0 && out.length > 0) continue;
-      out.push(segment[j]!);
-    }
-  }
-  return out;
 }

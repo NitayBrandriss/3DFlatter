@@ -28,7 +28,7 @@ describe("packCutStrokeDisplaySegments", () => {
     const points: Vec3[] = [
       { x: 0, y: 0, z: 0 },
       { x: 1, y: 0, z: 0 },
-      { x: 1, y: 1, z: 0 },
+      { x: 0.2, y: 0.6, z: 0 },
     ];
     const packed = packCutStrokeDisplaySegments(UNIT_MESH, [{ id: "a", points }], norm);
     expect(packed).not.toBeNull();
@@ -71,7 +71,7 @@ describe("packCutStrokeDisplaySegments", () => {
       stroke("valid", [
         { x: 0, y: 0, z: 0 },
         { x: 1, y: 0, z: 0 },
-        { x: 1, y: 1, z: 0 },
+        { x: 0.2, y: 0.6, z: 0 },
       ]),
       stroke("also-empty", []),
     ];
@@ -86,8 +86,8 @@ describe("packCutStrokeDisplaySegments", () => {
       { x: 1, y: 0, z: 0 },
     ]);
     const s2: CutStroke = stroke("s2", [
-      { x: 2, y: 0, z: 0 },
-      { x: 3, y: 0, z: 0 },
+      { x: 0.1, y: 0.1, z: 0 },
+      { x: 0.4, y: 0.4, z: 0 },
     ]);
     const packed = packCutStrokeDisplaySegments(UNIT_MESH, [s1, s2], UNIT_NORM);
     expect(packed).not.toBeNull();
@@ -98,6 +98,20 @@ describe("packCutStrokeDisplaySegments", () => {
     expect(canon.x).toBeCloseTo(0, 4);
     expect(canon.y).toBeCloseTo(0, 4);
     expect(canon.z).toBeCloseTo(0, 4);
+  });
+
+  it("does not pack a piercing chord for off-mesh stroke points", () => {
+    const packed = packCutStrokeDisplaySegments(
+      UNIT_MESH,
+      [
+        stroke("off", [
+          { x: 0.2, y: 0.2, z: 0 },
+          { x: 0.2, y: 0.2, z: 5 },
+        ]),
+      ],
+      UNIT_NORM,
+    );
+    expect(packed).toBeNull();
   });
 
   it("produces no NaN/Infinity for zero-scale normalization", () => {

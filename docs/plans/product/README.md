@@ -24,3 +24,5 @@
 4. Promote from `.cursor/plans/` into this folder; delete the Cursor-only copy.
 
 When a phase ships, set Status **Complete** and keep the spec here (or move to `product/archive/` if the folder grows).
+
+**Backlog (not scheduled):** cut-tool v2 UX — mid-segment insert, undo stack, snap/weld — lives on [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) (do not fold into polyline Slice E).

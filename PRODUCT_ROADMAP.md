@@ -109,6 +109,22 @@ flowchart TB
 
 ---
 
+## Cut-tool UX backlog (v2 — after polyline blueprint)
+
+Parked **2026-08-16**. These are **product features**, not Slice D defects. Do **not** pull them into [polyline_cut_tool](.cursor/plans/polyline_cut_tool_318885f7.plan.md) Slice E. Current re-edit is: pick stroke → drag existing markers and/or **append at the end** → Done/`updateCutStroke`.
+
+| ID | Request | Why later | Likely work |
+|----|---------|-----------|-------------|
+| **CUT-UX-001** | **Insert vertex mid-segment** while editing a committed (or draft) stroke | Blueprint explicitly deferred “mid-segment vertex insert.” Mesh clicks in `editingCommitted` still **append** (draw-like). | Hit-test tessellated overlay segment → insert sparse point at that index → same Slice C surface drag |
+| **CUT-UX-002** | **General undo stack** (undo last action, not only last placed vertex) | Backspace already drops the last draft vertex. No history for node drag, Done, delete stroke, or Flatten. | Command/snapshot stack over `cutStrokes` (and optionally seams); Esc/Cancel stays “discard this session” |
+| **CUT-UX-003** | **Snap / weld** to existing cut vertices, mesh verts/edges, and manual seams so strokes can meet and **split islands** | Materialize already snaps at Flatten (ADR 0100) and applies strokes in order (T-junctions). Draw/drag does not snap, so joins are easy to miss. Open cuts on closed shells often will not split (open-loop ADR). | Viewer snap ε in display space; weld endpoints on commit; optional snap onto `EdgeKey` chords. Closed loops or boundary-meeting cuts remain the reliable split |
+
+Related notes (same bucket, not separate phases yet): connect a new cut to an existing polyline; geodesic wrap when overlay walk cannot reach a far face ([POLYCUT-C-002](docs/plans/product/qa-audits.md)).
+
+When scheduled: add a product plan row + ADR **0101+**; do not silently extend Phase 1 “Complete.”
+
+---
+
 ## Later phases (outline only)
 
 Details will get their own ADRs (0101+) when scheduled.

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 import type * as THREE from "three";
-import type { Vec3 } from "../../logic/cuts/types";
 import type { MeshModel } from "../../logic/mesh/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
 import {
@@ -20,6 +19,7 @@ import {
   useCutPolylineDraft,
   type CutPolylineDraftApi,
   type CutPolylineDraftUi,
+  type CutPolylineFinalizeResult,
 } from "./useCutPolylineDraft";
 
 const DRAG_THRESHOLD_PX = 5;
@@ -33,7 +33,7 @@ export function CutPolylineSession({
   mesh,
   editTool,
   modelScale,
-  onCommit,
+  onFinalize,
   onDraftUiChange,
   onPointCapReached,
   onFinalizeTooFewPoints,
@@ -45,7 +45,7 @@ export function CutPolylineSession({
   mesh: MeshModel;
   editTool: MeshEditTool;
   modelScale: number;
-  onCommit: (points: Vec3[]) => void;
+  onFinalize: (result: CutPolylineFinalizeResult) => void;
   onDraftUiChange?: (ui: CutPolylineDraftUi) => void;
   onPointCapReached?: () => void;
   onFinalizeTooFewPoints?: () => void;
@@ -70,7 +70,7 @@ export function CutPolylineSession({
     lineRef,
     markersRef,
     editTool,
-    onCommit,
+    onFinalize,
     onDraftUiChange,
     onPointCapReached,
     onFinalizeTooFewPoints,

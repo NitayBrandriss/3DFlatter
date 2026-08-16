@@ -13,9 +13,9 @@ todos:
     status: completed
   - id: slice-d-committed
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
-    status: pending
+    status: completed
   - id: slice-e-docs-qa
-    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint"
+    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint. HOLD until Slice D manual QA green light."
     status: pending
 isProject: false
 ---
@@ -317,7 +317,7 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Tests: `raycastDisplayMesh` hits; twin length; closed 0/n−1 pairing; incident retessellate helper if extracted.
 - Manual: drag middle vertex; overlay stays on-surface across a dihedral; orbit between edits; first-marker click still closes; finalize still one stroke.
 
-### Slice D — Committed stroke re-edit
+### Slice D — Committed stroke re-edit (**shipped**)
 - Pick a committed stroke (overlay or per-stroke pick proxies) → `enterEditCommitted` (copy points into refs, hide or dim that stroke in overlay while editing).
 - Same markers + drag path as Slice C (incl. marker close when editing).
 - Finalize → `updateCutStroke`; Cancel → discard; Delete selected stroke → existing `deleteCutStroke`.
@@ -330,7 +330,11 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar; POLYCUT-B-007 digon min-3.
 - `npm test` / `npm run lint`.
 
-**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, mid-segment vertex insert, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
+**Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
+
+**Parked for v2 (roadmap, not Slice E):** mid-segment vertex insert, general undo stack, snap/weld to existing points/seams — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
+
+**Slice E hold:** wait for Slice D **manual QA green light** (intended scope only: marker drag, append at end of edited stroke, cancel, commit). Do not draft the Slice E QA matrix until then.
 
 ---
 
