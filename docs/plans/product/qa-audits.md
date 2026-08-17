@@ -6,6 +6,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
+| [2026-08-17 Slice E](#audit--2026-08-17--polyline-cut-slice-e-docs--qa-matrix) | Docs + end-to-end QA matrix | Complete (manual green light post–Slice D) |
 | [2026-08-16 Slice D](#audit--2026-08-16--polyline-cut-slice-d-committed-re-edit) | Committed stroke re-edit (drag / append-end / cancel / Done+Flatten) | D-001/D-002 remediated; D-003 accepted (tip-in-edit) |
 | [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | C-001 remediated; C-003 remediated; C-002 frozen (incomplete opposite-face walk) |
 | [2026-08-03 Slice B](#audit--2026-08-03--polyline-cut-slice-b-markers--closed-rings--islands) | Markers + closed rings → islands | Remediated / regression-guarded |
@@ -29,13 +30,55 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ---
 
+## Audit — 2026-08-17 — Polyline cut Slice E (docs + QA matrix)
+
+**Status:** Complete. Manual QA green light after Slice D; phase-1 plan UX note updated.  
+**Date:** 2026-08-17  
+**Scope:** Documentation + end-to-end viewer/Flatten matrix for the polyline blueprint (Slices A–D). No new production code.  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Plan:** [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) · [polyline blueprint](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md)  
+**Method:** Consolidate prior audit remediations + operator verification (2026-08-16/17).
+
+### Manual QA matrix
+
+| # | Check | Result |
+|---|--------|--------|
+| 1 | Place ≥3 vertices with orbit between clicks | Pass |
+| 2 | Rubber-band tip follows mesh hover while drafting | Pass |
+| 3 | Amber first-marker click closes loop and commits | Pass |
+| 4 | Drag draft / edited markers; overlay stays on-surface (same walk as materialize) | Pass |
+| 5 | Finalize open stroke (Done / Enter / dblclick) → `addCutStroke` | Pass |
+| 6 | Esc / Cancel discards draft; store unchanged | Pass |
+| 7 | Pick committed stroke → drag → Done → Flatten uses updated polyline | Pass |
+| 8 | Cancel while editing restores original committed points | Pass |
+| 9 | Mesh click while drawing a **new** stroke appends; does not enter edit | Pass |
+| 10 | Base `session.mesh` vertex count unchanged until Flatten | Pass |
+| 11 | Delete / clear cuts; Flatten without strokes unfolds base | Pass |
+
+### Known / deferred (not Slice E blockers)
+
+| ID | Note |
+|----|------|
+| POLYCUT-003 | **Resolved** — overlay surface tessellation (`surfacePath.ts`) |
+| POLYCUT-C-002 | Incomplete opposite-face walk (frozen from Slice C) |
+| POLYCUT-008 / 009 | Optional Low: rubber-band buffer prealloc; Esc vs sidebar |
+| POLYCUT-B-007 | Digon close min-3 deferred |
+| CUT-UX-001…003 | v2 backlog on [PRODUCT_ROADMAP](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) |
+
+### Recommended next steps
+
+1. Keep characterizing suites green on CI (`npm test`).  
+2. Schedule CUT-UX backlog separately; do not reopen polyline Slice E for mid-insert / undo / snap.
+
+---
+
 ## Audit — 2026-08-16 — Polyline cut Slice D (committed re-edit)
 
-**Status:** Intended-scope contracts hold in logic/store. Viewer Medium issues D-001/D-002 remediated; D-003 accepted (tip-in-edit as append preview).  
+**Status:** Intended-scope contracts hold in logic/store. Viewer Medium issues D-001/D-002 remediated; D-003 accepted (tip-in-edit as append preview). Manual intended-scope QA green (2026-08-16) → Slice E unblocked.  
 **Date:** 2026-08-16  
 **Remediation:** 2026-08-16 (2A) — pick gate, draft-line raycast block, tip accepted.  
 **Scope (only):** (1) marker drag updates the mesh overlay path; (2) mesh click in edit appends **strictly at the end**; (3) Esc / Cancel restores the original committed stroke; (4) Done/`updateCutStroke` persists points and Flatten uses the new polyline for 2D islands.  
-**Out of scope (do not treat as bugs):** mid-segment insert (**CUT-UX-001**), general undo stack (**CUT-UX-002**), snap/weld (**CUT-UX-003**). Slice C overlay walk limits (**POLYCUT-C-002**, **POLYCUT-C-003**) are inherited, not new Slice D defects. Slice E QA matrix is still on hold.  
+**Out of scope (do not treat as bugs):** mid-segment insert (**CUT-UX-001**), general undo stack (**CUT-UX-002**), snap/weld (**CUT-UX-003**). Slice C overlay walk limits (**POLYCUT-C-002**, **POLYCUT-C-003**) are inherited, not new Slice D defects.  
 **ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
 **Blueprint:** [polyline_cut_tool plan](../../../.cursor/plans/polyline_cut_tool_318885f7.plan.md) (`editingCommitted` → `updateCutStroke` on finalize; discard on cancel; overlay hides edited id).  
 **Method:** Static review of `useCutPolylineDraft`, `MeshViewport`, `PickableMesh`, `CommittedStrokePickables`, store + flatten snapshot; characterizing Vitest (no source fixes).  
@@ -113,7 +156,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ### Recommended next steps
 
-D-001 / D-002 / D-003 remediated (2026-08-16 2A). Manual QA should still walk the four-row table above on a real mesh before Slice E. C-002 remains frozen.
+D-001 / D-002 / D-003 remediated (2026-08-16 2A). Manual intended-scope QA green (2026-08-16); Slice E matrix recorded 2026-08-17. C-002 remains frozen.
 
 ---
 

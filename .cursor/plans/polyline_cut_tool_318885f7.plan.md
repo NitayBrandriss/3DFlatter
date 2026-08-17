@@ -15,8 +15,8 @@ todos:
     content: "Slice D — Committed stroke re-edit: pick stroke → draft session; updateCutStroke on finalize; delete selected"
     status: completed
   - id: slice-e-docs-qa
-    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint. HOLD until Slice D manual QA green light."
-    status: pending
+    content: "Slice E — Update phase-1 plan UX note; manual QA matrix; npm test / lint"
+    status: completed
 isProject: false
 ---
 
@@ -323,18 +323,18 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 - Finalize → `updateCutStroke`; Cancel → discard; Delete selected stroke → existing `deleteCutStroke`.
 - Does **not** change ADR materialize rules.
 
-### Slice E — Docs + QA
-- Update [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) key files / UX note (polyline + node edit lifecycle; marker close).
-- QA matrix: draw, orbit between clicks, rubber-band, marker close, drag node, finalize, re-edit committed, Flatten, base mesh unchanged until Flatten.
+### Slice E — Docs + QA (**shipped**)
+- Updated [phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md): polyline UX lifecycle, key files, Slice E done criteria.
+- QA matrix in [qa-audits.md](docs/plans/product/qa-audits.md) (2026-08-17 Slice E): draw, orbit, rubber-band, marker close, drag, finalize, re-edit, Flatten, base mesh unchanged.
 - **POLYCUT-003 (resolved):** overlay uses surface tessellation (`surfacePath.ts`); same walk as materialize.
-- Optional Low leftovers if prioritized: POLYCUT-008 buffer prealloc; POLYCUT-009 Esc vs sidebar; POLYCUT-B-007 digon min-3.
+- Optional Low leftovers remain deferred: POLYCUT-008, POLYCUT-009, POLYCUT-B-007.
 - `npm test` / `npm run lint`.
 
 **Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
 
-**Parked for v2 (roadmap, not Slice E):** mid-segment vertex insert, general undo stack, snap/weld to existing points/seams — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
+**Parked for v2 (roadmap, not Slice E):** mid-segment vertex insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
 
-**Slice E hold:** wait for Slice D **manual QA green light** (intended scope only: marker drag, append at end of edited stroke, cancel, commit). Do not draft the Slice E QA matrix until then.
+**Slice E hold:** cleared after Slice D manual QA green light (2026-08-16).
 
 ---
 

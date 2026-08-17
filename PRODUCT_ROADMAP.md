@@ -90,8 +90,8 @@ flowchart TB
 
 1. **Logic** — `materializeCutStrokes`, segment–triangle cuts, fan splits, snap, Vitest fixtures  
 2. **State** — stroke CRUD, `patternRevision`, wire [useFlattenExport](src/ui/useFlattenExport.ts)  
-3. **Viewer** — draw tool, ref-based in-progress stroke, `CutStrokesOverlay`  
-4. **Docs** — [docs/plans/product/phase-1-freeform-cut-strokes.md](docs/plans/product/phase-1-freeform-cut-strokes.md) + ADR 0100
+3. **Viewer** — polyline point-to-point draw, markers, node drag, committed re-edit, `CutStrokesOverlay` ([blueprint](.cursor/plans/polyline_cut_tool_318885f7.plan.md) A–D)  
+4. **Docs + QA** — [phase-1 plan](docs/plans/product/phase-1-freeform-cut-strokes.md) + ADR 0100 + [qa-audits.md](docs/plans/product/qa-audits.md) Slice E matrix
 
 ### Phase 1 non-goals
 
