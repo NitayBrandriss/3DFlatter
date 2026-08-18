@@ -16,6 +16,17 @@
 
 ---
 
+## QA
+
+Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) stay as sibling plans until an execute-audit pass appends a snapshot.
+
+| Plan | Status |
+|------|--------|
+| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate recorded** (337 tests / lint clean); remaining steps waiting |
+| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E complete) |
+
+---
+
 ## How to add a product plan
 
 1. Add a row to **Active** in this file and to [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md).

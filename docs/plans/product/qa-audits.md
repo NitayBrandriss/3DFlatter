@@ -2,6 +2,13 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
+**Holistic / post–Phase 1**
+
+| Audit | Topic | Status |
+|-------|-------|--------|
+| [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health) | `npm test` / `npm run lint` baseline + section 5 inventory + manual Journeys A-D | **Updated** — 49 files / 337 tests passed; lint clean; manual E2E recorded with Medium/Low UI findings |
+| [2026-08-17 Holistic strategy](qa-holistic-post-phase1.md) | Whole-project QA after Slices A–E (logic, viewer, E2E, edge cases, Vitest health) | Approved; CI gate and manual E2E recorded; logic/viewer regression and edge-case passes still waiting |
+
 **Polyline cut audits (promoted from proposals)**
 
 | Audit | Topic | Status |
@@ -27,6 +34,85 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-08-17 — Holistic CI gate + test suite health
+
+**Status:** CI gate and manual E2E inventory recorded. No production or test-file changes.  
+**Date:** 2026-08-17  
+**Scope:** Step 1 of [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) — `npm test`, `npm run lint`, section-5 (Vitest health) inventory, and user-executed manual Journeys A-D. Not a production-code remediation pass.  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Plan:** [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) § How this audit will run (item 1) and § 5  
+**Method:** Fresh `vitest run` + `eslint .`, plus user-reported manual E2E verification for Journeys A-D. Static inventory in the strategy estimated ~49 files / ~328 `it()` cases; this run replaces that estimate.
+
+### CI baseline
+
+| Check | Result |
+|-------|--------|
+| `npm test` (`vitest run` v4.1.8) | **Pass** — 49 files, **337** tests, 0 failed, 0 skipped reported |
+| Duration | 2.90s |
+| `npm run lint` (`eslint .`) | **Pass** — exit 0, no diagnostics |
+| `3d_models/` smoke ([localAssets.smoke.test.ts](../../../src/logic/io/localAssets.smoke.test.ts)) | **Not in this run** — folder empty/absent (`describe.skipIf`); contributed 0 of 337 |
+| vs strategy estimate | +9 tests vs ~328 (static `it()` undercount, not new files) |
+
+npm printed `Unknown env config "devdir"` on both commands. That is a local npmrc warning, not an ESLint or Vitest failure.
+
+### Section 5 inventory (green ≠ strong)
+
+The suite is **green**. Section 5 of the strategy still holds: passing tests include several that would stay green if the implementation were wrong. No new failures were found, so these are **confidence gaps**, not CI blockers.
+
+**Glaring false positives (would still pass on a no-op or incomplete cut/unfold):**
+
+| ID | Severity | Issue |
+|----|----------|-------|
+| HOLISTIC-TS-001 | **High** (coverage / false confidence) | [flattenWithCutStrokes.test.ts](../../../src/logic/cuts/flattenWithCutStrokes.test.ts) asserts `islands.length >= 1` after a diagonal cut. A no-op materialize still passes. Closed-loop island split lives only in [polylineClosedLoop.audit.test.ts](../../../src/logic/cuts/polylineClosedLoop.audit.test.ts), not in the production flatten file. |
+| HOLISTIC-TS-002 | **Medium** | [materializeCutStrokes.test.ts](../../../src/logic/cuts/materializeCutStrokes.test.ts) uses `seams.size >= 1` and never calls `partitionIslands`. |
+| HOLISTIC-TS-003 | **Medium** | [sliceC.polylineDrag.audit.test.ts](../../../src/logic/cuts/sliceC.polylineDrag.audit.test.ts) “stays on start face” **locks in POLYCUT-C-002**. A correct opposite-face wrap would fail this test. |
+| HOLISTIC-TS-004 | **Low** | [sliceD.committedEdit.audit.test.ts](../../../src/logic/cuts/sliceD.committedEdit.audit.test.ts) “Cancel” never calls cancel; dart flatten uses `islands.length <= before`. |
+| HOLISTIC-TS-005 | **Low** | [unfoldMesh.test.ts](../../../src/logic/unfold/unfoldMesh.test.ts) `Array.isArray(collisions/tears)` is tautological. Adversarial `warnings.length > 0` / `not.toThrow` and [demoMeshes.test.ts](../../../src/logic/io/demoMeshes.test.ts) `> 0` verts/faces are the same class. |
+
+**Missing critical coverage (not exercised by this green run):**
+
+| ID | Severity | Gap |
+|----|----------|-----|
+| HOLISTIC-TS-006 | **High** | ADR 0002 soup invariants (`positions2d` length 6F, 2D≈3D, tree-hinge copy) are **not** asserted on **derived** meshes after `flattenWithCutStrokes`. |
+| HOLISTIC-TS-007 | **Medium** | `parseObj` reject/warn paths are thin vs [parseStl.test.ts](../../../src/logic/io/stl/parseStl.test.ts) (empty, budget, NaN, `v/vt`, negative indices). |
+| HOLISTIC-TS-008 | **Medium** | No non-manifold fixture (`incidents > 2`) for `buildTopology` / `canSelectAsSeam`. |
+| HOLISTIC-TS-009 | **Medium** | Store: no STL `loadMeshFile`, no overlapping `loadSeq`, no ineligible-seam toast, no same-reference assert on failed load. |
+| HOLISTIC-TS-010 | **Low** | [flattenSnapshotUi.test.ts](../../../src/ui/flattenSnapshotUi.test.ts) resets overlay on `meshLoadVersion` only — not `patternRevision` / seams stale key. No React/R3F tests (expected; Node-only). |
+
+**Not findings (confirmed healthy on this run):** unfoldIsland soup tests, parseStl, materialize adversarial file presence, store versioning tests, displayNormalization, layoutIslands — all included in the 337 and passing. Redundancy (inline `CUBE_OBJ`, icosahedron recounts, SVG preview duplication) is maintainability, not a CI failure.
+
+### Recommended next steps
+
+1. Do **not** tighten or add tests in this slice (guardrail).  
+2. Next execute-audit step per the strategy: **§ 1 Logic & math regression** (no-cut golden, then derived-mesh soup).  
+3. Test-hardening (promote closed-loop flatten asserts, freeze C-002 as `it.skip`, OBJ error-path parity) stays a **later remediation slice** after findings, not during inventory.
+
+### Manual E2E journeys (user-executed)
+
+| Journey | Result | Notes |
+|---------|--------|-------|
+| A — Golden seam-only papercraft | **Pass** | Non-partitioning seams behavior verified as the expected ADR 0002 limit. |
+| B — Closed-loop cut → extra island → export | **Pass** | Closed-loop happy path verified. Non-partitioning seam behavior remains an expected ADR 0002 limit, not a defect. |
+| C — Mixed seams + re-edit + tool switching | **Medium findings** | Viewer / sidebar UX defects found; see findings table below. |
+| D — Failure recovery and mode hygiene | **Pass with UI defect** | Corrupt OBJ handling prevents crashes. Opposite-face tunneling confirmed as the known frozen C-002 limit. Error presentation issue found; see findings table below. |
+
+### Manual findings table
+
+| ID | Severity | Issue | Root cause & proposed strategy |
+|----|----------|-------|--------------------------------|
+| HOLISTIC-UI-001 | **Medium** | Missing **Cancel** and **Done** UI buttons in the viewer tool during the Journey C re-edit / draft workflow. | UI affordances expected by the plan are not visible where the operator needs them. In a later remediation slice, verify the cut-tool controls render consistently during draft/edit states and align viewer/sidebar affordances with the documented workflow. |
+| HOLISTIC-UI-002 | **Medium** | Sidebar jumps / re-renders unnecessarily when a draft point is appended. | Draft interaction is causing visible layout churn during point placement. In a later remediation slice, profile the sidebar/viewer update path during cut drafting and reduce avoidable re-renders or layout shifts. |
+| HOLISTIC-UI-003 | **Medium** | Stale sidebar instructional copy still mentions **Backspace to undo** and **Double-click to commit**. | The copy no longer matches the approved operator workflow. In a later remediation slice, align cut-tool instructional text with the actual supported interactions and current UX decisions. |
+| HOLISTIC-UI-004 | **Low / Medium** | Corrupted OBJ errors are caught correctly, but the message is buried at the bottom of the sidebar instead of surfacing as a prominent toast. | Error handling prevents crashes but the message placement is easy to miss. In a later remediation slice, route parse/load failures through the primary toast/error channel while preserving the existing non-crash behavior. |
+
+### Manual notes / non-findings
+
+- Journey A and Journey B passed.
+- The non-partitioning seams behavior was explicitly verified as the expected ADR 0002 limit, not a new defect.
+- Journey D confirmed **POLYCUT-C-002** visually: drawing between opposite faces tunnels through the mesh volume. Keep this categorized as the known frozen limit unless a future slice explicitly tackles the geodesic walk.
 
 ---
 
@@ -68,7 +154,8 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 ### Recommended next steps
 
 1. Keep characterizing suites green on CI (`npm test`).  
-2. Schedule CUT-UX backlog separately; do not reopen polyline Slice E for mid-insert / undo / snap.
+2. Schedule CUT-UX backlog separately; do not reopen polyline Slice E for mid-insert / undo / snap.  
+3. Whole-project follow-up: [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) (approved; do not execute until an explicit follow-up).
 
 ---
 
