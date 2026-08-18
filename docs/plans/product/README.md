@@ -22,8 +22,9 @@ Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) sta
 
 | Plan | Status |
 |------|--------|
-| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate recorded** (337 tests / lint clean); remaining steps waiting |
-| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E complete) |
+| [remediation-phase1.md](remediation-phase1.md) | Approved — **not started** (UI/UX, load toasts, Vitest hardening) |
+| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; logic/viewer regression still waiting |
+| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E + holistic baseline) |
 
 ---
 

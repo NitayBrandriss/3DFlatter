@@ -6,7 +6,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
-| [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health) | `npm test` / `npm run lint` baseline + section 5 inventory + manual Journeys A-D | **Updated** — 49 files / 337 tests passed; lint clean; manual E2E recorded with Medium/Low UI findings |
+| [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health) | `npm test` / `npm run lint` baseline + section 5 inventory + manual Journeys A-D | **Findings recorded** — remediation plan: [remediation-phase1.md](remediation-phase1.md) |
 | [2026-08-17 Holistic strategy](qa-holistic-post-phase1.md) | Whole-project QA after Slices A–E (logic, viewer, E2E, edge cases, Vitest health) | Approved; CI gate and manual E2E recorded; logic/viewer regression and edge-case passes still waiting |
 
 **Polyline cut audits (promoted from proposals)**
