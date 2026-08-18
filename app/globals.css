@@ -498,6 +498,34 @@ body.is-resizing {
   backdrop-filter: blur(3px);
 }
 
+.cut-draft-toolbar {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(12, 16, 24, 0.88);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.cut-draft-toolbar-label {
+  padding: 0 6px 0 2px;
+  font-size: 13px;
+  color: rgba(238, 241, 247, 0.78);
+  white-space: nowrap;
+}
+
+.cut-draft-toolbar .btn {
+  min-width: 4.5rem;
+}
+
 .muted {
   color: rgba(238, 241, 247, 0.7);
 }

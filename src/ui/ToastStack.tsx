@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import type { ToastMessage } from "../state/meshSessionStore";
 
+export const DEFAULT_TOAST_DURATION_MS = 4000;
+
 export function ToastStack({
   toasts,
   onDismiss,
@@ -27,9 +29,10 @@ function ToastItem({
   onDismiss: (id: number) => void;
 }) {
   useEffect(() => {
-    const timer = window.setTimeout(() => onDismiss(toast.id), 4000);
+    const ms = toast.duration ?? DEFAULT_TOAST_DURATION_MS;
+    const timer = window.setTimeout(() => onDismiss(toast.id), ms);
     return () => window.clearTimeout(timer);
-  }, [onDismiss, toast.id]);
+  }, [onDismiss, toast.duration, toast.id]);
 
   return (
     <div className={`toast toast-${toast.tone}`} role="status">

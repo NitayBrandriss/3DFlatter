@@ -9,6 +9,7 @@ import { useResizableSplit } from "@/ui/layout/useResizableSplit";
 import { useSidebarState } from "@/ui/layout/useSidebarState";
 import { ViewportChrome } from "@/ui/layout/ViewportChrome";
 import type { MobilePanel } from "@/ui/layout/ViewportChrome";
+import { CutDraftToolbar } from "@/ui/layout/CutDraftToolbar";
 import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
 import { useFlattenExport } from "@/ui/useFlattenExport";
 import { useHomeSession } from "@/ui/hooks/useHomeSession";
@@ -294,6 +295,13 @@ export default function HomePage() {
                 </div>
               </div>
             ) : null}
+            <CutDraftToolbar
+              visible={meshEditTool === "cut" && cutDraftActive}
+              canFinalize={cutDraftCanFinalize}
+              editing={editingStrokeId != null}
+              onDone={onCutDraftDone}
+              onCancel={onCutDraftCancel}
+            />
           </>
         }
         viewport2d={

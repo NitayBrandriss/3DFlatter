@@ -1,6 +1,6 @@
 # Phase 1 remediation — Holistic QA findings
 
-**Status:** Approved for implementation — not started  
+**Status:** In progress — Slice 4 and Slice 1 implemented; remaining slices not started  
 **Date:** 2026-08-18  
 **Branch:** current (post–Phase 1 complete)  
 **Source audits:** [qa-audits.md — Holistic CI gate](qa-audits.md#audit--2026-08-17--holistic-ci-gate--test-suite-health)  
@@ -293,8 +293,8 @@ Add cases to [parseObj.test.ts](../../../src/logic/io/obj/parseObj.test.ts) mirr
 
 | Order | Slice | Rationale |
 |-------|-------|-----------|
-| 1 | **4** Load-error toasts | Smallest, isolated store change; immediate user-visible win |
-| 2 | **1** Viewport toolbar | Core Journey C defect |
+| 1 | **4** Load-error toasts | **Done** — `loadMeshFile` pushes a warning toast; store tests cover corrupt OBJ + session identity |
+| 2 | **1** Viewport toolbar | **Done** — HTML overlay `CutDraftToolbar` on the 3D panel; sidebar Done/Cancel kept |
 | 3 | **2** Sidebar stability | Depends on toolbar existing; layout reserve independent |
 | 4 | **3** Copy | Quick; do after UX layout settles |
 | 5 | **5** Flatten/materialize tests | Logic confidence before release |
