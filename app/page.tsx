@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyLayoutTokensToDocument } from "@/ui/layout/applyLayoutTokens";
 import { AppLayout } from "@/ui/layout/AppLayout";
 import { AppSidebar } from "@/ui/layout/AppSidebar";
@@ -9,12 +9,17 @@ import { useResizableSplit } from "@/ui/layout/useResizableSplit";
 import { useSidebarState } from "@/ui/layout/useSidebarState";
 import { ViewportChrome } from "@/ui/layout/ViewportChrome";
 import type { MobilePanel } from "@/ui/layout/ViewportChrome";
+import { CutDraftToolbar } from "@/ui/layout/CutDraftToolbar";
 import { UnfoldViewer2D } from "@/ui/UnfoldViewer2D";
 import { useFlattenExport } from "@/ui/useFlattenExport";
 import { useHomeSession } from "@/ui/hooks/useHomeSession";
 import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
 import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
 import { MeshViewport } from "@/viewer/MeshViewport";
+import type {
+  CutPolylineActions,
+} from "@/viewer/cutPolyline/CutPolylineSession";
+import type { CutPolylineFinalizeResult } from "@/viewer/cutPolyline/useCutPolylineDraft";
 
 export default function HomePage() {
   const {
@@ -33,6 +38,7 @@ export default function HomePage() {
     toggleSeamAt,
     clearAllSeams,
     addCutStroke,
+    updateCutStroke,
     deleteCutStroke,
     clearCutStrokes,
     setMeshEditTool,
@@ -71,6 +77,10 @@ export default function HomePage() {
   } = useViewportPreferences();
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("3d");
   const cutStrokeIdSeq = useRef(0);
+  const [cutDraftActive, setCutDraftActive] = useState(false);
+  const [cutDraftCanFinalize, setCutDraftCanFinalize] = useState(false);
+  const [editingStrokeId, setEditingStrokeId] = useState<string | null>(null);
+  const cutDraftActionsRef = useRef<CutPolylineActions | null>(null);
 
   const {
     isDesktop,
@@ -106,21 +116,70 @@ export default function HomePage() {
     [toggleSeamAt],
   );
 
-  const onCutStrokeCommit = useCallback(
-    (points: Parameters<typeof addCutStroke>[0]["points"]) => {
+  const onDraftFinalize = useCallback(
+    (result: CutPolylineFinalizeResult) => {
+      if (result.kind === "update") {
+        updateCutStroke(result.id, result.points);
+        return;
+      }
       cutStrokeIdSeq.current += 1;
       addCutStroke({
         id: `cut-${meshLoadVersion}-${cutStrokeIdSeq.current}`,
-        points,
+        points: result.points,
       });
     },
-    [addCutStroke, meshLoadVersion],
+    [addCutStroke, meshLoadVersion, updateCutStroke],
   );
 
   const deleteLastCutStroke = useCallback(() => {
     const last = cutStrokes[cutStrokes.length - 1];
-    if (last) deleteCutStroke(last.id);
-  }, [cutStrokes, deleteCutStroke]);
+    if (!last) return;
+    if (editingStrokeId === last.id) {
+      cutDraftActionsRef.current?.cancel();
+    }
+    deleteCutStroke(last.id);
+  }, [cutStrokes, deleteCutStroke, editingStrokeId]);
+
+  const deleteEditingCutStroke = useCallback(() => {
+    if (!editingStrokeId) return;
+    const id = editingStrokeId;
+    cutDraftActionsRef.current?.cancel();
+    deleteCutStroke(id);
+  }, [deleteCutStroke, editingStrokeId]);
+
+  const onClearCutStrokes = useCallback(() => {
+    cutDraftActionsRef.current?.cancel();
+    clearCutStrokes();
+  }, [clearCutStrokes]);
+
+  const onCutDraftUiChange = useCallback(
+    (ui: {
+      active: boolean;
+      canFinalize: boolean;
+      editingStrokeId: string | null;
+    }) => {
+      setCutDraftActive(ui.active);
+      setCutDraftCanFinalize(ui.canFinalize);
+      setEditingStrokeId(ui.editingStrokeId);
+    },
+    [],
+  );
+
+  const onCutDraftDone = useCallback(() => {
+    cutDraftActionsRef.current?.finalize();
+  }, []);
+
+  const onCutDraftCancel = useCallback(() => {
+    cutDraftActionsRef.current?.cancel();
+  }, []);
+
+  const onCutPointCapReached = useCallback(() => {
+    notifyToast("Cut stroke point limit (512) reached", "warning");
+  }, [notifyToast]);
+
+  const onCutFinalizeTooFewPoints = useCallback(() => {
+    notifyToast("Place at least two points to finish the cut", "info");
+  }, [notifyToast]);
 
   const handleFlatten = useCallback((): boolean => {
     const ok = onFlatten();
@@ -129,6 +188,133 @@ export default function HomePage() {
     }
     return ok;
   }, [isDesktop, onFlatten]);
+
+  const sidebarLayout = useMemo(
+    () => ({
+      sidebarOpen,
+      sidebarDrawerId,
+      openButtonRef,
+      onToggleSidebar: toggleSidebar,
+      onCloseSidebar: closeSidebar,
+      closeIfMobile,
+      peekEnabled: !isDesktop && sidebarOpen,
+      isPeeking,
+      onPeekChange,
+    }),
+    [
+      sidebarOpen,
+      sidebarDrawerId,
+      openButtonRef,
+      toggleSidebar,
+      closeSidebar,
+      closeIfMobile,
+      isDesktop,
+      isPeeking,
+      onPeekChange,
+    ],
+  );
+
+  const sidebarSession = useMemo(
+    () => ({
+      session,
+      stats,
+      isLoading,
+      error,
+      meshEditTool,
+      setMeshEditTool,
+      clearAllSeams,
+      cutStrokeCount: cutStrokes.length,
+      clearCutStrokes: onClearCutStrokes,
+      deleteLastCutStroke,
+      deleteEditingCutStroke,
+      editingStrokeId,
+      cutDraftActive,
+      cutDraftCanFinalize,
+      onCutDraftDone,
+      onCutDraftCancel,
+    }),
+    [
+      session,
+      stats,
+      isLoading,
+      error,
+      meshEditTool,
+      setMeshEditTool,
+      clearAllSeams,
+      cutStrokes.length,
+      onClearCutStrokes,
+      deleteLastCutStroke,
+      deleteEditingCutStroke,
+      editingStrokeId,
+      cutDraftActive,
+      cutDraftCanFinalize,
+      onCutDraftDone,
+      onCutDraftCancel,
+    ],
+  );
+
+  const sidebarFlatten = useMemo(
+    () => ({
+      flattening,
+      flattenResult,
+      qualityCounts,
+      showQualityOverlay,
+      setShowQualityOverlay,
+      includeSeamsInExport,
+      setIncludeSeamsInExport,
+      onFlatten: handleFlatten,
+      onExportSvg,
+    }),
+    [
+      flattening,
+      flattenResult,
+      qualityCounts,
+      showQualityOverlay,
+      setShowQualityOverlay,
+      includeSeamsInExport,
+      setIncludeSeamsInExport,
+      handleFlatten,
+      onExportSvg,
+    ],
+  );
+
+  const sidebarView = useMemo(
+    () => ({
+      wireframe,
+      setWireframe,
+      showGrid,
+      setShowGrid,
+      showAxes,
+      setShowAxes,
+      modelScale,
+      setModelScale,
+    }),
+    [
+      wireframe,
+      setWireframe,
+      showGrid,
+      setShowGrid,
+      showAxes,
+      setShowAxes,
+      modelScale,
+      setModelScale,
+    ],
+  );
+
+  const sidebarDemo = useMemo(
+    () => ({
+      selectedDemoId: demo.selectedDemoId,
+      setSelectedDemoId: demo.setSelectedDemoId,
+      onPickFile: demo.loadMeshFromFile,
+      onLoadDemo: demo.loadSelectedDemo,
+    }),
+    [
+      demo.selectedDemoId,
+      demo.setSelectedDemoId,
+      demo.loadMeshFromFile,
+      demo.loadSelectedDemo,
+    ],
+  );
 
   return (
     <AppLayout
@@ -140,56 +326,11 @@ export default function HomePage() {
       onDismissToast={dismissToast}
       sidebar={
         <AppSidebar
-          layout={{
-            sidebarOpen,
-            sidebarDrawerId,
-            openButtonRef,
-            onToggleSidebar: toggleSidebar,
-            onCloseSidebar: closeSidebar,
-            closeIfMobile,
-            peekEnabled: !isDesktop && sidebarOpen,
-            isPeeking,
-            onPeekChange,
-          }}
-          session={{
-            session,
-            stats,
-            isLoading,
-            error,
-            meshEditTool,
-            setMeshEditTool,
-            clearAllSeams,
-            cutStrokeCount: cutStrokes.length,
-            clearCutStrokes,
-            deleteLastCutStroke,
-          }}
-          flatten={{
-            flattening,
-            flattenResult,
-            qualityCounts,
-            showQualityOverlay,
-            setShowQualityOverlay,
-            includeSeamsInExport,
-            setIncludeSeamsInExport,
-            onFlatten: handleFlatten,
-            onExportSvg,
-          }}
-          view={{
-            wireframe,
-            setWireframe,
-            showGrid,
-            setShowGrid,
-            showAxes,
-            setShowAxes,
-            modelScale,
-            setModelScale,
-          }}
-          demo={{
-            selectedDemoId: demo.selectedDemoId,
-            setSelectedDemoId: demo.setSelectedDemoId,
-            onPickFile: demo.loadMeshFromFile,
-            onLoadDemo: demo.loadSelectedDemo,
-          }}
+          layout={sidebarLayout}
+          session={sidebarSession}
+          flatten={sidebarFlatten}
+          view={sidebarView}
+          demo={sidebarDemo}
         />
       }
     >
@@ -215,8 +356,14 @@ export default function HomePage() {
               showAxes={showAxes}
               modelScale={modelScale}
               editTool={meshEditTool}
+              cutDraftActive={cutDraftActive}
+              editingStrokeId={editingStrokeId}
               onEdgePick={onEdgePick}
-              onCutStrokeCommit={onCutStrokeCommit}
+              onDraftFinalize={onDraftFinalize}
+              onCutDraftUiChange={onCutDraftUiChange}
+              cutDraftActionsRef={cutDraftActionsRef}
+              onCutPointCapReached={onCutPointCapReached}
+              onCutFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
             />
             {isLoading ? (
               <div className="overlay">
@@ -226,6 +373,13 @@ export default function HomePage() {
                 </div>
               </div>
             ) : null}
+            <CutDraftToolbar
+              visible={meshEditTool === "cut" && cutDraftActive}
+              canFinalize={cutDraftCanFinalize}
+              editing={editingStrokeId != null}
+              onDone={onCutDraftDone}
+              onCancel={onCutDraftCancel}
+            />
           </>
         }
         viewport2d={

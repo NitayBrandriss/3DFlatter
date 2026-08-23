@@ -16,6 +16,18 @@
 
 ---
 
+## QA
+
+Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) stay as sibling plans until an execute-audit pass appends a snapshot.
+
+| Plan | Status |
+|------|--------|
+| [remediation-phase1.md](remediation-phase1.md) | **Complete** (2026-08-23) — UI/UX, load toasts, Vitest hardening |
+| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; in-scope findings remediations complete ([qa-audits.md](qa-audits.md#audit--2026-08-23--phase-1-holistic-remediation-complete)); logic/viewer regression pass still waiting |
+| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E + holistic baseline + remediation complete) |
+
+---
+
 ## How to add a product plan
 
 1. Add a row to **Active** in this file and to [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md).
@@ -24,3 +36,5 @@
 4. Promote from `.cursor/plans/` into this folder; delete the Cursor-only copy.
 
 When a phase ships, set Status **Complete** and keep the spec here (or move to `product/archive/` if the folder grows).
+
+**Backlog (not scheduled):** cut-tool v2 UX — mid-segment insert, undo stack, snap/weld — lives on [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) (do not fold into polyline Slice E).

@@ -17,6 +17,7 @@ PoC seam editing is limited to toggling existing mesh edges (`EdgeKey` / [ADR 00
 - Session **base** `MeshModel` is unchanged while the user draws, edits, or deletes cut strokes.
 - Strokes live as an overlay (`cutStrokes`: stable `id` + canonical 3D polyline `points`).
 - Coordinates are **canonical mesh space** (inverse of display normalization), not display-scaled.
+- **Preview** tessellates each sparse segment along the mesh surface (face-local walk in [`surfacePath.ts`](../../../src/logic/cuts/surfacePath.ts)) for draft and committed overlays; stored stroke points remain the user clicks only.
 - File reload clears strokes. Stroke edits do **not** bump `meshLoadVersion`.
 - `materializeCutStrokes(baseMesh, strokes, manualSeams)` runs on **Flatten** (pure `src/logic/`). It returns a **derived** mesh + topology + seam set; the session base mesh is not replaced in v1 (recompute each Flatten; memo optional).
 
@@ -40,7 +41,7 @@ PoC seam editing is limited to toggling existing mesh edges (`EdgeKey` / [ADR 00
 
 #### Subdivision rules
 
-- Segment–triangle surface cuts: walk the chord face-to-face, splitting crossed edge chords so cuts may span many triangles in one segment; interior Steiner points use **fan triangulation**.
+- Segment–triangle surface cuts: walk the chord face-to-face, splitting crossed edge chords so cuts may span many triangles in one segment; interior Steiner points use **fan triangulation**. Exit-edge discovery uses **face-local 2D segment intersection** with the goal projected onto each incident face plane — not Euclidean 3D chord proximity to mesh edges (required for dihedral crossings; see [`cutSurfaceWalk.ts`](../../../src/logic/cuts/cutSurfaceWalk.ts)).
 - Output remains strict triangles, manifold where the input was, non-degenerate indices.
 - Reject **self-intersecting** stroke polylines via **whole-stroke** proper 3D segment intersection (warning; skip that stroke). First↔last segment exclusion applies only when the stroke is geometrically closed (first ≈ last within snap eps). **Per-face** 2D self-intersection is deferred. Concave fan risk matches OBJ fan limits ([ADR 0001](../poc/0001-mesh-model-and-topology.md)).
 

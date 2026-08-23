@@ -32,6 +32,8 @@ export type ToastMessage = {
   id: number;
   text: string;
   tone: "info" | "warning";
+  /** Auto-dismiss delay in ms. Omitted → ToastStack default (4000). */
+  duration?: number;
 };
 
 type MeshSessionState = {
@@ -89,11 +91,27 @@ function pushToast(
   state: MeshSessionState,
   text: string,
   tone: ToastMessage["tone"],
+  duration?: number,
 ): Pick<MeshSessionState, "toasts" | "toastSeq"> {
   const id = state.toastSeq + 1;
   const toast: ToastMessage = { id, text, tone };
+  if (duration != null) toast.duration = duration;
   const toasts = [...state.toasts, toast].slice(-4);
   return { toasts, toastSeq: id };
+}
+
+const LOAD_ERROR_TOAST_MAX = 120;
+
+/** Load/parse failures stay on screen long enough to read the parser message. */
+export const LOAD_ERROR_TOAST_DURATION_MS = 20_000;
+
+/** Prominent toast copy for failed loads (HOLISTIC-UI-004). Sidebar keeps full `error`. */
+export function formatLoadErrorToast(message: string): string {
+  const prefix = "Could not load mesh: ";
+  const body = message.trim() || "Unknown error";
+  const full = `${prefix}${body}`;
+  if (full.length <= LOAD_ERROR_TOAST_MAX) return full;
+  return `${full.slice(0, LOAD_ERROR_TOAST_MAX - 1)}…`;
 }
 
 function applyLoadWarnings(
@@ -249,10 +267,16 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         return false;
       }
       // Keep prior session; do not bump meshLoadVersion (STATE-007 / STATE-004).
-      set({
+      set((s) => ({
         isLoading: false,
         error: message,
-      });
+        ...pushToast(
+          s,
+          formatLoadErrorToast(message),
+          "warning",
+          LOAD_ERROR_TOAST_DURATION_MS,
+        ),
+      }));
       return false;
     }
   },

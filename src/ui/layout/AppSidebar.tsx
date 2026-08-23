@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   formatQualityIssueSummary,
 } from "@/logic/unfold/qualitySummary";
@@ -9,7 +10,13 @@ import type { AppSidebarProps } from "./appSidebarProps";
 
 export type { AppSidebarProps } from "./appSidebarProps";
 
-export function AppSidebar({ layout, session: sessionProps, flatten, view, demo }: AppSidebarProps) {
+export const AppSidebar = memo(function AppSidebar({
+  layout,
+  session: sessionProps,
+  flatten,
+  view,
+  demo,
+}: AppSidebarProps) {
   const {
     sidebarOpen,
     sidebarDrawerId,
@@ -33,6 +40,12 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
     cutStrokeCount,
     clearCutStrokes,
     deleteLastCutStroke,
+    deleteEditingCutStroke,
+    editingStrokeId,
+    cutDraftActive,
+    cutDraftCanFinalize,
+    onCutDraftDone,
+    onCutDraftCancel,
   } = sessionProps;
 
   const {
@@ -216,9 +229,70 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
               >
                 <option value="none">Orbit only</option>
                 <option value="seam">Edge seam pick</option>
-                <option value="cut">Draw cut</option>
+                <option value="cut">Draw cut polyline</option>
               </select>
             </label>
+
+            {meshEditTool === "cut" ? (
+              <>
+                <div className="muted sidebar-meta-tight">
+                  Click the mesh to place vertices. Orbit between clicks. Click
+                  the <strong>amber first-vertex marker</strong> to close a
+                  loop. Press <strong>Enter</strong> or <strong>Done</strong> to
+                  commit an open stroke. Press <strong>Esc</strong> or{" "}
+                  <strong>Cancel</strong> to discard. Click a cyan committed
+                  stroke to re-edit.
+                </div>
+                <div className="muted sidebar-hint sidebar-meta-tight">
+                  While drafting, the last placed vertex can be removed with
+                  Backspace.
+                </div>
+              </>
+            ) : null}
+
+            {meshEditTool === "cut" && cutDraftActive && editingStrokeId ? (
+              <div className="muted sidebar-meta-tight">
+                Editing a committed cut. Done saves; Cancel discards.
+              </div>
+            ) : null}
+
+            {meshEditTool === "cut" ? (
+              <div
+                className={
+                  cutDraftActive
+                    ? "cut-draft-sidebar-controls"
+                    : "cut-draft-sidebar-controls is-inactive"
+                }
+                aria-hidden={!cutDraftActive}
+              >
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={onCutDraftDone}
+                  disabled={!cutDraftActive || !cutDraftCanFinalize}
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--block"
+                  onClick={onCutDraftCancel}
+                  disabled={!cutDraftActive}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+
+            {meshEditTool === "cut" && cutDraftActive && editingStrokeId ? (
+              <button
+                type="button"
+                className="btn btn--block"
+                onClick={deleteEditingCutStroke}
+              >
+                Delete this cut
+              </button>
+            ) : null}
 
             <div className="muted sidebar-meta-tight">
               {stats ? (
@@ -233,7 +307,9 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     {cutStrokeCount.toLocaleString()}
                   </div>
                   <div>
-                    <span className="sidebar-meta-label">Islands:</span>{" "}
+                    <span className="sidebar-meta-label">
+                      Islands (base / edge seams):
+                    </span>{" "}
                     {stats.islandCount.toLocaleString()}
                     {stats.islandFaceCounts.length > 1 ? (
                       <span className="sidebar-meta-secondary">
@@ -242,6 +318,11 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                       </span>
                     ) : null}
                   </div>
+                  {cutStrokeCount > 0 ? (
+                    <div className="muted sidebar-meta-tight">
+                      Cut strokes apply on Flatten — not counted above.
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 "Load a mesh to edit seams and cuts."
@@ -287,6 +368,12 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
             >
               {flattening ? "Flattening…" : "Flatten"}
             </button>
+            {flattenResult && !flattenResult.error ? (
+              <div className="muted sidebar-meta-tight">
+                <span className="sidebar-meta-label">Flatten islands:</span>{" "}
+                {flattenResult.islands.length.toLocaleString()}
+              </div>
+            ) : null}
             {qualityCounts?.hasIssues ? (
               <div className="muted sidebar-meta-tight">
                 {formatQualityIssueSummary(qualityCounts)}
@@ -374,8 +461,14 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     max={3}
                     step={0.05}
                     value={modelScale}
+                    disabled={cutDraftActive}
                     onChange={(e) => setModelScale(Number(e.currentTarget.value))}
                   />
+                  {meshEditTool === "cut" ? (
+                    <div className="muted sidebar-meta-tight">
+                      Scale locks while a cut draft is active
+                    </div>
+                  ) : null}
                 </label>
               </PeekThroughControl>
             ) : null}
@@ -392,4 +485,4 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
       </div>
     </aside>
   );
-}
+});

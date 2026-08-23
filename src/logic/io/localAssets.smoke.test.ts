@@ -67,6 +67,15 @@ describe.skipIf(files.length === 0)("local 3d_models smoke (Slice 4)", () => {
           expect(msg).toMatch(/Soft limit|too many triangles|too large/i);
           return;
         }
+        // Journey D / HOLISTIC-UI-004: local corrupt_* fixtures must fail parse, not crash smoke.
+        if (
+          /corrupt/i.test(label) &&
+          (e instanceof ObjParseError || e instanceof StlParseError)
+        ) {
+          console.log(`[smoke] ${label}: parse reject (expected corrupt fixture) — ${msg}`);
+          expect(msg.length).toBeGreaterThan(0);
+          return;
+        }
         throw e;
       }
 

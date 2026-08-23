@@ -46,6 +46,25 @@ export function unitCube(): MeshModel {
   return makeMesh(verts, faces);
 }
 
+/** Two triangles sharing edge (0,0,0)–(0,1,0) at 90° (z=0 wing + x=0 wing). */
+export function foldedDihedralQuad(): MeshModel {
+  return makeMesh(
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+    [0, 1, 2, 0, 2, 3],
+  );
+}
+
+/** Closed loop entirely inside face 0 of unitQuad: near (1,0)-(1,1). */
+export function singleFaceClosedLoop(): CutStroke {
+  return stroke("single-face", [
+    v(0.85, 0.15),
+    v(0.95, 0.3),
+    v(0.88, 0.5),
+    v(0.78, 0.28),
+    v(0.85, 0.15),
+  ]);
+}
+
 export function stroke(id: string, points: Vec3[]): CutStroke {
   return { id, points };
 }

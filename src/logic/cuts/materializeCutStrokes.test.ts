@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { makeEdgeKey } from "../mesh/edgeKey";
+import { partitionIslands } from "../mesh/partitionIslands";
 import {
   findClosestVertex,
+  foldedDihedralQuad,
+  singleFaceClosedLoop,
   stroke,
   unitQuad,
   unitTriangle,
@@ -18,9 +21,9 @@ describe("materializeCutStrokes", () => {
 
     expect(result.mesh.faceCount).toBe(3);
     expect(result.mesh.vertexCount).toBe(5);
-    expect(result.seams.seams.size).toBeGreaterThanOrEqual(1);
     expect(result.manifest).toHaveLength(1);
-    expect(result.manifest[0]!.edgeKeys.length).toBe(1);
+    expect(result.manifest[0]!.edgeKeys).toHaveLength(1);
+    expect(result.seams.seams).toEqual(new Set(result.manifest[0]!.edgeKeys));
     expect(result.validation.openLoops).toHaveLength(0);
     expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
   });
@@ -35,7 +38,9 @@ describe("materializeCutStrokes", () => {
     expect(result.validation.openLoops[0]!.strokeId).toBe("dart");
     expect(result.validation.openLoops[0]!.interiorEndpoints).toContain(1);
     expect(result.warnings.some((w) => w.includes("open loop"))).toBe(true);
-    expect(result.seams.seams.size).toBeGreaterThanOrEqual(1);
+    const mid = findClosestVertex(result.mesh, v(0.5, 0, 0));
+    const interior = findClosestVertex(result.mesh, v(0.25, 0.25, 0));
+    expect(result.seams.seams.has(makeEdgeKey(mid, interior))).toBe(true);
   });
 
   it("zigzag (valid): multi-segment cut on one face without self-intersection", () => {
@@ -54,7 +59,12 @@ describe("materializeCutStrokes", () => {
       false,
     );
     expect(result.manifest.length).toBe(3);
-    expect(result.seams.seams.size).toBeGreaterThanOrEqual(2);
+    const zigzagKeys = result.manifest.flatMap((m) => m.edgeKeys);
+    expect(new Set(zigzagKeys).size).toBe(zigzagKeys.length);
+    expect(zigzagKeys.length).toBeGreaterThanOrEqual(2);
+    for (const key of zigzagKeys) {
+      expect(result.seams.seams.has(key)).toBe(true);
+    }
     expect(result.mesh.faceCount).toBeGreaterThan(1);
   });
 
@@ -135,5 +145,45 @@ describe("materializeCutStrokes", () => {
     expect(result.topology.neighborFaceAcrossEdge.length).toBe(
       result.mesh.faceCount * 3,
     );
+  });
+
+  it("dihedral segment: wing A to wing B marks seam across shared edge", () => {
+    const mesh = foldedDihedralQuad();
+    const result = materializeCutStrokes(
+      mesh,
+      [stroke("dihedral", [v(0.5, 0.3, 0), v(0, 0.3, 0.5)])],
+      new Set(),
+    );
+
+    expect(
+      result.warnings.filter((w) => w.includes("could not connect")),
+    ).toEqual([]);
+    expect(result.manifest[0]!.edgeKeys.length).toBeGreaterThanOrEqual(1);
+    for (const key of result.manifest[0]!.edgeKeys) {
+      expect(result.seams.seams.has(key)).toBe(true);
+    }
+    expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
+  });
+
+  it("dihedral segment: two points on wing B marks seam in-plane", () => {
+    const mesh = foldedDihedralQuad();
+    const result = materializeCutStrokes(
+      mesh,
+      [stroke("wing-b", [v(0, 0.2, 0.3), v(0, 0.4, 0.3)])],
+      new Set(),
+    );
+
+    expect(
+      result.warnings.filter((w) => w.includes("could not connect")),
+    ).toEqual([]);
+    expect(result.manifest[0]!.edgeKeys.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("closed loop on unitQuad partitions into at least two islands", () => {
+    const mesh = unitQuad();
+    const result = materializeCutStrokes(mesh, [singleFaceClosedLoop()], new Set());
+    expect(result.validation.openLoops).toHaveLength(0);
+    const islands = partitionIslands(result.mesh, result.topology, result.seams);
+    expect(islands.length).toBeGreaterThanOrEqual(2);
   });
 });
