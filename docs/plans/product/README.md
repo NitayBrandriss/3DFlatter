@@ -22,9 +22,9 @@ Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) sta
 
 | Plan | Status |
 |------|--------|
-| [remediation-phase1.md](remediation-phase1.md) | Approved — **not started** (UI/UX, load toasts, Vitest hardening) |
-| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; logic/viewer regression still waiting |
-| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E + holistic baseline) |
+| [remediation-phase1.md](remediation-phase1.md) | **Complete** (2026-08-23) — UI/UX, load toasts, Vitest hardening |
+| [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; in-scope findings remediations complete ([qa-audits.md](qa-audits.md#audit--2026-08-23--phase-1-holistic-remediation-complete)); logic/viewer regression pass still waiting |
+| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E + holistic baseline + remediation complete) |
 
 ---
 

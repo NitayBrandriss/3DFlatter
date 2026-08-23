@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export function useViewportPreferences() {
   const [wireframe, setWireframe] = useState(true);
@@ -8,7 +8,7 @@ export function useViewportPreferences() {
   const [showAxes, setShowAxes] = useState(false);
   const [modelScale, setModelScale] = useState(1);
 
-  const resetModelScale = () => setModelScale(1);
+  const resetModelScale = useCallback(() => setModelScale(1), []);
 
   return {
     wireframe,

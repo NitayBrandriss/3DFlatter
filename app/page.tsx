@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { applyLayoutTokensToDocument } from "@/ui/layout/applyLayoutTokens";
 import { AppLayout } from "@/ui/layout/AppLayout";
 import { AppSidebar } from "@/ui/layout/AppSidebar";
@@ -189,6 +189,133 @@ export default function HomePage() {
     return ok;
   }, [isDesktop, onFlatten]);
 
+  const sidebarLayout = useMemo(
+    () => ({
+      sidebarOpen,
+      sidebarDrawerId,
+      openButtonRef,
+      onToggleSidebar: toggleSidebar,
+      onCloseSidebar: closeSidebar,
+      closeIfMobile,
+      peekEnabled: !isDesktop && sidebarOpen,
+      isPeeking,
+      onPeekChange,
+    }),
+    [
+      sidebarOpen,
+      sidebarDrawerId,
+      openButtonRef,
+      toggleSidebar,
+      closeSidebar,
+      closeIfMobile,
+      isDesktop,
+      isPeeking,
+      onPeekChange,
+    ],
+  );
+
+  const sidebarSession = useMemo(
+    () => ({
+      session,
+      stats,
+      isLoading,
+      error,
+      meshEditTool,
+      setMeshEditTool,
+      clearAllSeams,
+      cutStrokeCount: cutStrokes.length,
+      clearCutStrokes: onClearCutStrokes,
+      deleteLastCutStroke,
+      deleteEditingCutStroke,
+      editingStrokeId,
+      cutDraftActive,
+      cutDraftCanFinalize,
+      onCutDraftDone,
+      onCutDraftCancel,
+    }),
+    [
+      session,
+      stats,
+      isLoading,
+      error,
+      meshEditTool,
+      setMeshEditTool,
+      clearAllSeams,
+      cutStrokes.length,
+      onClearCutStrokes,
+      deleteLastCutStroke,
+      deleteEditingCutStroke,
+      editingStrokeId,
+      cutDraftActive,
+      cutDraftCanFinalize,
+      onCutDraftDone,
+      onCutDraftCancel,
+    ],
+  );
+
+  const sidebarFlatten = useMemo(
+    () => ({
+      flattening,
+      flattenResult,
+      qualityCounts,
+      showQualityOverlay,
+      setShowQualityOverlay,
+      includeSeamsInExport,
+      setIncludeSeamsInExport,
+      onFlatten: handleFlatten,
+      onExportSvg,
+    }),
+    [
+      flattening,
+      flattenResult,
+      qualityCounts,
+      showQualityOverlay,
+      setShowQualityOverlay,
+      includeSeamsInExport,
+      setIncludeSeamsInExport,
+      handleFlatten,
+      onExportSvg,
+    ],
+  );
+
+  const sidebarView = useMemo(
+    () => ({
+      wireframe,
+      setWireframe,
+      showGrid,
+      setShowGrid,
+      showAxes,
+      setShowAxes,
+      modelScale,
+      setModelScale,
+    }),
+    [
+      wireframe,
+      setWireframe,
+      showGrid,
+      setShowGrid,
+      showAxes,
+      setShowAxes,
+      modelScale,
+      setModelScale,
+    ],
+  );
+
+  const sidebarDemo = useMemo(
+    () => ({
+      selectedDemoId: demo.selectedDemoId,
+      setSelectedDemoId: demo.setSelectedDemoId,
+      onPickFile: demo.loadMeshFromFile,
+      onLoadDemo: demo.loadSelectedDemo,
+    }),
+    [
+      demo.selectedDemoId,
+      demo.setSelectedDemoId,
+      demo.loadMeshFromFile,
+      demo.loadSelectedDemo,
+    ],
+  );
+
   return (
     <AppLayout
       sidebarOpen={sidebarOpen}
@@ -199,62 +326,11 @@ export default function HomePage() {
       onDismissToast={dismissToast}
       sidebar={
         <AppSidebar
-          layout={{
-            sidebarOpen,
-            sidebarDrawerId,
-            openButtonRef,
-            onToggleSidebar: toggleSidebar,
-            onCloseSidebar: closeSidebar,
-            closeIfMobile,
-            peekEnabled: !isDesktop && sidebarOpen,
-            isPeeking,
-            onPeekChange,
-          }}
-          session={{
-            session,
-            stats,
-            isLoading,
-            error,
-            meshEditTool,
-            setMeshEditTool,
-            clearAllSeams,
-            cutStrokeCount: cutStrokes.length,
-            clearCutStrokes: onClearCutStrokes,
-            deleteLastCutStroke,
-            deleteEditingCutStroke,
-            editingStrokeId,
-            cutDraftActive,
-            cutDraftCanFinalize,
-            onCutDraftDone,
-            onCutDraftCancel,
-          }}
-          flatten={{
-            flattening,
-            flattenResult,
-            qualityCounts,
-            showQualityOverlay,
-            setShowQualityOverlay,
-            includeSeamsInExport,
-            setIncludeSeamsInExport,
-            onFlatten: handleFlatten,
-            onExportSvg,
-          }}
-          view={{
-            wireframe,
-            setWireframe,
-            showGrid,
-            setShowGrid,
-            showAxes,
-            setShowAxes,
-            modelScale,
-            setModelScale,
-          }}
-          demo={{
-            selectedDemoId: demo.selectedDemoId,
-            setSelectedDemoId: demo.setSelectedDemoId,
-            onPickFile: demo.loadMeshFromFile,
-            onLoadDemo: demo.loadSelectedDemo,
-          }}
+          layout={sidebarLayout}
+          session={sidebarSession}
+          flatten={sidebarFlatten}
+          view={sidebarView}
+          demo={sidebarDemo}
         />
       }
     >
@@ -280,6 +356,8 @@ export default function HomePage() {
               showAxes={showAxes}
               modelScale={modelScale}
               editTool={meshEditTool}
+              cutDraftActive={cutDraftActive}
+              editingStrokeId={editingStrokeId}
               onEdgePick={onEdgePick}
               onDraftFinalize={onDraftFinalize}
               onCutDraftUiChange={onCutDraftUiChange}

@@ -9,6 +9,7 @@ import {
 import {
   appendPolylineDraftPoint,
   canPickCommittedStroke,
+  idlePolylineDraft,
   writePlacedTwin,
 } from "../../viewer/cutPolyline/cutPolylineHelpers";
 import { tessellateDraftDisplayPath } from "../../viewer/cutPolyline/tessellateDraftDisplayPath";
@@ -154,13 +155,30 @@ describe("Slice D committed re-edit (characterizing)", () => {
       });
     });
 
-    it("cancel (no updateCutStroke) leaves the original stroke and revision", () => {
+    it("cancel via idlePolylineDraft leaves the original stroke and revision", () => {
       const original = multiFaceClosedLoop();
       useMeshSessionStore.getState().addCutStroke(original);
       const rev = useMeshSessionStore.getState().patternRevision;
-      const edit = cloneStroke(useMeshSessionStore.getState().cutStrokes[0]!);
-      edit.points[1] = v(0.7, 0.25);
-      // Esc / Cancel: drop the clone, never call updateCutStroke.
+      const storedBefore = useMeshSessionStore.getState().cutStrokes[0]!;
+      let display = storedBefore.points.map((p) => ({ ...p }));
+      let canonical = storedBefore.points.map((p) => ({ ...p }));
+      writePlacedTwin(
+        display,
+        canonical,
+        1,
+        { x: 0.7, y: 0.25, z: 0 },
+        IDENTITY_NORM,
+        true,
+      );
+      expect(canonical[1]).toEqual({ x: 0.7, y: 0.25, z: 0 });
+
+      const idle = idlePolylineDraft();
+      display = idle.display;
+      canonical = idle.canonical;
+
+      expect(display).toEqual([]);
+      expect(canonical).toEqual([]);
+      expect(idle.editingStrokeId).toBeNull();
       const stored = useMeshSessionStore.getState().cutStrokes[0]!;
       expect(stored.points[1]).toEqual(v(0.8, 0.2));
       expect(useMeshSessionStore.getState().patternRevision).toBe(rev);
@@ -187,9 +205,10 @@ describe("Slice D committed re-edit (characterizing)", () => {
       expect(flattenIslands([original])).toBeGreaterThanOrEqual(2);
     });
 
-    it("after updateCutStroke to an interior dart, Flatten island count can change", () => {
+    it("after updateCutStroke to an interior dart, Flatten stays one island and subdivides faces", () => {
       const closed = multiFaceClosedLoop();
-      const before = flattenIslands([closed]);
+      expect(flattenIslands([closed])).toBeGreaterThanOrEqual(2);
+
       const openDart = stroke("edit-me", [v(0.3, 0.2), v(0.3, 0.5)]);
       const after = flattenWithCutStrokes({
         mesh: unitQuad(),
@@ -198,8 +217,13 @@ describe("Slice D committed re-edit (characterizing)", () => {
         cutStrokes: [openDart],
       });
       expect(after.unfold.error).toBeUndefined();
-      expect(after.unfold.islands.length).toBeLessThanOrEqual(before);
+      expect(after.unfold.islands.length).toBe(1);
       expect(after.openLoops.length).toBeGreaterThanOrEqual(1);
+      const dartFaces = after.unfold.islands.reduce(
+        (n, isl) => n + isl.faces.length,
+        0,
+      );
+      expect(dartFaces).toBeGreaterThan(unitQuad().faceCount);
     });
 
     it("append-at-end then Flatten uses the longer polyline (still ≥2 islands if closed after append+close)", () => {

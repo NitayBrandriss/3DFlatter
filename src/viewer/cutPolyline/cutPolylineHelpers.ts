@@ -37,6 +37,17 @@ export function canFinalizeDraft(pointCount: number): boolean {
   return pointCount >= 2;
 }
 
+export type IdlePolylineDraft = {
+  display: Vec3[];
+  canonical: Vec3[];
+  editingStrokeId: null;
+};
+
+/** Pure Esc/Cancel reset — clears draft clones; does not write Zustand. */
+export function idlePolylineDraft(): IdlePolylineDraft {
+  return { display: [], canonical: [], editingStrokeId: null };
+}
+
 /**
  * Drop the vertex added by the second click of a double-click before finalize.
  * `lastPointerUpAdded` is true only when that pointerup actually appended a point.

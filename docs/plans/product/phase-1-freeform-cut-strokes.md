@@ -28,13 +28,14 @@ Freehand drag-sample was replaced by **point-to-point** drawing and node editing
 
 | Mode | Gesture / outcome |
 |------|-------------------|
-| Place | Click mesh (`pointerup`, drag ≤ 5px) → append sparse vertex |
+| Place | Click mesh to place vertices; orbit between clicks (`pointerup`, drag ≤ 5px) → append sparse vertex |
 | Rubber-band | Hover tip tessellated from last point (drafting only) |
 | Close loop | Click **amber first-vertex marker** → duplicate first as last + commit (not Euclidean mesh auto-close) |
 | Drag node | Grab any marker → mesh-surface raycast; orbit disabled only while grabbed |
-| Finalize open | Double-click, Enter, or sidebar **Done** → `addCutStroke` |
-| Cancel / undo | Esc / Cancel discards draft; Backspace pops last vertex |
-| Re-edit committed | Click cyan committed stroke → draft session; Done → `updateCutStroke`; Cancel restores store |
+| Finalize open | **Enter** or **Done** (viewport toolbar / sidebar) → `addCutStroke` |
+| Discard | **Esc** or **Cancel** discards the draft |
+| Last vertex | While drafting, Backspace removes the last placed vertex (not a general undo stack) |
+| Re-edit committed | Click a cyan committed stroke → draft session; Done → `updateCutStroke`; Cancel restores store |
 
 **Parked (v2):** mid-segment insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
 

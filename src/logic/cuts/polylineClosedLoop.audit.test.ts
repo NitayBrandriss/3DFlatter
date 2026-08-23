@@ -9,20 +9,16 @@ import {
   type MeshSession,
 } from "../../state/meshSessionStore";
 import { closePolylineByDuplicatingFirst } from "../../viewer/cutPolyline/cutPolylineHelpers";
-import { makeMesh, stroke, foldedDihedralQuad, unitCube, unitQuad, v } from "./cutTestFixtures";
+import { makeMesh, stroke, foldedDihedralQuad, unitCube, unitQuad, v, singleFaceClosedLoop } from "./cutTestFixtures";
 import { flattenWithCutStrokes } from "./flattenWithCutStrokes";
 import { materializeCutStrokes } from "./materializeCutStrokes";
 
-/** Closed loop entirely inside face 0 of unitQuad: (0,0)-(1,0)-(1,1). */
-function singleFaceClosedLoop() {
-  return stroke("single-face", [
-    v(0.85, 0.15),
-    v(0.95, 0.3),
-    v(0.88, 0.5),
-    v(0.78, 0.28),
-    v(0.85, 0.15),
-  ]);
-}
+/**
+ * Historical POLYCUT-B characterizing IDs (P0-B01/B02/…).
+ * Production closed-loop flatten/soup contracts: flattenWithCutStrokes.test.ts
+ * and materializeCutStrokes.test.ts. Do not delete these describe titles —
+ * they are cited in qa-audits.md.
+ */
 
 /** Closed square spanning both unitQuad tris (crosses diagonal 0–2). */
 function multiFaceClosedLoop() {

@@ -457,13 +457,23 @@ describe("materializeCutStrokes adversarial", () => {
     });
 
     it("warns rather than inventing edges when endpoints are on disjoint faces", () => {
+      const mesh = makeMesh(
+        [
+          0, 0, 0, 1, 0, 0, 0, 1, 0,
+          5, 0, 0, 6, 0, 0, 5, 1, 0,
+        ],
+        [0, 1, 2, 3, 4, 5],
+      );
       const result = materializeCutStrokes(
-        grid2x2(),
-        [stroke("diag", [v(0.1, 0.1), v(1.9, 1.9)])],
+        mesh,
+        [stroke("diag", [v(0.1, 0.1), v(5.1, 0.1)])],
         new Set(),
       );
-      expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
       expect(hasIndexDegenerateFaces(result.mesh)).toBe(false);
+      expect(result.warnings.some((w) => w.includes("could not connect"))).toBe(
+        true,
+      );
+      expect(seamEdgesExistOnMesh(result.mesh, result.seams.seams)).toBe(true);
     });
   });
 

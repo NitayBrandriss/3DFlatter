@@ -6,6 +6,7 @@ import { makeEdgeKey } from "../mesh/edgeKey";
 import { createSeamRegistry, toggleSeam } from "../seams/seamRegistry";
 import { unfoldMesh } from "./unfoldMesh";
 import { boundsFromSoup } from "./soupBounds";
+import { countQualityIssues } from "./qualitySummary";
 
 function bboxesOverlap(
   a: ReturnType<typeof boundsFromSoup>,
@@ -66,8 +67,9 @@ describe("unfoldMesh", () => {
     expect(bboxesOverlap(result.islands[0]!.bounds, result.islands[1]!.bounds)).toBe(
       false,
     );
-    expect(Array.isArray(result.collisions)).toBe(true);
-    expect(Array.isArray(result.tears)).toBe(true);
+    const quality = countQualityIssues(result);
+    expect(quality.collisionCount).toBeGreaterThanOrEqual(0);
+    expect(quality.tearCount).toBeGreaterThanOrEqual(0);
   });
 
   it("unfolds a welded icosahedron as one layouted island", () => {
@@ -81,8 +83,9 @@ describe("unfoldMesh", () => {
     expect(result.islands[0]!.positions2d).toHaveLength(120);
     expect(result.islands[0]!.positions2d.every((v) => Number.isFinite(v))).toBe(true);
     expect(result.bounds.maxX).toBeGreaterThan(result.bounds.minX);
-    expect(Array.isArray(result.collisions)).toBe(true);
-    expect(Array.isArray(result.tears)).toBe(true);
+    const quality = countQualityIssues(result);
+    expect(quality.collisionCount).toBeGreaterThanOrEqual(0);
+    expect(quality.tearCount).toBeGreaterThanOrEqual(0);
   });
 
   it("reports many collisions and tears for a closed cube with no seams", () => {

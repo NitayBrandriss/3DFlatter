@@ -1,7 +1,8 @@
 # Phase 1 remediation — Holistic QA findings
 
-**Status:** In progress — Slice 4 and Slice 1 implemented; remaining slices not started  
+**Status:** Complete — 2026-08-23  
 **Date:** 2026-08-18  
+**Last updated:** 2026-08-23  
 **Branch:** current (post–Phase 1 complete)  
 **Source audits:** [qa-audits.md — Holistic CI gate](qa-audits.md#audit--2026-08-17--holistic-ci-gate--test-suite-health)  
 **Strategy:** [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md)  
@@ -295,10 +296,10 @@ Add cases to [parseObj.test.ts](../../../src/logic/io/obj/parseObj.test.ts) mirr
 |-------|-------|-----------|
 | 1 | **4** Load-error toasts | **Done** — `loadMeshFile` pushes a warning toast; store tests cover corrupt OBJ + session identity |
 | 2 | **1** Viewport toolbar | **Done** — HTML overlay `CutDraftToolbar` on the 3D panel; sidebar Done/Cancel kept |
-| 3 | **2** Sidebar stability | Depends on toolbar existing; layout reserve independent |
-| 4 | **3** Copy | Quick; do after UX layout settles |
-| 5 | **5** Flatten/materialize tests | Logic confidence before release |
-| 6 | **6** Audit/parser hygiene | Test-only; can parallelize with 5 |
+| 3 | **2** Sidebar stability | **Done** — reserved Done/Cancel + scale-lock hint; `AppSidebar` memo |
+| 4 | **3** Copy | **Done** — sidebar + phase-1 viewer UX table aligned |
+| 5 | **5** Flatten/materialize tests | **Done** — closed-loop / identity / soup contracts in production tests |
+| 6 | **6** Audit/parser hygiene | **Done** — C-002 skipped, cancel helper, parseObj rejects |
 
 Each slice: `npm test` + `npm run lint` before marking complete.
 
@@ -306,16 +307,16 @@ Each slice: `npm test` + `npm run lint` before marking complete.
 
 ## Verification matrix (post-remediation)
 
-| Check | How |
-|-------|-----|
-| Journey C — Done/Cancel in viewport | Manual: draft + re-edit without sidebar |
-| Journey C — stable sidebar | Manual: place 3 vertices; no jump |
-| Journey C — copy | Manual: read Edit tool card |
-| Journey D — corrupt OBJ | Manual: toast + session preserved |
-| Closed loop flatten | Automated: `flattenWithCutStrokes` ≥2 islands |
-| No-cut regression | Automated: empty strokes ≡ `unfoldMesh` |
-| C-002 still frozen | Manual/visual unchanged; skipped unit test documents gap |
-| CI | 337+ tests pass; lint clean |
+| Check | How | Result |
+|-------|-----|--------|
+| Journey C — Done/Cancel in viewport | Manual: draft + re-edit without sidebar | **Pass** (Slice 1) |
+| Journey C — stable sidebar | Manual: place 3 vertices; no jump | **Pass** (Slice 2) |
+| Journey C — copy | Manual: read Edit tool card | **Pass** (Slice 3) |
+| Journey D — corrupt OBJ | Manual: toast + session preserved | **Pass** (Slice 4 implemented) |
+| Closed loop flatten | Automated: `flattenWithCutStrokes` ≥2 islands | **Pass** |
+| No-cut regression | Automated: empty strokes ≡ `unfoldMesh` | **Pass** |
+| C-002 still frozen | Manual/visual unchanged; skipped unit test documents gap | **Pass** |
+| CI | 337+ tests pass; lint clean | **Pass** — 349 passed, 1 skipped, lint clean |
 
 ---
 
@@ -333,8 +334,8 @@ Each slice: `npm test` + `npm run lint` before marking complete.
 
 ## Post-remediation documentation
 
-When all slices land:
+Recorded 2026-08-23:
 
-1. Append a **Remediation complete** subsection to the holistic audit in [qa-audits.md](qa-audits.md) with Pass/Fail per finding ID.
-2. Set this plan **Status: Complete**.
-3. Update [README.md](README.md) QA table row.
+1. **Remediation complete** snapshot: [qa-audits.md](qa-audits.md#audit--2026-08-23--phase-1-holistic-remediation-complete) (Pass/Fail per finding ID).
+2. This plan **Status: Complete**.
+3. Product QA table: [README.md](README.md).

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   formatQualityIssueSummary,
 } from "@/logic/unfold/qualitySummary";
@@ -9,7 +10,13 @@ import type { AppSidebarProps } from "./appSidebarProps";
 
 export type { AppSidebarProps } from "./appSidebarProps";
 
-export function AppSidebar({ layout, session: sessionProps, flatten, view, demo }: AppSidebarProps) {
+export const AppSidebar = memo(function AppSidebar({
+  layout,
+  session: sessionProps,
+  flatten,
+  view,
+  demo,
+}: AppSidebarProps) {
   const {
     sidebarOpen,
     sidebarDrawerId,
@@ -227,26 +234,42 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
             </label>
 
             {meshEditTool === "cut" ? (
+              <>
+                <div className="muted sidebar-meta-tight">
+                  Click the mesh to place vertices. Orbit between clicks. Click
+                  the <strong>amber first-vertex marker</strong> to close a
+                  loop. Press <strong>Enter</strong> or <strong>Done</strong> to
+                  commit an open stroke. Press <strong>Esc</strong> or{" "}
+                  <strong>Cancel</strong> to discard. Click a cyan committed
+                  stroke to re-edit.
+                </div>
+                <div className="muted sidebar-hint sidebar-meta-tight">
+                  While drafting, the last placed vertex can be removed with
+                  Backspace.
+                </div>
+              </>
+            ) : null}
+
+            {meshEditTool === "cut" && cutDraftActive && editingStrokeId ? (
               <div className="muted sidebar-meta-tight">
-                Click mesh to place vertices. Click a committed cut to edit it.
-                Drag cyan markers to move them. Double-click, Enter, or Done to
-                commit. Click the amber first-vertex marker to close the loop.
-                Esc / Cancel discards. Backspace undoes last vertex.
+                Editing a committed cut. Done saves; Cancel discards.
               </div>
             ) : null}
 
-            {meshEditTool === "cut" && cutDraftActive ? (
-              <>
-                {editingStrokeId ? (
-                  <div className="muted sidebar-meta-tight">
-                    Editing a committed cut. Done saves; Cancel discards.
-                  </div>
-                ) : null}
+            {meshEditTool === "cut" ? (
+              <div
+                className={
+                  cutDraftActive
+                    ? "cut-draft-sidebar-controls"
+                    : "cut-draft-sidebar-controls is-inactive"
+                }
+                aria-hidden={!cutDraftActive}
+              >
                 <button
                   type="button"
                   className="btn btn--block"
                   onClick={onCutDraftDone}
-                  disabled={!cutDraftCanFinalize}
+                  disabled={!cutDraftActive || !cutDraftCanFinalize}
                 >
                   Done
                 </button>
@@ -254,19 +277,21 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                   type="button"
                   className="btn btn--block"
                   onClick={onCutDraftCancel}
+                  disabled={!cutDraftActive}
                 >
                   Cancel
                 </button>
-                {editingStrokeId ? (
-                  <button
-                    type="button"
-                    className="btn btn--block"
-                    onClick={deleteEditingCutStroke}
-                  >
-                    Delete this cut
-                  </button>
-                ) : null}
-              </>
+              </div>
+            ) : null}
+
+            {meshEditTool === "cut" && cutDraftActive && editingStrokeId ? (
+              <button
+                type="button"
+                className="btn btn--block"
+                onClick={deleteEditingCutStroke}
+              >
+                Delete this cut
+              </button>
             ) : null}
 
             <div className="muted sidebar-meta-tight">
@@ -439,9 +464,9 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
                     disabled={cutDraftActive}
                     onChange={(e) => setModelScale(Number(e.currentTarget.value))}
                   />
-                  {cutDraftActive ? (
+                  {meshEditTool === "cut" ? (
                     <div className="muted sidebar-meta-tight">
-                      Scale locked while drawing a cut.
+                      Scale locks while a cut draft is active
                     </div>
                   ) : null}
                 </label>
@@ -460,4 +485,4 @@ export function AppSidebar({ layout, session: sessionProps, flatten, view, demo 
       </div>
     </aside>
   );
-}
+});

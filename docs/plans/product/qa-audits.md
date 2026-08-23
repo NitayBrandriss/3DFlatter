@@ -6,7 +6,8 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
-| [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health) | `npm test` / `npm run lint` baseline + section 5 inventory + manual Journeys A-D | **Findings recorded** — remediation plan: [remediation-phase1.md](remediation-phase1.md) |
+| [2026-08-23 Remediation complete](#audit--2026-08-23--phase-1-holistic-remediation-complete) | Close in-scope HOLISTIC-UI / HOLISTIC-TS findings | **Complete** |
+| [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health) | `npm test` / `npm run lint` baseline + section 5 inventory + manual Journeys A-D | **Findings recorded** — remediations landed: [remediation-phase1.md](remediation-phase1.md) |
 | [2026-08-17 Holistic strategy](qa-holistic-post-phase1.md) | Whole-project QA after Slices A–E (logic, viewer, E2E, edge cases, Vitest health) | Approved; CI gate and manual E2E recorded; logic/viewer regression and edge-case passes still waiting |
 
 **Polyline cut audits (promoted from proposals)**
@@ -34,6 +35,60 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-08-23 — Phase 1 holistic remediation complete
+
+**Status:** Complete  
+**Date:** 2026-08-23  
+**Scope:** [remediation-phase1.md](remediation-phase1.md) Slices 4 → 1 → 2 → 3 → 5 → 6 (implementation order). Closes in-scope findings from [2026-08-17 CI gate](#audit--2026-08-17--holistic-ci-gate--test-suite-health).  
+**ADR:** [0100](../../decisions/product/0100-freeform-cut-strokes.md)  
+**Method:** Production + Vitest slices as specified; Journey C toolbar / sidebar / copy verified manually during Slices 1–3. No geodesic / CUT-UX v2 / Playwright work.
+
+### CI after remediation
+
+| Check | Result |
+|-------|--------|
+| `npm test` | **Pass** — 49 files, **349** passed, **1 skipped** (POLYCUT-C-002 geodesic wrap) |
+| `npm run lint` | **Pass** |
+| vs 2026-08-17 gate | +12 tests; 1 intentional skip (was 337 / 0 skipped) |
+
+### Finding outcomes
+
+| ID | Severity | Result | Notes |
+|----|----------|--------|-------|
+| HOLISTIC-UI-001 | Medium | **Pass** | Viewport `CutDraftToolbar`; Slice 1 manual check (toolbar after 1st/2nd vertex). |
+| HOLISTIC-UI-002 | Medium | **Pass** | Cut-mode reserved Done/Cancel + scale-lock hint; `AppSidebar` memo; Slice 2 manual check. |
+| HOLISTIC-UI-003 | Medium | **Pass** | Sidebar + [phase-1 viewer UX table](phase-1-freeform-cut-strokes.md) match Enter/Done, Esc/Cancel; Backspace last-vertex only; double-click omitted from copy. |
+| HOLISTIC-UI-004 | Low / Medium | **Pass** | Slice 4: `loadMeshFile` warning toast; prior session preserved. Not re-run as Journey D in this wrap-up. |
+| HOLISTIC-TS-001 | High | **Pass** | Production `flattenWithCutStrokes` pins empty ≡ `unfoldMesh`, closed loop ≥2 islands, open dart island count, diagonal face-count delta. |
+| HOLISTIC-TS-002 | Medium | **Pass** | Closed loop on `unitQuad` → `partitionIslands.length >= 2`; seam keys pinned where fixtures allow. |
+| HOLISTIC-TS-003 | Medium | **Pass** | Opposite-face wrap is `it.skip` (POLYCUT-C-002 deferred). C-001 no-tunnel tests still pass. |
+| HOLISTIC-TS-004 | Low | **Pass** | `idlePolylineDraft()` cancel; dart flatten expects 1 island + face growth. |
+| HOLISTIC-TS-005 | Low | **Pass** | `countQualityIssues` replaces `Array.isArray`; disjoint faces require `"could not connect"`. Residual: [demoMeshes.test.ts](../../../src/logic/io/demoMeshes.test.ts) `> 0` smoke still tautological (not in Slice 6 bullets). |
+| HOLISTIC-TS-006 | High | **Pass** | `assertUnfoldMeshSoupInvariants` on derived mesh after `singleFaceClosedLoop`. |
+| HOLISTIC-TS-007 | Medium | **Pass** | `parseObj`: empty, no faces, face-before-`v`, out-of-range (`ObjParseError`), non-finite, triangle budget. Residual: `v/vt` token and negative-relative index still untested. |
+| HOLISTIC-TS-009 | Medium | **Pass (scoped)** | Toast + failed-load session identity (Slice 4). Residual: STL `loadMeshFile`, overlapping `loadSeq`, ineligible-seam toast. |
+| HOLISTIC-TS-008 | Medium | **Out of scope** | Non-manifold fixture — not in this plan. |
+| HOLISTIC-TS-010 | Low | **Out of scope** | `flattenSnapshotUi` stale-key — not in this plan. |
+
+### Verification matrix
+
+| Check | Result |
+|-------|--------|
+| Journey C — Done/Cancel in viewport | **Pass** (Slice 1) |
+| Journey C — stable sidebar | **Pass** (Slice 2) |
+| Journey C — copy | **Pass** (Slice 3) |
+| Journey D — corrupt OBJ toast | **Pass** (Slice 4 implemented; not re-executed this wrap-up) |
+| Closed loop flatten | **Pass** (automated) |
+| No-cut regression | **Pass** (empty strokes ≡ `unfoldMesh`) |
+| C-002 still frozen | **Pass** — skipped unit test documents intent; geometry unchanged |
+| CI | **Pass** — 349 + 1 skip, lint clean |
+
+### Still deferred (not failures)
+
+POLYCUT-C-002 geodesic wrap, CUT-UX-001/002/003, UI-004 worker flatten, HOLISTIC-TS-008 / TS-010, `CUBE_OBJ` fixture consolidation.
 
 ---
 

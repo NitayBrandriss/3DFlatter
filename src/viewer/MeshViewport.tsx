@@ -96,6 +96,8 @@ export function MeshViewport({
   showAxes,
   modelScale,
   editTool,
+  cutDraftActive,
+  editingStrokeId,
   onEdgePick,
   onDraftFinalize,
   onCutDraftUiChange,
@@ -115,6 +117,8 @@ export function MeshViewport({
   showAxes: boolean;
   modelScale: number;
   editTool: MeshEditTool;
+  cutDraftActive: boolean;
+  editingStrokeId: string | null;
   onEdgePick: (edgeKey: EdgeKey) => void;
   onDraftFinalize: (result: CutPolylineFinalizeResult) => void;
   onCutDraftUiChange?: (ui: {
@@ -135,8 +139,6 @@ export function MeshViewport({
   const cutDraftApiRef = useRef<CutPolylineDraftApi | null>(null);
   const pickableMeshRef = useRef<THREE.Mesh | null>(null);
   const [orbitEnabled, setOrbitEnabled] = useState(true);
-  const [editingStrokeId, setEditingStrokeId] = useState<string | null>(null);
-  const [cutDraftActive, setCutDraftActive] = useState(false);
 
   const visibleCutStrokes = useMemo(
     () => excludeCutStrokeById(cutStrokes, editingStrokeId),
@@ -221,11 +223,7 @@ export function MeshViewport({
             editTool={editTool}
             modelScale={modelScale}
             onFinalize={onDraftFinalize}
-            onDraftUiChange={(ui) => {
-              setCutDraftActive(ui.active);
-              setEditingStrokeId(ui.editingStrokeId);
-              onCutDraftUiChange?.(ui);
-            }}
+            onDraftUiChange={onCutDraftUiChange}
             onPointCapReached={onCutPointCapReached}
             onFinalizeTooFewPoints={onCutFinalizeTooFewPoints}
             onOrbitEnabledChange={setOrbitEnabled}

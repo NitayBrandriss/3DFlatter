@@ -54,6 +54,17 @@ export function foldedDihedralQuad(): MeshModel {
   );
 }
 
+/** Closed loop entirely inside face 0 of unitQuad: near (1,0)-(1,1). */
+export function singleFaceClosedLoop(): CutStroke {
+  return stroke("single-face", [
+    v(0.85, 0.15),
+    v(0.95, 0.3),
+    v(0.88, 0.5),
+    v(0.78, 0.28),
+    v(0.85, 0.15),
+  ]);
+}
+
 export function stroke(id: string, points: Vec3[]): CutStroke {
   return { id, points };
 }

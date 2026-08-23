@@ -20,6 +20,7 @@ import {
   appendPolylineDraftPoint,
   canFinalizeDraft,
   closePolylineByDuplicatingFirst,
+  idlePolylineDraft,
   isExactlyClosedPolyline,
   stripDblClickDuplicate,
   takeCapToastNotification,
@@ -115,23 +116,25 @@ export function useCutPolylineDraft({
   const dragIndexRef = useRef<number | null>(null);
   const pairClosedOnDragRef = useRef(false);
   const editingStrokeIdRef = useRef<string | null>(null);
+  const onDraftUiChangeRef = useRef(onDraftUiChange);
 
-  const setDraftUi = useCallback(
-    (active: boolean, canFinalize: boolean) => {
-      const editingStrokeId = active ? editingStrokeIdRef.current : null;
-      const activeChanged = activeRef.current !== active;
-      const finalizeChanged = canFinalizeRef.current !== canFinalize;
-      const editingChanged = editingUiRef.current !== editingStrokeId;
-      if (!activeChanged && !finalizeChanged && !editingChanged) return;
-      activeRef.current = active;
-      canFinalizeRef.current = canFinalize;
-      editingUiRef.current = editingStrokeId;
-      if (activeChanged) setCutDraftActive(active);
-      if (finalizeChanged) setCutDraftCanFinalize(canFinalize);
-      onDraftUiChange?.({ active, canFinalize, editingStrokeId });
-    },
-    [onDraftUiChange],
-  );
+  useEffect(() => {
+    onDraftUiChangeRef.current = onDraftUiChange;
+  }, [onDraftUiChange]);
+
+  const setDraftUi = useCallback((active: boolean, canFinalize: boolean) => {
+    const editingStrokeId = active ? editingStrokeIdRef.current : null;
+    const activeChanged = activeRef.current !== active;
+    const finalizeChanged = canFinalizeRef.current !== canFinalize;
+    const editingChanged = editingUiRef.current !== editingStrokeId;
+    if (!activeChanged && !finalizeChanged && !editingChanged) return;
+    activeRef.current = active;
+    canFinalizeRef.current = canFinalize;
+    editingUiRef.current = editingStrokeId;
+    if (activeChanged) setCutDraftActive(active);
+    if (finalizeChanged) setCutDraftCanFinalize(canFinalize);
+    onDraftUiChangeRef.current?.({ active, canFinalize, editingStrokeId });
+  }, []);
 
   const syncVisuals = useCallback(
     (tipDisplay: DisplayVec3 | null = null, recomputeBounds = true) => {
@@ -161,14 +164,15 @@ export function useCutPolylineDraft({
 
   const clearDraft = useCallback(() => {
     modeRef.current = "idle";
-    placedDisplayRef.current = [];
-    placedCanonicalRef.current = [];
+    const idle = idlePolylineDraft();
+    placedDisplayRef.current = idle.display;
+    placedCanonicalRef.current = idle.canonical;
+    editingStrokeIdRef.current = idle.editingStrokeId;
     lastPointerUpAddedRef.current = false;
     capToastShownRef.current = false;
     normalizationRef.current = null;
     dragIndexRef.current = null;
     pairClosedOnDragRef.current = false;
-    editingStrokeIdRef.current = null;
     lineRef.current?.clear();
     markersRef.current?.clear();
     onOrbitEnabledChange?.(true);
@@ -394,19 +398,21 @@ export function useCutPolylineDraft({
     }
   }, [cancel, editTool]);
 
+  // Report idle only on true unmount. A new onDraftUiChange identity is not an
+  // unmount — treating it as one hid the viewport toolbar after the first vertex.
   useEffect(() => {
     return () => {
       if (activeRef.current || canFinalizeRef.current) {
         activeRef.current = false;
         canFinalizeRef.current = false;
-        onDraftUiChange?.({
+        onDraftUiChangeRef.current?.({
           active: false,
           canFinalize: false,
           editingStrokeId: null,
         });
       }
     };
-  }, [onDraftUiChange]);
+  }, []);
 
   useEffect(() => {
     if (editTool !== "cut") return;

@@ -12,6 +12,7 @@ import {
   closePolylineByDuplicatingFirst,
   draftMarkerCount,
   excludeCutStrokeById,
+  idlePolylineDraft,
   incidentSparseSegmentStarts,
   isClosedClick,
   isExactlyClosedPolyline,
@@ -56,6 +57,13 @@ describe("cutPolylineHelpers", () => {
     expect(canFinalizeDraft(1)).toBe(false);
     expect(canFinalizeDraft(2)).toBe(true);
     expect(canFinalizeDraft(CUT_DRAW_MAX_STROKE_POINTS)).toBe(true);
+  });
+
+  it("idlePolylineDraft clears clones and editing id without store fields", () => {
+    const idle = idlePolylineDraft();
+    expect(idle.display).toEqual([]);
+    expect(idle.canonical).toEqual([]);
+    expect(idle.editingStrokeId).toBeNull();
   });
 
   it("stripDblClickDuplicate removes last point only when last pointerup added", () => {

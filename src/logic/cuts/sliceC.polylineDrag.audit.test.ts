@@ -93,12 +93,15 @@ describe("Slice C overlay tessellate — through-volume chords (POLYCUT-C)", () 
     expect(path[path.length - 1]).toEqual(p0);
   });
 
-  it("characterizes opposite-face walk: face-local 2D clip stays on the start face", () => {
+  // POLYCUT-C-002: face-local clip does not wrap onto the opposite cube face.
+  // A geodesic fix should make this pass without deleting it (HOLISTIC-TS-003).
+  it.skip("opposite-face geodesic wrap — POLYCUT-C-002 deferred", () => {
     const mesh = unitCube();
     const path = tessellateSurfaceSegment(mesh, v(0, 0, 0.5), v(0, 0, -0.5));
-    for (const p of path) {
-      expect(Math.abs(p.z - 0.5)).toBeLessThan(1e-5);
-    }
+    expect(pathHasThroughVolumeChord(path)).toBe(false);
+    const onPlusZ = path.some((p) => Math.abs(p.z - 0.5) < 1e-5);
+    const onMinusZ = path.some((p) => Math.abs(p.z + 0.5) < 1e-5);
+    expect(onPlusZ && onMinusZ).toBe(true);
   });
 
   it("dihedral drag across the hinge stays on the two wings", () => {

@@ -254,6 +254,10 @@ body.is-resizing {
   width: 100%;
 }
 
+.cut-draft-sidebar-controls.is-inactive {
+  visibility: hidden;
+}
+
 .row--spread {
   justify-content: space-between;
 }
