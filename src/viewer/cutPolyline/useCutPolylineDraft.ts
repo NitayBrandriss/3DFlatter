@@ -13,7 +13,6 @@ import type { MeshModel } from "../../logic/mesh/types";
 import type { MeshEditTool } from "../../state/meshEditTool";
 import {
   canonicalToDisplay,
-  displayToCanonical,
   type DisplayNormalization,
 } from "../displayNormalization";
 import {
@@ -136,31 +135,35 @@ export function useCutPolylineDraft({
     onDraftUiChangeRef.current?.({ active, canFinalize, editingStrokeId });
   }, []);
 
-  const syncVisuals = useCallback(
-    (tipDisplay: DisplayVec3 | null = null, recomputeBounds = true) => {
+  /** Surface-hug overlay for placed vertices. Hover preview is a cheap chord. */
+  const tessellatePlacedOverlay = useCallback(
+    (recomputeBounds = true) => {
       markersRef.current?.setPositions(placedDisplayRef.current);
+      lineRef.current?.setPreviewTip(null);
 
       const norm = normalizationRef.current;
       if (!norm) {
         lineRef.current?.setPlaced(placedDisplayRef.current, recomputeBounds);
-        lineRef.current?.setPreviewTip(tipDisplay);
         return;
       }
 
-      const tipCanonical = tipDisplay
-        ? (displayToCanonical(tipDisplay, norm) as Vec3)
-        : null;
       const linePoints = tessellateDraftDisplayPath(
         mesh,
         placedCanonicalRef.current,
-        tipCanonical,
+        null,
         norm,
       );
       lineRef.current?.setPlaced(linePoints, recomputeBounds);
-      lineRef.current?.setPreviewTip(null);
     },
     [lineRef, markersRef, mesh],
   );
+
+  /** Straight display-space chords while a node is dragged (tessellate on pointer-up). */
+  const showSparseOverlay = useCallback(() => {
+    markersRef.current?.setPositions(placedDisplayRef.current);
+    lineRef.current?.setPreviewTip(null);
+    lineRef.current?.setPlaced(placedDisplayRef.current, false);
+  }, [lineRef, markersRef]);
 
   const clearDraft = useCallback(() => {
     modeRef.current = "idle";
@@ -221,8 +224,8 @@ export function useCutPolylineDraft({
       true,
       canFinalizeDraft(placedDisplayRef.current.length),
     );
-    syncVisuals(null);
-  }, [clearDraft, setDraftUi, syncVisuals]);
+    tessellatePlacedOverlay();
+  }, [clearDraft, setDraftUi, tessellatePlacedOverlay]);
 
   const finalizeFromDoubleClick =
     useCallback((): CutPolylineFinalizeResult | null => {
@@ -243,9 +246,9 @@ export function useCutPolylineDraft({
         true,
         canFinalizeDraft(placedDisplayRef.current.length),
       );
-      syncVisuals(null);
+      tessellatePlacedOverlay();
       return finalize();
-    }, [clearDraft, finalize, onFinalizeTooFewPoints, setDraftUi, syncVisuals]);
+    }, [clearDraft, finalize, onFinalizeTooFewPoints, setDraftUi, tessellatePlacedOverlay]);
 
   const closeOnFirstMarkerClick =
     useCallback((): CutPolylineFinalizeResult | null => {
@@ -286,9 +289,9 @@ export function useCutPolylineDraft({
       lastPointerUpAddedRef.current = false;
       capToastShownRef.current = false;
       setDraftUi(true, canFinalizeDraft(placedDisplayRef.current.length));
-      syncVisuals(null);
+      tessellatePlacedOverlay();
     },
-    [editTool, setDraftUi, syncVisuals],
+    [editTool, setDraftUi, tessellatePlacedOverlay],
   );
 
   const beginNodeDrag = useCallback(
@@ -301,9 +304,9 @@ export function useCutPolylineDraft({
       );
       lastPointerUpAddedRef.current = false;
       onOrbitEnabledChange?.(false);
-      syncVisuals(null, false);
+      showSparseOverlay();
     },
-    [editTool, onOrbitEnabledChange, syncVisuals],
+    [editTool, onOrbitEnabledChange, showSparseOverlay],
   );
 
   const applyNodeDragHit = useCallback(
@@ -319,9 +322,9 @@ export function useCutPolylineDraft({
         norm,
         pairClosedOnDragRef.current,
       );
-      syncVisuals(null, false);
+      showSparseOverlay();
     },
-    [syncVisuals],
+    [showSparseOverlay],
   );
 
   const endNodeDrag = useCallback(() => {
@@ -331,9 +334,9 @@ export function useCutPolylineDraft({
     }
     dragIndexRef.current = null;
     pairClosedOnDragRef.current = false;
-    syncVisuals(null, true);
+    tessellatePlacedOverlay(true);
     onOrbitEnabledChange?.(true);
-  }, [onOrbitEnabledChange, syncVisuals]);
+  }, [onOrbitEnabledChange, tessellatePlacedOverlay]);
 
   const isNodeDragging = useCallback(() => dragIndexRef.current != null, []);
 
@@ -375,20 +378,22 @@ export function useCutPolylineDraft({
         true,
         canFinalizeDraft(result.display.length),
       );
-      syncVisuals(null);
+      tessellatePlacedOverlay();
       return { status: "added" };
     },
-    [editTool, onPointCapReached, setDraftUi, syncVisuals],
+    [editTool, onPointCapReached, setDraftUi, tessellatePlacedOverlay],
   );
 
   const setHoverTip = useCallback(
     (tip: DisplayVec3 | null) => {
       // POLYCUT-D-003 accepted: tip also runs in editingCommitted as append-at-end preview.
+      // Hover rubber-band is a display-space chord (not a surface walk) so dense
+      // meshes stay interactive; tessellate on place / undo / drag-end.
       if (!isLiveMode(modeRef.current)) return;
       if (dragIndexRef.current != null) return;
-      syncVisuals(tip, false);
+      lineRef.current?.setPreviewTip(tip);
     },
-    [syncVisuals],
+    [lineRef],
   );
 
   // Leaving the cut tool discards the draft.

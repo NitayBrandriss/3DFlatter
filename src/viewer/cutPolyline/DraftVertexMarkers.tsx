@@ -9,17 +9,23 @@ import {
   useRef,
   useState,
 } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import type { ThreeEvent } from "@react-three/fiber";
 import {
   draftMarkerCount,
   isExactlyClosedPolyline,
 } from "./cutPolylineHelpers";
 import type { DisplayVec3 } from "./InProgressPolylineLine";
+import { markerScaleForScreenPixels } from "./markerScreenScale";
 
 const MARKER_RADIUS = 0.028;
 const FIRST_MARKER_RADIUS = 0.038;
+const MARKER_TARGET_PX = 9;
+const FIRST_MARKER_TARGET_PX = 11;
 const MARKER_COLOR = "#7dd3fc";
 const FIRST_MARKER_COLOR = "#fbbf24";
+
+const _worldPos = new THREE.Vector3();
 
 export type DraftVertexMarkersHandle = {
   setPositions(points: readonly DisplayVec3[]): void;
@@ -44,23 +50,59 @@ export const DraftVertexMarkers = forwardRef<
   const pointsRef = useRef<DisplayVec3[]>([]);
   const meshRefs = useRef<(THREE.Mesh | null)[]>([]);
   const onDownRef = useRef(onMarkerPointerDown);
+  const lastScaleRef = useRef({ first: 1, rest: 1 });
+  const { camera, size } = useThree();
 
   useEffect(() => {
     onDownRef.current = onMarkerPointerDown;
   }, [onMarkerPointerDown]);
+
+  const applyMarkerScales = () => {
+    const fov =
+      camera instanceof THREE.PerspectiveCamera ? camera.fov : 50;
+    const parentScale = modelScale === 0 ? 1 : Math.abs(modelScale);
+    for (let i = 0; i < count; i++) {
+      const mesh = meshRefs.current[i];
+      if (!mesh) continue;
+      mesh.getWorldPosition(_worldPos);
+      const distance = _worldPos.distanceTo(camera.position);
+      const isFirst = i === 0;
+      const scale = markerScaleForScreenPixels({
+        distance,
+        fovDeg: fov,
+        viewportHeightPx: size.height,
+        geometryRadius: isFirst ? FIRST_MARKER_RADIUS : MARKER_RADIUS,
+        parentScale,
+        targetRadiusPx: isFirst ? FIRST_MARKER_TARGET_PX : MARKER_TARGET_PX,
+      });
+      if (isFirst) lastScaleRef.current.first = scale;
+      else lastScaleRef.current.rest = scale;
+      mesh.scale.setScalar(scale);
+    }
+  };
 
   const applyMeshPose = (mesh: THREE.Mesh | null, index: number) => {
     const p = pointsRef.current[index];
     if (!mesh || !p) return;
     mesh.position.set(p.x, p.y, p.z);
     mesh.visible = true;
+    mesh.scale.setScalar(
+      index === 0 ? lastScaleRef.current.first : lastScaleRef.current.rest,
+    );
   };
 
   useLayoutEffect(() => {
     for (let i = 0; i < count; i++) {
       applyMeshPose(meshRefs.current[i], i);
     }
-  }, [count]);
+    applyMarkerScales();
+    // Pose + pixel scale from the latest camera/size; helpers are render-local.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [count, modelScale, camera, size.height]);
+
+  useFrame(() => {
+    applyMarkerScales();
+  });
 
   useImperativeHandle(
     ref,

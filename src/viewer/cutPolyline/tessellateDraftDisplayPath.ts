@@ -9,9 +9,11 @@ import type { DisplayVec3 } from "./InProgressPolylineLine";
 
 /**
  * Tessellate draft polyline + optional rubber-band tip into display-space line
- * points. Drag uses this full-path rebuild (incident splice is messy when
- * sample counts change); `incidentSparseSegmentStarts` documents which sparse
- * segments actually moved.
+ * points. The live draft hook tessellates placed vertices only (tipCanonical
+ * null): hover/drag preview is a display-space chord so dense meshes stay
+ * interactive. `incidentSparseSegmentStarts` documents which sparse segments
+ * moved when a node is dragged. Tests may still pass a tip to characterize
+ * a tessellated rubber-band.
  */
 export function tessellateDraftDisplayPath(
   mesh: MeshModel,

@@ -14,6 +14,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
+| [2026-08-24 Dense-mesh draw](#audit--2026-08-24--polyline-cut-dense-mesh-markers--hover-tessellate) | World-space markers + per-move surface tessellate on client OBJs | **Remediated** (screen-scale markers; chord rubber-band on hover/drag) |
 | [2026-08-17 Slice E](#audit--2026-08-17--polyline-cut-slice-e-docs--qa-matrix) | Docs + end-to-end QA matrix | Complete (manual green light post–Slice D) |
 | [2026-08-16 Slice D](#audit--2026-08-16--polyline-cut-slice-d-committed-re-edit) | Committed stroke re-edit (drag / append-end / cancel / Done+Flatten) | D-001/D-002 remediated; D-003 accepted (tip-in-edit) |
 | [2026-08-16 Slice C](#audit--2026-08-16--polyline-cut-slice-c-node-drag) | Draft node drag + overlay retessellate | C-001 remediated; C-003 remediated; C-002 frozen (incomplete opposite-face walk) |
@@ -38,7 +39,28 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ---
 
+## Audit — 2026-08-24 — Polyline cut dense-mesh markers + hover tessellate
+
+**Status:** Remediated  
+**Date:** 2026-08-24  
+**Scope:** Draw-cut polyline on dense client OBJs (~80k tris). Not Flatten `locate` indexing (CUT-008 remainder).  
+**ADR:** [0100 — Freeform cut strokes](../../decisions/product/0100-freeform-cut-strokes.md)
+
+### Findings
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| POLYCUT-PERF-001 | **Medium** | Draft markers are world-space spheres (`r ≈ 0.028 / 0.038` in display units). Zoom-in covers a limb; `depthTest={false}` (POLYCUT-B-005) makes them read even larger. | **Resolved** — camera-distance scale so projected radius stays ~9–11 px (`markerScaleForScreenPixels`). |
+| POLYCUT-PERF-002 | **High** | `setHoverTip` (and node-drag) called `tessellateDraftDisplayPath` every `pointermove`: clone `WorkingMesh` + brute-force `locate` per segment. Interactive on cubes; hitchy on ~84k-tri avatars. | **Resolved** — hover/drag preview is a display-space chord; surface tessellate on place, undo, and drag-end. |
+
+- **Root cause:** Phase 1 sized markers for a whole-model framing and reused Flatten’s surface walk on the hover hot path. CUT-008 cached `vertex → faces` but `locate` stayed O(V+E+F).
+- **Tests:** [`src/viewer/cutPolyline/markerScreenScale.test.ts`](../../../src/viewer/cutPolyline/markerScreenScale.test.ts). Overlay no-tunnel tests still tessellate with an explicit tip (characterizing the tessellator, not live hover).
+- **Not fixed here:** Flatten/commit `locate` cost; geodesic POLYCUT-C-002; 363 tiny islands on typical avatar OBJs.
+
+---
+
 ## Audit — 2026-08-23 — Phase 1 holistic remediation complete
+
 
 **Status:** Complete  
 **Date:** 2026-08-23  
