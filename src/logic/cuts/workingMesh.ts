@@ -33,6 +33,8 @@ export class WorkingMesh {
   readonly surfaceEpsSq: number;
   /** vertex index → incident face indices (rebuilt on topology edits). */
   private vertexFaces: number[][] = [];
+  /** Cached unique undirected edges; invalidated on topology edits. */
+  private cachedEdges: Array<[number, number]> | null = null;
 
   constructor(
     mesh: MeshModel,
@@ -56,6 +58,7 @@ export class WorkingMesh {
     this.surfaceEps = surfaceEps;
     this.surfaceEpsSq = surfaceEps * surfaceEps;
     this.rebuildVertexFaces();
+    this.rebuildEdgeCache();
   }
 
   vertexCount(): number {
@@ -88,8 +91,7 @@ export class WorkingMesh {
     }
   }
 
-  /** Unique undirected edges as sorted endpoint pairs. */
-  private uniqueEdges(): Array<[number, number]> {
+  private rebuildEdgeCache(): void {
     const seen = new Set<string>();
     const out: Array<[number, number]> = [];
     for (const [a, b, c] of this.faces) {
@@ -104,7 +106,13 @@ export class WorkingMesh {
         out.push(u < v ? [u, v] : [v, u]);
       }
     }
-    return out;
+    this.cachedEdges = out;
+  }
+
+  /** Unique undirected edges as sorted endpoint pairs (cached). */
+  private uniqueEdges(): Array<[number, number]> {
+    if (!this.cachedEdges) this.rebuildEdgeCache();
+    return this.cachedEdges!;
   }
 
   faceIndicesWithEdge(a: number, b: number): number[] {
@@ -202,6 +210,7 @@ export class WorkingMesh {
       this.faces.splice(fi, 1, ...replacement);
     }
     this.rebuildVertexFaces();
+    this.rebuildEdgeCache();
 
     return mid;
   }
@@ -217,6 +226,7 @@ export class WorkingMesh {
     const v = this.addVertex(p);
     this.faces.splice(faceIndex, 1, [a, b, v], [b, c, v], [c, a, v]);
     this.rebuildVertexFaces();
+    this.rebuildEdgeCache();
     return v;
   }
 

@@ -84,4 +84,13 @@ describe("WorkingMesh", () => {
       expect(wm.isBoundaryVertex(i)).toBe(false);
     }
   });
+
+  it("locate still finds edge midpoints after splitEdge (edge cache rebuild)", () => {
+    const mesh = unitTriangle();
+    const eps = snapEpsilonForMesh(mesh);
+    const wm = new WorkingMesh(mesh, [], eps);
+    wm.splitEdge(0, 1, 0.5);
+    const loc = wm.locate(v(0.25, 0));
+    expect(loc.kind === "edge" || loc.kind === "vertex").toBe(true);
+  });
 });

@@ -134,6 +134,8 @@ Details will get their own ADRs (0101+) when scheduled.
 - **Scale & pagination** — user units (cm), fit layout to A4/Letter with margins.  
 - **Folds & automation** — mountain/valley fold metadata in export; auto seam suggestions; GLB import.
 
+**Client epics (captured, not scheduled):** [phase2-epics.md](docs/plans/product/phase2-epics.md) — PDF A4 booklet export, mesh isolation / sub-mesh selection, developability heatmap.
+
 ---
 
 ## How to work on product features

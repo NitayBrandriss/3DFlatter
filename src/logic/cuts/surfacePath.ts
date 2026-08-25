@@ -48,6 +48,29 @@ function sharesIncidentFace(
 }
 
 /**
+ * Hard cap so a stuck walk cannot freeze the main thread on dense meshes.
+ * Large enough for typical draft segments; finishIfOnFace still applies.
+ */
+export const MAX_SURFACE_TESSELLATE_HOPS = 2048;
+
+/**
+ * Continue from an exit edge hit without a full-mesh `locate`.
+ * Prefer vertex when the hit is at an endpoint (richer incidence).
+ */
+function locAfterExit(
+  working: WorkingMesh,
+  exit: { a: number; b: number; t: number; hitPoint: Vec3 },
+): PointLocation {
+  if (distSq(exit.hitPoint, working.getVertex(exit.a)) <= working.epsSq) {
+    return { kind: "vertex", vi: exit.a };
+  }
+  if (distSq(exit.hitPoint, working.getVertex(exit.b)) <= working.epsSq) {
+    return { kind: "vertex", vi: exit.b };
+  }
+  return { kind: "edge", a: exit.a, b: exit.b, t: exit.t };
+}
+
+/**
  * Read-only surface path between two on-surface points (display / preview).
  * If the walk cannot reach `p1` on the surface, keep the last on-surface
  * sample — never a straight chord through the volume (POLYCUT-C-001).
@@ -68,6 +91,7 @@ export function tessellateSurfaceSegment(
     surfaceEpsilonForMesh(mesh),
   );
 
+  // Endpoints only — hop continuation uses exit edge data (no per-hop locate).
   const loc0 = working.locate(p0);
   const loc1 = working.locate(p1);
   if (loc0.kind === "none") {
@@ -78,7 +102,10 @@ export function tessellateSurfaceSegment(
   let current = cloneVec3(p0);
   let currentLoc: PointLocation = loc0;
   let prev: number | null = null;
-  const maxHops = Math.max(8, working.faces.length * 2 + 4);
+  const maxHops = Math.min(
+    MAX_SURFACE_TESSELLATE_HOPS,
+    Math.max(8, working.faces.length * 2 + 4),
+  );
 
   const finishIfOnFace = (): Vec3[] => {
     if (loc1.kind !== "none" && sharesIncidentFace(working, currentLoc, loc1)) {
@@ -107,10 +134,7 @@ export function tessellateSurfaceSegment(
 
     prev = prevAfterHop(working, currentLoc, exit.faceIndex, exit.a, exit.b);
     current = exit.hitPoint;
-    currentLoc = working.locate(current);
-    if (currentLoc.kind === "none") {
-      return path;
-    }
+    currentLoc = locAfterExit(working, exit);
   }
 
   return finishIfOnFace();

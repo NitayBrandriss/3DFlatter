@@ -9,6 +9,7 @@ import {
   useRef,
 } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { fatLineRaycast } from "./fatLineRaycast";
 
 export type DisplayVec3 = { x: number; y: number; z: number };
@@ -22,8 +23,8 @@ export type InProgressPolylineHandle = {
 /**
  * Imperative in-progress cut polyline (display space): placed vertices plus
  * optional rubber-band tip. Mutates BufferGeometry without React re-renders.
- * Fat-line raycast + stopPropagation blocks mesh append on the stroke body
- * (POLYCUT-D-002); does not insert mid-segment.
+ * Fat-line pick + pointerup stopPropagation blocks mesh append on the stroke
+ * body (POLYCUT-D-002) without stealing OrbitControls on pointerdown.
  */
 export const InProgressPolylineLine = forwardRef<
   InProgressPolylineHandle,
@@ -31,6 +32,7 @@ export const InProgressPolylineLine = forwardRef<
 >(function InProgressPolylineLine({ modelScale }, ref) {
   const placedRef = useRef<DisplayVec3[]>([]);
   const tipRef = useRef<DisplayVec3 | null>(null);
+  const { size } = useThree();
 
   const { line, geometry } = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -59,6 +61,9 @@ export const InProgressPolylineLine = forwardRef<
     line.scale.setScalar(modelScale);
   }, [line, modelScale]);
 
+  useEffect(() => {
+    line.userData.viewportHeightPx = size.height;
+  }, [line, size.height]);
   useImperativeHandle(
     ref,
     () => {
@@ -117,15 +122,11 @@ export const InProgressPolylineLine = forwardRef<
     [geometry],
   );
 
-  const stopPick = (e: ThreeEvent<PointerEvent>) => {
+  // Do not stop on pointerdown — OrbitControls needs the gesture.
+  // Stop on pointerup so a click on the stroke body does not append a vertex.
+  const stopPickUp = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
   };
 
-  return (
-    <primitive
-      object={line}
-      onPointerDown={stopPick}
-      onPointerUp={stopPick}
-    />
-  );
+  return <primitive object={line} onPointerUp={stopPickUp} />;
 });

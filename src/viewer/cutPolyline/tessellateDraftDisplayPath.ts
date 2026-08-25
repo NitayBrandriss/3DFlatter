@@ -9,9 +9,10 @@ import type { DisplayVec3 } from "./InProgressPolylineLine";
 
 /**
  * Tessellate draft polyline + optional rubber-band tip into display-space line
- * points. Drag uses this full-path rebuild (incident splice is messy when
- * sample counts change); `incidentSparseSegmentStarts` documents which sparse
- * segments actually moved.
+ * points. The live draft hook tessellates placed vertices only (tipCanonical
+ * null): hover/drag preview is a display-space chord so dense meshes stay
+ * interactive. Tests may still pass a tip to characterize a tessellated
+ * rubber-band.
  */
 export function tessellateDraftDisplayPath(
   mesh: MeshModel,
@@ -39,6 +40,31 @@ export function tessellateDraftDisplayPath(
   }
 
   return canonicalPath.map((p) => toDisplayVec3(p, normalization));
+}
+
+/**
+ * Tessellate only the newest sparse segment and append to an existing dense
+ * display path (skips the shared endpoint). Used on place so prior segments
+ * are not recomputed on dense meshes.
+ */
+export function appendLastSegmentDisplayPath(
+  mesh: MeshModel,
+  existingDisplayPath: readonly DisplayVec3[],
+  p0Canonical: Vec3,
+  p1Canonical: Vec3,
+  normalization: DisplayNormalization,
+): DisplayVec3[] {
+  const segment = tessellateSurfaceSegment(mesh, p0Canonical, p1Canonical);
+  const out: DisplayVec3[] = existingDisplayPath.map((p) => ({
+    x: p.x,
+    y: p.y,
+    z: p.z,
+  }));
+  for (let j = 0; j < segment.length; j++) {
+    if (j === 0 && out.length > 0) continue;
+    out.push(toDisplayVec3(segment[j]!, normalization));
+  }
+  return out;
 }
 
 function appendSegment(

@@ -3,6 +3,8 @@
 import * as THREE from "three";
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { EdgeKey, MeshModel } from "../logic/mesh/types";
 import { resolvePick } from "../logic/seams/resolvePick";
 import type { MeshEditTool } from "../state/meshEditTool";
@@ -36,6 +38,7 @@ export function PickableMesh({
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   const displayMeshRef = useRef(displayMesh);
   const normalizationRef = useRef(normalization);
+  const { controls } = useThree();
 
   useEffect(() => {
     displayMeshRef.current = displayMesh;
@@ -49,16 +52,26 @@ export function PickableMesh({
     pointerDown.current = null;
   }, []);
 
+  const pivotToHit = useCallback(
+    (worldPoint: THREE.Vector3) => {
+      const orbit = controls as OrbitControlsImpl | null;
+      if (!orbit || typeof orbit.target?.copy !== "function") return;
+      orbit.target.copy(worldPoint);
+      orbit.update();
+    },
+    [controls],
+  );
+
   const onPointerDown = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
-      if (editTool === "none") return;
+      // Always track for Alt+click pivot; tool actions still gate on editTool.
       if (cutDraftApiRef.current?.isNodeDragging()) return;
       pointerDown.current = {
         x: e.nativeEvent.clientX,
         y: e.nativeEvent.clientY,
       };
     },
-    [cutDraftApiRef, editTool],
+    [cutDraftApiRef],
   );
 
   const onPointerMove = useCallback(
@@ -94,6 +107,16 @@ export function PickableMesh({
 
       if (e.faceIndex == null || !e.point) return;
 
+      // Alt+click: re-pivot OrbitControls to the hit (local inspection).
+      // Works in any tool mode so users can inspect before drawing.
+      if (e.nativeEvent.altKey) {
+        e.stopPropagation();
+        pivotToHit(e.point);
+        return;
+      }
+
+      if (editTool === "none") return;
+
       if (editTool === "cut") {
         if (cutDraftApiRef.current?.isNodeDragging()) return;
         e.stopPropagation();
@@ -120,7 +143,7 @@ export function PickableMesh({
         onEdgePick(resolved.edgeKey);
       }
     },
-    [clearPointerDown, cutDraftApiRef, editTool, onEdgePick],
+    [clearPointerDown, cutDraftApiRef, editTool, onEdgePick, pivotToHit],
   );
 
   const onDoubleClick = useCallback(
