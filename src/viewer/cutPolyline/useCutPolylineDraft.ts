@@ -25,7 +25,10 @@ import {
   takeCapToastNotification,
   writePlacedTwin,
 } from "./cutPolylineHelpers";
-import { tessellateDraftDisplayPath } from "./tessellateDraftDisplayPath";
+import {
+  appendLastSegmentDisplayPath,
+  tessellateDraftDisplayPath,
+} from "./tessellateDraftDisplayPath";
 import type { DraftVertexMarkersHandle } from "./DraftVertexMarkers";
 import type {
   DisplayVec3,
@@ -106,6 +109,8 @@ export function useCutPolylineDraft({
   const modeRef = useRef<"idle" | "drafting" | "editingCommitted">("idle");
   const placedDisplayRef = useRef<DisplayVec3[]>([]);
   const placedCanonicalRef = useRef<Vec3[]>([]);
+  /** Dense surface-hug path for the placed overlay (incremental on place). */
+  const placedDisplayPathRef = useRef<DisplayVec3[]>([]);
   const lastPointerUpAddedRef = useRef(false);
   const activeRef = useRef(false);
   const canFinalizeRef = useRef(false);
@@ -135,7 +140,7 @@ export function useCutPolylineDraft({
     onDraftUiChangeRef.current?.({ active, canFinalize, editingStrokeId });
   }, []);
 
-  /** Surface-hug overlay for placed vertices. Hover preview is a cheap chord. */
+  /** Full surface-hug rebuild (undo, drag-end, enter-edit). */
   const tessellatePlacedOverlay = useCallback(
     (recomputeBounds = true) => {
       markersRef.current?.setPositions(placedDisplayRef.current);
@@ -143,6 +148,11 @@ export function useCutPolylineDraft({
 
       const norm = normalizationRef.current;
       if (!norm) {
+        placedDisplayPathRef.current = placedDisplayRef.current.map((p) => ({
+          x: p.x,
+          y: p.y,
+          z: p.z,
+        }));
         lineRef.current?.setPlaced(placedDisplayRef.current, recomputeBounds);
         return;
       }
@@ -153,10 +163,42 @@ export function useCutPolylineDraft({
         null,
         norm,
       );
+      placedDisplayPathRef.current = linePoints;
       lineRef.current?.setPlaced(linePoints, recomputeBounds);
     },
     [lineRef, markersRef, mesh],
   );
+
+  /**
+   * Place path: tessellate only the newest sparse segment and append.
+   * Keeps the overlay surface-hugging without recomputing prior segments.
+   */
+  const appendPlacedOverlaySegment = useCallback(() => {
+    markersRef.current?.setPositions(placedDisplayRef.current);
+    lineRef.current?.setPreviewTip(null);
+
+    const norm = normalizationRef.current;
+    const canon = placedCanonicalRef.current;
+    if (!norm || canon.length < 2) {
+      placedDisplayPathRef.current = placedDisplayRef.current.map((p) => ({
+        x: p.x,
+        y: p.y,
+        z: p.z,
+      }));
+      lineRef.current?.setPlaced(placedDisplayRef.current, true);
+      return;
+    }
+
+    const linePoints = appendLastSegmentDisplayPath(
+      mesh,
+      placedDisplayPathRef.current,
+      canon[canon.length - 2]!,
+      canon[canon.length - 1]!,
+      norm,
+    );
+    placedDisplayPathRef.current = linePoints;
+    lineRef.current?.setPlaced(linePoints, true);
+  }, [lineRef, markersRef, mesh]);
 
   /** Straight display-space chords while a node is dragged (tessellate on pointer-up). */
   const showSparseOverlay = useCallback(() => {
@@ -170,6 +212,7 @@ export function useCutPolylineDraft({
     const idle = idlePolylineDraft();
     placedDisplayRef.current = idle.display;
     placedCanonicalRef.current = idle.canonical;
+    placedDisplayPathRef.current = [];
     editingStrokeIdRef.current = idle.editingStrokeId;
     lastPointerUpAddedRef.current = false;
     capToastShownRef.current = false;
@@ -378,10 +421,10 @@ export function useCutPolylineDraft({
         true,
         canFinalizeDraft(result.display.length),
       );
-      tessellatePlacedOverlay();
+      appendPlacedOverlaySegment();
       return { status: "added" };
     },
-    [editTool, onPointCapReached, setDraftUi, tessellatePlacedOverlay],
+    [appendPlacedOverlaySegment, editTool, onPointCapReached, setDraftUi],
   );
 
   const setHoverTip = useCallback(

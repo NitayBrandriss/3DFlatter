@@ -236,10 +236,11 @@ export const AppSidebar = memo(function AppSidebar({
             {meshEditTool === "cut" ? (
               <>
                 <div className="muted sidebar-meta-tight">
-                  Click the mesh to place vertices. Orbit between clicks. Click
-                  the <strong>amber first-vertex marker</strong> to close a
-                  loop. Press <strong>Enter</strong> or <strong>Done</strong> to
-                  commit an open stroke. Press <strong>Esc</strong> or{" "}
+                  Click the mesh to place vertices. Orbit between clicks.{" "}
+                  <strong>Alt+click</strong> a point to pivot the camera there.
+                  Click the <strong>amber first-vertex marker</strong> to close
+                  a loop. Press <strong>Enter</strong> or <strong>Done</strong>{" "}
+                  to commit an open stroke. Press <strong>Esc</strong> or{" "}
                   <strong>Cancel</strong> to discard. Click a cyan committed
                   stroke to re-edit.
                 </div>
