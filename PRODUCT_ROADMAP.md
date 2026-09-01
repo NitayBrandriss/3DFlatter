@@ -95,6 +95,8 @@ flowchart TB
 
 ### Phase 1 non-goals
 
+Short list from ADR 0100; full parked inventory is under [Deferred backlog](#deferred-backlog-not-scheduled).
+
 - Glue tabs, page layout, fold line styling in SVG  
 - 2D blueprint stroke editing  
 - Persisting strokes across reload (file reload clears overlay)  
@@ -109,32 +111,117 @@ flowchart TB
 
 ---
 
-## Cut-tool UX backlog (v2 — after polyline blueprint)
+## Deferred backlog (not scheduled)
 
-Parked **2026-08-16**. These are **product features**, not Slice D defects. Do **not** pull them into [polyline_cut_tool](.cursor/plans/polyline_cut_tool_318885f7.plan.md) Slice E. Current re-edit is: pick stroke → drag existing markers and/or **append at the end** → Done/`updateCutStroke`.
+Living checklist of parked Phase 2+ work, cut-tool v2, and technical debt. **Source of truth** for what is deferred — other product docs should link here instead of re-listing IDs.
 
-| ID | Request | Why later | Likely work |
-|----|---------|-----------|-------------|
-| **CUT-UX-001** | **Insert vertex mid-segment** while editing a committed (or draft) stroke | Blueprint explicitly deferred “mid-segment vertex insert.” Mesh clicks in `editingCommitted` still **append** (draw-like). | Hit-test tessellated overlay segment → insert sparse point at that index → same Slice C surface drag |
-| **CUT-UX-002** | **General undo stack** (undo last action, not only last placed vertex) | Backspace already drops the last draft vertex. No history for node drag, Done, delete stroke, or Flatten. | Command/snapshot stack over `cutStrokes` (and optionally seams); Esc/Cancel stays “discard this session” |
-| **CUT-UX-003** | **Snap / weld** to existing cut vertices, mesh verts/edges, and manual seams so strokes can meet and **split islands** | Materialize already snaps at Flatten (ADR 0100) and applies strokes in order (T-junctions). Draw/drag does not snap, so joins are easy to miss. Open cuts on closed shells often will not split (open-loop ADR). | Viewer snap ε in display space; weld endpoints on commit; optional snap onto `EdgeKey` chords. Closed loops or boundary-meeting cuts remain the reliable split |
+**How to use:** do not implement from this section alone. Promote an item → Active row in [docs/plans/product/README.md](docs/plans/product/README.md) + product ADR **0101+** + a concrete phase plan. Do not silently extend Phase 1 “Complete.”
 
-Related notes (same bucket, not separate phases yet): connect a new cut to an existing polyline; geodesic wrap when overlay walk cannot reach a far face ([POLYCUT-C-002](docs/plans/product/qa-audits.md)).
+**Findings history:** [docs/plans/product/qa-audits.md](docs/plans/product/qa-audits.md) (snapshots only; deferred status points here).
 
-When scheduled: add a product plan row + ADR **0101+**; do not silently extend Phase 1 “Complete.”
+### Suggested scheduling order
 
----
+1. Roadmap **Phase 2** manufacturing SVG (natural home for export work).
+2. **P2-E1** PDF A4 — once SVG manufacturing is underway (aligns with Phase 4 pagination).
+3. **CUT-UX-001/002/003** + **POLYCUT-C-002** — after cut UX is stable on dense meshes; separate ADR.
+4. **P2-E2** mesh isolation — after Phase 1 cut UX is stable on production assets.
+5. **P2-E3** heatmap — can start as logic-only spike; may depend on **UI-004** for large meshes.
+6. **UI-004** Worker — when main-thread Flatten becomes unacceptable on real client meshes.
+7. Phases **3 → 4 → 5** (tabs/IDs → scale/pages → folds/auto/GLB).
 
-## Later phases (outline only)
+### Roadmap phases 2–5
 
-Details will get their own ADRs (0101+) when scheduled.
+Themes already in [Roadmap overview](#roadmap-overview). Plans/ADRs TBD when scheduled.
 
-- **Manufacturing export** — path dedup, cut order, outer boundary + seam layers (tier 2).  
-- **Assembly** — glue flaps as geometry or annotation layer; **matching edge IDs** on 2D SVG for physical build.  
-- **Scale & pagination** — user units (cm), fit layout to A4/Letter with margins.  
-- **Folds & automation** — mountain/valley fold metadata in export; auto seam suggestions; GLB import.
+| Phase | Theme | Why parked |
+|-------|--------|------------|
+| **2** | SVG tier 2 / laser-ready paths (path dedup, cut order, outer boundary + seam layers) | Next product phase after freeform cuts |
+| **3** | Glue flaps / tabs; edge ID matching on SVG | Needs manufacturing export + `CutManifest` / edge IDs |
+| **4** | Real-world scale (cm); A4/Letter pagination | Depends on printable 2D layout |
+| **5** | Mountain/valley folds in export; auto seams; GLB | Later automation + I/O |
 
-**Client epics (captured, not scheduled):** [phase2-epics.md](docs/plans/product/phase2-epics.md) — PDF A4 booklet export, mesh isolation / sub-mesh selection, developability heatmap.
+### Client epics (detail: phase2-epics)
+
+Deep specs: [docs/plans/product/phase2-epics.md](docs/plans/product/phase2-epics.md). Captured 2026-08-25; not scheduled.
+
+| ID | Epic | Why parked | Priority (client) |
+|----|------|------------|-------------------|
+| **P2-E1** | 2D PDF A4 export (nested booklet) | Fits Phase 4 + manufacturing export; PDF dependency needs approval | High |
+| **P2-E2** | Mesh isolation / sub-mesh selection | New 3D workflow; schedule after dense-mesh cut UX is stable | High |
+| **P2-E3** | Developability heatmap (strain / curvature) | Guidance before cuts; large meshes may need Worker (UI-004) | High |
+
+### Cut-tool UX v2
+
+Parked **2026-08-16**. Product features, not Slice D defects — do **not** reopen polyline Slice E. Current re-edit: pick stroke → drag markers and/or **append at the end** → Done/`updateCutStroke`.
+
+| ID | Request | Why parked |
+|----|---------|------------|
+| **CUT-UX-001** | Insert vertex mid-segment while editing a stroke | Blueprint deferred mid-segment insert; mesh clicks still append |
+| **CUT-UX-002** | General undo stack (beyond Backspace last draft vertex) | No history for node drag, Done, delete stroke, or Flatten |
+| **CUT-UX-003** | Draw-time snap / weld to cut verts, mesh verts/edges, manual seams | Materialize snaps at Flatten; draw/drag does not, so joins are easy to miss |
+| *(related)* | Connect a new cut to an existing polyline | Same bucket; not a separate phase yet |
+
+### Cut geometry and overlay
+
+| ID | Item | Why parked |
+|----|------|------------|
+| **POLYCUT-C-002** | Geodesic / opposite-face surface wrap | Frozen; overlay walk cannot leave start face (`it.skip` documents intent) |
+| **POLYCUT-B-007** | Digon close `A,B,A` (min-3 vertices) still allowed | Low; deferred from Slice B |
+| **POLYCUT-B-006** | Marker spawn flash at origin | Optional Medium polish |
+| — | Geometric sliver cull after splits | Known limit (ties to PoC LOGIC-004 index-only degeneracy) |
+| — | Incomplete `CutManifest` `edgeKeys` when connect fails mid-stroke | Needed later for SVG edge-ID matching |
+
+### Technical debt and performance
+
+| ID | Item | Why parked |
+|----|------|------------|
+| **UI-004** | Web Worker flatten (materialize + unfold off main thread) | Deferred since PoC [ADR 0004](docs/decisions/poc/0004-tech-debt-remediation-strategy.md); dense meshes still hitch |
+| — | BVH / spatial face locate | CUT-008 follow-on; vertex→faces cache already landed |
+| — | Sync Flatten UI (`Flattening…` may never paint; Orbit freezes) | Symptom of UI-004 |
+| **POLYCUT-008** | Rubber-band buffer realloc every move | Low optional |
+| **VIEW-S3-008** | New `BufferAttribute` every draw sample | Low micro-opt |
+| — | Flatten/commit locate cost on dense meshes | Not fixed by Phase 1 PERF hotfixes (hover/drag only) |
+
+### UX polish
+
+| ID | Item | Why parked |
+|----|------|------------|
+| **POLYCUT-009** | Esc cancels draft and closes sidebar | Low dual-handler behavior |
+| **VIEW-S3-005** | Off-mesh pointer gaps → straight jump in stroke | Future clamp or dashed off-mesh preview |
+| **VIEW-S3-002** | No feedback when `MAX_STROKE_POINTS` is hit | Low polish |
+| — | Islands sidebar ignores overlay strokes until Flatten | Expected (ADR 0100 / POLYCUT-B-001) |
+| — | Quality overlay sticky across pattern revisions | Low structural note |
+| — | Toast storm (many materialize warnings) | Can hide open-loop / self-intersect messages |
+
+### Test and QA debt
+
+Left out of Phase 1 remediation or residual after it. See [qa-audits.md](docs/plans/product/qa-audits.md) and [remediation-phase1.md](docs/plans/product/remediation-phase1.md).
+
+| ID | Gap |
+|----|-----|
+| **HOLISTIC-TS-008** | Non-manifold fixture (`incidents > 2`) for topology / seam eligibility |
+| **HOLISTIC-TS-010** | `flattenSnapshotUi` stale-key coverage for `patternRevision` / seams |
+| **HOLISTIC-TS-007** residual | OBJ `v/vt` token + negative-relative index paths untested |
+| **HOLISTIC-TS-009** residual | STL `loadMeshFile`, overlapping `loadSeq`, ineligible-seam toast |
+| **HOLISTIC-TS-005** residual | `demoMeshes.test.ts` still tautological `> 0` smoke |
+| — | Consolidate duplicate `CUBE_OBJ` fixtures |
+| — | Playwright / R3F component tests |
+| — | Logic/viewer regression pass (called out in product README as still waiting) |
+
+### Phase 1 / ADR 0100 non-goals still parked
+
+From [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) and Phase 1 plan — not bugs.
+
+| Item | Notes |
+|------|--------|
+| Glue flaps / tabs, page scale, fold line styling in SVG | Roadmap Phases 3–4 |
+| Persisting strokes across reload | File reload clears overlay |
+| Editing strokes in the 2D blueprint | Separate UX surface |
+| Persisting the materialized mesh in session state | Flatten stays ephemeral |
+| `CutManifest` → SVG edge-ID matching / folds / tabs | Schema reserved; unused in Phase 1 UI |
+| Stroke `role` / `foldKind` (mountain \| valley) | Schema hooks only |
+| True per-face 2D self-intersect | Phase 1 uses whole-stroke 3D (CUT-007 deferred ADR-strict version) |
+| Seam-cycle detection for closed shells | Better open-loop / split messaging |
 
 ---
 
@@ -142,6 +229,6 @@ Details will get their own ADRs (0101+) when scheduled.
 
 1. Read PoC ADRs 0001–0004 and [AGENTS.md](AGENTS.md).  
 2. Add or update a **product ADR** (`0100+`) before non-trivial code.  
-3. Add a row to **this roadmap** and a spec under [docs/plans/product/](docs/plans/product/).  
+3. Add a row to **this roadmap** and a spec under [docs/plans/product/](docs/plans/product/). Promote items from [Deferred backlog](#deferred-backlog-not-scheduled) when scheduling — do not implement from the backlog alone.  
 4. Do **not** extend [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md) with product delivery history — update this file instead.  
 5. Run `npm test` (and `npm run lint` when touching TS/React) before marking a slice complete.

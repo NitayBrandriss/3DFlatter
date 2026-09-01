@@ -37,7 +37,7 @@ Freehand drag-sample was replaced by **point-to-point** drawing and node editing
 | Last vertex | While drafting, Backspace removes the last placed vertex (not a general undo stack) |
 | Re-edit committed | Click a cyan committed stroke → draft session; Done → `updateCutStroke`; Cancel restores store |
 
-**Parked (v2):** mid-segment insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
+**Parked (v2):** mid-segment insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (cut-tool UX v2).
 
 ## Implementation slices
 

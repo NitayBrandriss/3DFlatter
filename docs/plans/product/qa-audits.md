@@ -110,7 +110,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ### Still deferred (not failures)
 
-POLYCUT-C-002 geodesic wrap, CUT-UX-001/002/003, UI-004 worker flatten, HOLISTIC-TS-008 / TS-010, `CUBE_OBJ` fixture consolidation.
+See [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (POLYCUT-C-002, CUT-UX-001/002/003, UI-004, HOLISTIC-TS residuals, fixture consolidation, etc.).
 
 ---
 
@@ -226,7 +226,7 @@ The suite is **green**. Section 5 of the strategy still holds: passing tests inc
 | POLYCUT-C-002 | Incomplete opposite-face walk (frozen from Slice C) |
 | POLYCUT-008 / 009 | Optional Low: rubber-band buffer prealloc; Esc vs sidebar |
 | POLYCUT-B-007 | Digon close min-3 deferred |
-| CUT-UX-001…003 | v2 backlog on [PRODUCT_ROADMAP](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) |
+| CUT-UX-001…003 | v2 backlog on [PRODUCT_ROADMAP — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) |
 
 ### Recommended next steps
 

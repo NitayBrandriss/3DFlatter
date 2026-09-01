@@ -10,7 +10,7 @@
 
 ## Goal
 
-Close Phase 1 holistic QA findings without pulling in v2 scope (geodesic opposite-face walk / **POLYCUT-C-002**, mid-segment insert, general undo stack, draw-time snap/weld, Web Worker flatten).
+Close Phase 1 holistic QA findings without pulling in v2 / deferred scope (see [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled): **POLYCUT-C-002**, **CUT-UX-001/002/003**, Web Worker flatten).
 
 Three outcome areas:
 
@@ -322,13 +322,9 @@ Each slice: `npm test` + `npm run lint` before marking complete.
 
 ## Non-goals (do not implement)
 
-- Geodesic / opposite-face walk (**POLYCUT-C-002**)
-- Mid-segment insert (**CUT-UX-001**)
-- General undo stack (**CUT-UX-002**)
-- Draw-time snap/weld (**CUT-UX-003**)
-- Web Worker flatten (**UI-004**)
-- Playwright / R3F component tests
-- Consolidating duplicate `CUBE_OBJ` fixtures (separate maintainability PR)
+Remediation must not reopen deferred product work. Full inventory: [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled).
+
+In particular for this plan: **POLYCUT-C-002**, **CUT-UX-001/002/003**, **UI-004**, Playwright/R3F tests, and `CUBE_OBJ` fixture consolidation.
 
 ---
 

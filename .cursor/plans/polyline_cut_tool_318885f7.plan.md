@@ -332,7 +332,7 @@ Execute in order; each slice is shippable and testable without unlocking the nex
 
 **Still out of scope (future, not this blueprint’s execution):** freehand mode toggle, multi-stroke box select, 2D blueprint editing, new npm dependencies unless later approved.
 
-**Parked for v2 (roadmap, not Slice E):** mid-segment vertex insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Cut-tool UX backlog](../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint).
+**Parked for v2 (roadmap, not Slice E):** mid-segment vertex insert, general undo stack, snap/weld — [PRODUCT_ROADMAP.md — Deferred backlog](../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled).
 
 **Slice E hold:** cleared after Slice D manual QA green light (2026-08-16).
 

@@ -18,11 +18,12 @@
 
 ## Backlog (not scheduled)
 
+**Source of truth:** [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (phases 2–5, client epics, cut-tool v2, geometry debt, performance, UX polish, test debt).
+
 | Plan | Status |
 |------|--------|
-| [phase2-epics.md](phase2-epics.md) | Client epics (PDF A4, mesh isolation, developability heatmap) — planning only |
-
-**Also:** cut-tool v2 UX — mid-segment insert, undo stack, snap/weld — lives on [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) (do not fold into polyline Slice E).
+| [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) | Deferred backlog (SSOT) |
+| [phase2-epics.md](phase2-epics.md) | Client epic detail (P2-E1…E3) — planning only; indexed from roadmap |
 
 ---
 

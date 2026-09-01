@@ -3,10 +3,11 @@
 **Status:** Planning only — not scheduled for implementation  
 **Date captured:** 2026-08-25  
 **Source:** Client product feedback after dense-mesh polyline cut QA  
+**Indexed from:** [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (SSOT for all parked work)  
 **Roadmap:** [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md)  
 **Related:** Phase 1 complete — [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) · [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md)
 
-These epics are **deferred**. Do not implement from this file until a phase is promoted to Active with an ADR (0100+) and a concrete slice plan. Prefer nesting under the existing Phase 2–5 roadmap themes where they fit; several items may need new phases or ADRs.
+This file is **epic detail only** (P2-E1…E3 problem / outcome / open questions). The living deferred checklist — cut-tool v2, geometry debt, Worker flatten, QA debt — lives on the roadmap. Do not implement from this file until a phase is promoted to Active with an ADR (0100+) and a concrete slice plan. Prefer nesting under the existing Phase 2–5 roadmap themes where they fit; several items may need new phases or ADRs.
 
 ---
 
@@ -131,4 +132,4 @@ Users do not know **where** to place relief cuts or darts. Areas with high **Gau
 2. **P2-E2** is a new workflow epic — schedule only after Phase 1 cut UX is stable on dense meshes.
 3. **P2-E3** can start as a logic-only spike (curvature fixture tests) before any viewer polish.
 
-When promoting an epic: add a row to [product/README.md](README.md) Active table, link from [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md), and open an ADR — do not treat this backlog file as an implementation checklist.
+When promoting an epic: add a row to [product/README.md](README.md) Active table, promote from [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled), and open an ADR — do not treat this file as an implementation checklist.

@@ -119,7 +119,7 @@ Stop and get user approval before:
 ## Planning workflow
 
 - **PoC (frozen):** [docs/plans/poc/](docs/plans/poc/README.md) — historical specs in `poc/archive/`; do not add product features to [docs/plans/poc/PROJECT_SUMMARY.md](docs/plans/poc/PROJECT_SUMMARY.md).
-- **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) + [docs/plans/product/](docs/plans/product/README.md); architecture in **ADR 0100+** under [docs/decisions/product/](docs/decisions/product/). Promote Cursor plans into `docs/plans/product/`.
+- **Product (active):** [PRODUCT_ROADMAP.md](PRODUCT_ROADMAP.md) + [docs/plans/product/](docs/plans/product/README.md); architecture in **ADR 0100+** under [docs/decisions/product/](docs/decisions/product/). Deferred / parked work: [PRODUCT_ROADMAP.md — Deferred backlog](PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled). Promote Cursor plans into `docs/plans/product/`.
 - **Plan / Ask mode:** next phase step, tradeoffs, ADR impact — don't implement yet.
 - **Agent mode:** one incremental step from an approved plan / ADR.
 - **Review pass:** separate prompt to scan for bugs and ADR violations after a slice lands.
