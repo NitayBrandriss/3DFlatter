@@ -1,23 +1,23 @@
 # Phase 2+ epics (client backlog)
 
-**Status:** Planning only — not scheduled for implementation  
+**Status:** P2-E2 **promoted** (2026-09-02) — [ADR 0101](../../decisions/product/0101-mesh-isolation.md) · [epic-mesh-isolation.md](epic-mesh-isolation.md). P2-E1 and P2-E3 remain planning-only.  
 **Date captured:** 2026-08-25  
 **Source:** Client product feedback after dense-mesh polyline cut QA  
-**Indexed from:** [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (SSOT for all parked work)  
+**Indexed from:** [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (SSOT for parked work)  
 **Roadmap:** [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md)  
 **Related:** Phase 1 complete — [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) · [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md)
 
-This file is **epic detail only** (P2-E1…E3 problem / outcome / open questions). The living deferred checklist — cut-tool v2, geometry debt, Worker flatten, QA debt — lives on the roadmap. Do not implement from this file until a phase is promoted to Active with an ADR (0100+) and a concrete slice plan. Prefer nesting under the existing Phase 2–5 roadmap themes where they fit; several items may need new phases or ADRs.
+This file is **epic detail** (P2-E1…E3). The living deferred checklist — cut-tool v2, geometry debt, Worker flatten, QA debt — lives on the roadmap. Do not implement P2-E1 / P2-E3 from this file until promoted with an ADR (0102+) and a concrete slice plan.
 
 ---
 
 ## Epic index
 
-| ID | Epic | Theme fit | Priority (client) |
-|----|------|-----------|-------------------|
-| P2-E1 | 2D PDF A4 export (nested booklet) | Roadmap Phase 4 (pagination) + manufacturing export | High |
-| P2-E2 | Mesh isolation / sub-mesh selection | New 3D workflow epic (not in current phases) | High |
-| P2-E3 | Developability heatmap (strain / curvature) | Guidance before cuts; pairs with cut tool + unfold quality | High |
+| ID | Epic | Theme fit | Priority (client) | Status |
+|----|------|-----------|-------------------|--------|
+| P2-E1 | 2D PDF A4 export (nested booklet) | Roadmap Phase 4 (pagination) + manufacturing export | High | Planning only |
+| P2-E2 | Mesh isolation / sub-mesh selection | Phase 2 first Active epic | High | **Active** — ADR 0101 |
+| P2-E3 | Developability heatmap (strain / curvature) | Guidance before cuts; pairs with cut tool + unfold quality | High | Planning only |
 
 ---
 
@@ -55,34 +55,24 @@ Flatten today yields an on-screen / SVG preview of islands. Production papercraf
 
 ## P2-E2 — Mesh isolation (sub-mesh selection)
 
+**Promoted** — do not implement from this section. Contracts: [ADR 0101](../../decisions/product/0101-mesh-isolation.md). Slices: [epic-mesh-isolation.md](epic-mesh-isolation.md).
+
 ### Problem
 
-On dense production assets (e.g. full-body avatars), users need to **select a part**, **isolate** it (“take it aside”), and edit seams/cuts on that subset while the rest of the model is **hidden or ghosted**.
+On dense production assets (e.g. full-body avatars), users need to **select a part**, **isolate** it (“take it aside”), and edit seams/cuts on that subset while the rest of the model is **ghosted**.
 
-### Desired outcome
+### Resolved (ADR 0101)
 
-1. Select a connected region (face flood from pick, or island-after-seams, TBD).
-2. Enter an isolation mode: working mesh = selection; remainder ghosted/hidden in the 3D viewport.
-3. Seams, cut strokes, and Flatten operate on the isolated subset (or on a derived sub-`MeshModel`) without losing the full-session context.
-4. Exit isolation restores the full model; edits persist on the shared session data.
+- **Selection:** seed-flood from a face click, stopping at manual seams and fence `EdgeKey`s from committed cut-stroke surface walks (bracelet loops). Shift-add / Alt-subtract. No screen lasso in v1.
+- **Session:** face-index mask overlay on the frozen base mesh — not a stored sub-`MeshModel` clone.
+- **Crossing strokes:** skip + toast in v1; auto-split at the isolation boundary is deferred (ISO-001).
+- **Display:** full-mesh normalization; camera frames the isolate; remainder is ghosted (not hidden).
 
-### Open questions
-
-- Selection primitive: face paint, seam-bounded component, or named OBJ groups / materials?
-- Does isolation create a temporary `MeshModel` clone or a face-mask overlay on the same session mesh?
-- How do cut strokes that cross isolation boundaries behave?
-- Interaction with display normalization and Orbit pivot (local framing of the isolate).
-
-### Non-goals (for a first slice)
+### Non-goals (v1)
 
 - Full CAD assembly / multi-body file formats.
 - Destructive boolean split of the stored mesh on isolate enter.
-
-### Suggested ADR / plan when scheduled
-
-- Product ADR (viewport isolation + selection mask contracts).
-- Plan under `docs/plans/product/phase-*-mesh-isolation.md`.
-- Keep `src/logic/` free of React/Three; selection mask as pure index sets.
+- Hide toggle, lasso, brush radius — see roadmap isolation v2.
 
 ---
 
@@ -128,8 +118,8 @@ Users do not know **where** to place relief cuts or darts. Areas with high **Gau
 
 ## Scheduling notes
 
-1. **P2-E1** aligns with roadmap Phases 2 + 4 (export + pagination); likely the first of these three to schedule once manufacturing SVG is underway.
-2. **P2-E2** is a new workflow epic — schedule only after Phase 1 cut UX is stable on dense meshes.
+1. **P2-E2** is the first Active Phase 2 epic (isolation). Manufacturing SVG stays Planned under Phase 2.
+2. **P2-E1** aligns with roadmap Phases 2 + 4 (export + pagination); schedule once manufacturing SVG is underway.
 3. **P2-E3** can start as a logic-only spike (curvature fixture tests) before any viewer polish.
 
 When promoting an epic: add a row to [product/README.md](README.md) Active table, promote from [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled), and open an ADR — do not treat this file as an implementation checklist.

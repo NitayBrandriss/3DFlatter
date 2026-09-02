@@ -28,7 +28,7 @@ The PoC codebase remains the foundation: `src/logic/` purity, triangle-soup unfo
 ```mermaid
 flowchart LR
   p1["Phase1_FreeformCutStrokes"]
-  p2["Phase2_ManufacturingExport"]
+  p2["Phase2_IsolationThenSvgExport"]
   p3["Phase3_AssemblyAndTabs"]
   p4["Phase4_ScaleAndPagination"]
   p5["Phase5_AutoSeamsAndIO"]
@@ -39,7 +39,7 @@ flowchart LR
 | Phase | Theme | Status | ADR / plan |
 |-------|--------|--------|------------|
 | **1** | Freeform cut strokes (3D) | **Complete** | [ADR 0100](docs/decisions/product/0100-freeform-cut-strokes.md) · [plan](docs/plans/product/phase-1-freeform-cut-strokes.md) |
-| 2 | SVG tier 2 / laser-ready paths | Planned | TBD |
+| **2** | Mesh isolation (P2-E2 first); SVG tier 2 still Planned | **Active** | [ADR 0101](docs/decisions/product/0101-mesh-isolation.md) · [plan](docs/plans/product/epic-mesh-isolation.md) |
 | 3 | Glue flaps / tabs; edge ID matching on SVG | Planned | TBD |
 | 4 | Real-world scale (cm); A4/Letter pagination | Planned | TBD |
 | 5 | Mountain vs valley folds in export; auto seams; GLB | Planned | TBD |
@@ -111,44 +111,113 @@ Short list from ADR 0100; full parked inventory is under [Deferred backlog](#def
 
 ---
 
+## Phase 2 — Mesh isolation (active) + manufacturing SVG (planned)
+
+**First active epic: P2-E2.** Isolate a connected region on a dense mesh (seed-flood bounded by bracelet cut strokes and/or seams) so seams, cuts, and Flatten run on a face mask while the rest of the model is ghosted. **SVG tier 2 / laser-ready paths** remains a Planned theme under this phase — not dropped, not started.
+
+### Approved design (P2-E2 summary)
+
+| Topic | Decision |
+|-------|----------|
+| **Selection** | Seed-flood + fence `EdgeKey`s from committed stroke surface walks (not materialize); Shift-add / Alt-subtract; no lasso |
+| **Canonical** | Two closed bracelets (shoulder + wrist) → click the arm → isolate that band |
+| **Session** | Face-index mask overlay; base `session.mesh` frozen; load clears mask; `meshLoadVersion` unchanged |
+| **Viewer** | Full-mesh display normalization; two index buffers; **ghost** remainder (not hide); camera frames isolate |
+| **Flatten** | Ephemeral face-filtered mesh (keep verts); inside strokes only; crossing strokes **skip + toast** |
+| **Seams** | Pick/clear only edges with an isolated incident face; ghost-side seams stay in the registry |
+
+### Architecture
+
+```mermaid
+flowchart TB
+  subgraph edit [Editing]
+    baseMesh["Session.mesh frozen"]
+    strokes["cutStrokes overlay"]
+    mask["Isolation face mask"]
+    preview["Isolate mesh plus ghost remainder"]
+    baseMesh --> preview
+    mask --> preview
+    strokes --> preview
+  end
+  subgraph flatten [Flatten while isolated]
+    subset["Ephemeral face-filtered mesh"]
+    mat["materializeCutStrokes"]
+    unfold["unfoldMesh"]
+    baseMesh --> subset
+    mask --> subset
+    strokes --> mat
+    subset --> mat
+    mat --> unfold
+  end
+```
+
+### Implementation slices (execution order)
+
+See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md). Logic → state → Flatten wiring → viewer ghost/frame → sidebar → QA. Do not implement from this roadmap summary alone.
+
+### Phase 2 remaining (Planned)
+
+- **SVG tier 2 / laser-ready paths** — path dedup, cut order, outer boundary + seam layers. ADR/plan TBD when scheduled.
+- **P2-E1** PDF A4 and **P2-E3** heatmap — still in [Deferred backlog](#deferred-backlog-not-scheduled).
+
+### Verification (P2-E2)
+
+- Two bracelets + seed between them → ghosted remainder, Flatten unfolds only the band
+- Whole-mesh seed flood → warn, no auto-isolate
+- Crossing stroke → skip + toast; exit isolate restores full mesh with edits persisted
+- `npm test`, `npm run lint`
+
+---
+
 ## Deferred backlog (not scheduled)
 
 Living checklist of parked Phase 2+ work, cut-tool v2, and technical debt. **Source of truth** for what is deferred — other product docs should link here instead of re-listing IDs.
 
-**How to use:** do not implement from this section alone. Promote an item → Active row in [docs/plans/product/README.md](docs/plans/product/README.md) + product ADR **0101+** + a concrete phase plan. Do not silently extend Phase 1 “Complete.”
+**How to use:** do not implement from this section alone. Promote an item → Active row in [docs/plans/product/README.md](docs/plans/product/README.md) + product ADR **0102+** + a concrete phase plan. Do not silently extend Phase 1 “Complete” or P2-E2 v1.
 
 **Findings history:** [docs/plans/product/qa-audits.md](docs/plans/product/qa-audits.md) (snapshots only; deferred status points here).
 
 ### Suggested scheduling order
 
-1. Roadmap **Phase 2** manufacturing SVG (natural home for export work).
-2. **P2-E1** PDF A4 — once SVG manufacturing is underway (aligns with Phase 4 pagination).
-3. **CUT-UX-001/002/003** + **POLYCUT-C-002** — after cut UX is stable on dense meshes; separate ADR.
-4. **P2-E2** mesh isolation — after Phase 1 cut UX is stable on production assets.
-5. **P2-E3** heatmap — can start as logic-only spike; may depend on **UI-004** for large meshes.
+1. **P2-E2** mesh isolation — **Active** ([ADR 0101](docs/decisions/product/0101-mesh-isolation.md) · [plan](docs/plans/product/epic-mesh-isolation.md)).
+2. Roadmap **Phase 2** manufacturing SVG (still Planned under the same phase).
+3. **P2-E1** PDF A4 — once SVG manufacturing is underway (aligns with Phase 4 pagination).
+4. **CUT-UX-001/002/003** + **POLYCUT-C-002** — after cut UX is stable on dense meshes; separate ADR.
+5. **P2-E3** heatmap — can start as a logic-only spike; may depend on **UI-004** for large meshes.
 6. **UI-004** Worker — when main-thread Flatten becomes unacceptable on real client meshes.
 7. Phases **3 → 4 → 5** (tabs/IDs → scale/pages → folds/auto/GLB).
 
 ### Roadmap phases 2–5
 
-Themes already in [Roadmap overview](#roadmap-overview). Plans/ADRs TBD when scheduled.
+Themes already in [Roadmap overview](#roadmap-overview). Phase 2 isolation is Active; remaining Phase 2–5 themes TBD when scheduled.
 
 | Phase | Theme | Why parked |
 |-------|--------|------------|
-| **2** | SVG tier 2 / laser-ready paths (path dedup, cut order, outer boundary + seam layers) | Next product phase after freeform cuts |
+| **2** | SVG tier 2 / laser-ready paths (path dedup, cut order, outer boundary + seam layers) | Planned under Phase 2; isolation (P2-E2) is the first Active epic |
 | **3** | Glue flaps / tabs; edge ID matching on SVG | Needs manufacturing export + `CutManifest` / edge IDs |
 | **4** | Real-world scale (cm); A4/Letter pagination | Depends on printable 2D layout |
 | **5** | Mountain/valley folds in export; auto seams; GLB | Later automation + I/O |
 
 ### Client epics (detail: phase2-epics)
 
-Deep specs: [docs/plans/product/phase2-epics.md](docs/plans/product/phase2-epics.md). Captured 2026-08-25; not scheduled.
+Deep specs: [docs/plans/product/phase2-epics.md](docs/plans/product/phase2-epics.md). Captured 2026-08-25. **P2-E2 promoted** 2026-09-02.
 
-| ID | Epic | Why parked | Priority (client) |
-|----|------|------------|-------------------|
-| **P2-E1** | 2D PDF A4 export (nested booklet) | Fits Phase 4 + manufacturing export; PDF dependency needs approval | High |
-| **P2-E2** | Mesh isolation / sub-mesh selection | New 3D workflow; schedule after dense-mesh cut UX is stable | High |
-| **P2-E3** | Developability heatmap (strain / curvature) | Guidance before cuts; large meshes may need Worker (UI-004) | High |
+| ID | Epic | Status | Priority (client) |
+|----|------|--------|-------------------|
+| **P2-E1** | 2D PDF A4 export (nested booklet) | Parked — fits Phase 4 + manufacturing export; PDF dependency needs approval | High |
+| **P2-E2** | Mesh isolation / sub-mesh selection | **Active** — [ADR 0101](docs/decisions/product/0101-mesh-isolation.md) · [plan](docs/plans/product/epic-mesh-isolation.md) | High |
+| **P2-E3** | Developability heatmap (strain / curvature) | Parked — guidance before cuts; large meshes may need Worker (UI-004) | High |
+
+### Isolation v2 (ADR 0101 non-goals)
+
+Parked **2026-09-02** with P2-E2 v1. Do **not** extend the isolation epic with these until a follow-on ADR.
+
+| ID | Item | Why parked |
+|----|------|------------|
+| **ISO-001** | Auto-split crossing strokes at the isolation boundary | v1 is skip + toast; clip/mutate user polylines needs 3D intersection math ([ADR 0101](docs/decisions/product/0101-mesh-isolation.md)) |
+| **ISO-002** | Screen-space lasso selection | Seed-flood + bracelet fences is v1 |
+| **ISO-003** | Hide-remainder toggle | v1 is ghost only (spatial context) |
+| **ISO-004** | Geodesic paint-brush radius / grow-by-N-rings | v1 is seed flood + single-face add/subtract |
 
 ### Cut-tool UX v2
 

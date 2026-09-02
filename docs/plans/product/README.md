@@ -13,6 +13,7 @@
 | Plan | Phase | Status | ADR |
 |------|-------|--------|-----|
 | [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) | 1 — Freeform cut strokes | **Complete** | [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md) |
+| [epic-mesh-isolation.md](epic-mesh-isolation.md) | 2 — P2-E2 Mesh isolation | **Active** | [ADR 0101](../../decisions/product/0101-mesh-isolation.md) |
 
 ---
 
@@ -23,7 +24,7 @@
 | Plan | Status |
 |------|--------|
 | [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) | Deferred backlog (SSOT) |
-| [phase2-epics.md](phase2-epics.md) | Client epic detail (P2-E1…E3) — planning only; indexed from roadmap |
+| [phase2-epics.md](phase2-epics.md) | Client epic detail — **P2-E2 promoted** (ADR 0101); P2-E1 / P2-E3 still planning-only |
 
 ---
 
