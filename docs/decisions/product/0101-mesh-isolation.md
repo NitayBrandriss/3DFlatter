@@ -35,7 +35,7 @@ v1 does **not** use a screen lasso or a paint brush. The user bounds a region wi
 
 Fence edges come from the same face-local surface walk used for overlay preview ([`surfacePath.ts`](../../../src/logic/cuts/surfacePath.ts) / [`cutSurfaceWalk.ts`](../../../src/logic/cuts/cutSurfaceWalk.ts)). Collect crossed `EdgeKey`s as **virtual seams for flood only**. Do **not** run `materializeCutStrokes` to build fences — materialize stays Flatten-only ([ADR 0100](0100-freeform-cut-strokes.md)).
 
-If a stroke walk cannot produce exit edges, fall back to treating faces touched by that stroke as opaque blockers and toast that the fence is approximate.
+If a stroke walk cannot produce exit edges, fall back to treating faces touched by that stroke as opaque blockers and toast that the fence is approximate. When exit edges **do** exist, those keys alone are the flood fences (thin virtual seams); cut-through / walked faces are **not** opaque blockers — otherwise a stroke ribbon would silently thicken the isolate boundary and defeat whole-mesh detection for “mesh minus scar.”
 
 #### Session overlay (not a cloned MeshModel)
 

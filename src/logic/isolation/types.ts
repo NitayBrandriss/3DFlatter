@@ -22,20 +22,24 @@ export type FloodBarriers = {
 export type FloodFromFaceResult = {
   faces: FaceIndex[];
   /**
-   * True when the component is every non-orphan face.
-   * UI must warn and not auto-isolate (ADR 0101).
+   * True when the flooded component plus scar blockers cover every
+   * non-orphan face (ADR 0101 whole-mesh warn — mesh-minus-ribbon counts).
    */
   coversAllNonOrphanFaces: boolean;
+  /** Non-manifold edges treated as walls, and other flood diagnostics. */
+  warnings: string[];
 };
 
 export type FenceFromStrokesResult = {
   fenceEdges: Set<EdgeKey>;
   /**
-   * Faces the flood must not enter. Includes faces a stroke traversed
-   * (a cut-through face is adjacent to both sides of the cut) and the
-   * ADR 0101 fallback when a walk produces no exit edges.
+   * Opaque faces for flood — ADR 0101 **fallback only**: unioned when a
+   * stroke walk produces no exit edges. Walked faces with exits are not
+   * blockers (thin virtual seams).
    */
   blockerFaces: Set<FaceIndex>;
+  /** Walked faces for classify / diagnostics (may exceed blockerFaces). */
+  walkedFaces: Set<FaceIndex>;
   warnings: string[];
 };
 

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { singleFaceClosedLoop, stroke, unitQuad, v } from "../cuts/cutTestFixtures";
 import { classifyStrokeVsMask, partitionStrokesVsMask } from "./classifyStrokeVsMask";
 import { maskFromFaces } from "./faceMask";
-import { openTube, tubeBandFaces, tubeBraceletStroke } from "./testMeshes";
+import {
+  openTube,
+  tubeBandFaces,
+  tubeBraceletStroke,
+  tubeRingBraceletStroke,
+} from "./testMeshes";
 
 describe("classifyStrokeVsMask", () => {
   it("classifies inside / outside / crossing on a unit quad", () => {
@@ -37,7 +42,7 @@ describe("classifyStrokeVsMask", () => {
     expect(parts.crossing.map((s) => s.id)).toEqual(["cross"]);
   });
 
-  it("a bracelet on the isolation wall is crossing; a stroke in the band is inside", () => {
+  it("bracelet on isolation wall is outside; stroke in band is inside", () => {
     const sides = 6;
     const mesh = openTube(5, sides);
     const keep = [...tubeBandFaces(1, sides), ...tubeBandFaces(2, sides)];
@@ -49,9 +54,11 @@ describe("classifyStrokeVsMask", () => {
     const ghost = tubeBraceletStroke(mesh, "torso", 3, sides);
     expect(classifyStrokeVsMask(mesh, ghost, mask)).toBe("outside");
 
-    // Wrist loop sits on band 0; incident faces of ring-1 edges may also
-    // include band 1, so the relation is outside or crossing — never inside.
-    const wall = tubeBraceletStroke(mesh, "wrist", 0, sides);
-    expect(classifyStrokeVsMask(mesh, wall, mask)).not.toBe("inside");
+    // Vertex-ring wall at ring 1: walked faces are on the fence between
+    // band 0 and band 1 — with recordExit only the walked face, relation
+    // depends on which side the walk sits. Ring stroke at ring 0 is fully
+    // outside the isolate (bands 1–2).
+    const wall = tubeRingBraceletStroke(mesh, "wrist", 0, sides);
+    expect(classifyStrokeVsMask(mesh, wall, mask)).toBe("outside");
   });
 });

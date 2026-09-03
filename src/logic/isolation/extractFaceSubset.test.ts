@@ -2,9 +2,19 @@ import { describe, expect, it } from "vitest";
 import { NO_NEIGHBOR } from "../mesh/types";
 import { buildTopology } from "../mesh/buildTopology";
 import { makeEdgeKey } from "../mesh/edgeKey";
-import { extractFaceSubset } from "./extractFaceSubset";
+import { partitionIslands } from "../mesh/partitionIslands";
+import { createSeamRegistry } from "../seams/seamRegistry";
+import {
+  assertSubsetHasFaces,
+  extractFaceSubset,
+} from "./extractFaceSubset";
 import { createFaceMask, maskFromFaces } from "./faceMask";
-import { openTube, tubeBandFaces, tubeCircumferentialLoop, tubeVertex } from "./testMeshes";
+import {
+  openTube,
+  tubeBandFaces,
+  tubeCircumferentialLoop,
+  tubeVertex,
+} from "./testMeshes";
 
 describe("extractFaceSubset", () => {
   it("keeps the full vertex array and original face vertex indices", () => {
@@ -25,7 +35,7 @@ describe("extractFaceSubset", () => {
     expect([...subset.faces]).toEqual([0, 1, 2]);
   });
 
-  it("packs only masked faces without remapping indices", () => {
+  it("packs only masked faces without remapping vertex indices", () => {
     const mesh = openTube(4, 4);
     const keep = [...tubeBandFaces(1, 4), ...tubeBandFaces(2, 4)];
     const mask = maskFromFaces(mesh.faceCount, keep);
@@ -83,5 +93,32 @@ describe("extractFaceSubset", () => {
     expect(() => extractFaceSubset(mesh, createFaceMask(1))).toThrow(
       /mask length/,
     );
+  });
+
+  it("ISO-S1-009: disjoint mask → two islands; vertex indices unchanged", () => {
+    const mesh = openTube(5, 4);
+    const keep = [...tubeBandFaces(1, 4), ...tubeBandFaces(3, 4)];
+    const subset = extractFaceSubset(mesh, maskFromFaces(mesh.faceCount, keep));
+    expect(subset.vertexCount).toBe(mesh.vertexCount);
+    expect([...subset.vertices]).toEqual([...mesh.vertices]);
+
+    const topo = buildTopology(subset);
+    const islands = partitionIslands(subset, topo, createSeamRegistry());
+    expect(islands).toHaveLength(2);
+
+    // Packed face ids ≠ original: first kept original face becomes subset 0
+    expect(keep[0]).toBeGreaterThan(0);
+    // subset face 0 verts match original keep[0]
+    const src = 3 * keep[0]!;
+    expect(subset.faces[0]).toBe(mesh.faces[src]);
+    expect(subset.faces[1]).toBe(mesh.faces[src + 1]);
+    expect(subset.faces[2]).toBe(mesh.faces[src + 2]);
+  });
+
+  it("ISO-S1-009: empty subset must not reach buildTopology unguarded", () => {
+    const mesh = openTube(3, 4);
+    const subset = extractFaceSubset(mesh, createFaceMask(mesh.faceCount));
+    expect(() => assertSubsetHasFaces(subset)).toThrow(/empty isolate subset/);
+    expect(() => buildTopology(subset)).toThrow(/no faces/);
   });
 });

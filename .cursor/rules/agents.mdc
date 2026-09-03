@@ -10,3 +10,6 @@ alwaysApply: true
 - Plans: PoC [docs/plans/poc/](docs/plans/poc/README.md) · Product [docs/plans/product/](docs/plans/product/README.md) — not `.cursor/plans/`.
 - Prefer minimal diffs; extend existing code in `src/logic/`; ask before architectural changes or new dependencies.
 - Run `npm test` before marking work complete.
+- Algorithmic Done ≠ green tests: follow [AGENTS.md — Algorithmic & slice Done criteria](AGENTS.md#algorithmic--slice-done-criteria).
+- Tier B logic (mesh/topology/cuts/isolation/unfold): adversarial fixtures + red-before-green + Red Team QA audit before Done; next epic slice blocked until High/Critical closed or waived.
+- Prefer small but topologically rich fixtures; reject tautological assertions (`size > 0`, renamed cylinder bands, tests that pass if a barrier channel is ignored).

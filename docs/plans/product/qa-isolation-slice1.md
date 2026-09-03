@@ -1,6 +1,6 @@
 # QA audit — P2-E2 Slice 1 (isolation logic)
 
-**Status:** Open — awaiting remediation decisions (do not start Slice 2 until this is resolved or explicitly waived)  
+**Status:** Remediated 2026-09-03 — High findings closed; Slice 2 unblocked  
 **Date:** 2026-09-03  
 **Scope:** Static review of `src/logic/isolation/` + Slice 1 tests. No production or test edits in the audit pass.  
 **ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
@@ -14,10 +14,10 @@
 
 ## How to continue from this file
 
-1. Decide the **policy** row in [Decision queue](#decision-queue) (blockers vs ribbon; whole-mesh heuristic).
-2. Pick a remediation set from [Recommended next steps](#recommended-next-steps) (tests only / logic / both).
+1. ~~Decide the **policy** row in [Decision queue](#decision-queue)~~ — **done** (hybrid D1, Option A D2, hybrid D3).
+2. ~~Pick a remediation set~~ — hybrid fence + scar whole-mesh + fixtures/tests landed 2026-09-03.
 3. Check off findings as they land. Keep this file as the working SSOT; append status, do not rewrite history.
-4. Only then start epic Slice 2 (Zustand isolation overlay).
+4. Epic Slice 2 (Zustand isolation overlay) may start.
 
 ---
 
@@ -27,6 +27,8 @@ First-try green is unsurprising. The suite is small, the fixtures are built to m
 
 Slice 1 is **not proven** for the ADR target (dense connected body, ~84k tris, path through the torso). Max fixture is an **open 6-gon prism, 48 triangles**. There is no branched body, no capped limb, no torus, no dense tube, no incomplete bracelet.
 
+**Remediation (2026-09-03):** Hybrid fence (exit `EdgeKey`s; blockers fallback-only); scar-aware `coversAllNonOrphanFaces`; vertex-ring + branched + incomplete fixtures; non-manifold / walk warnings; one `WorkingMesh` per `fenceEdgesFromStrokes` call; edge-riding segments record mesh edges (vertex-ring bracelets). ISO-S1-013 full walk dedupe with `tessellateSurfaceSegment` parked (cross-ref comment only).
+
 ---
 
 ## Findings count
@@ -34,9 +36,9 @@ Slice 1 is **not proven** for the ADR target (dense connected body, ~84k tris, p
 | Severity | Open | Notes |
 |----------|------|-------|
 | Critical | 0 | No crash / `EdgeKey` remap in this slice |
-| High | 3 | ISO-S1-001, ISO-S1-002, ISO-S1-003 |
-| Medium | 6 | ISO-S1-004 … ISO-S1-009 |
-| Low | 4 | ISO-S1-010 … ISO-S1-013 |
+| High | 0 | ISO-S1-001…003 closed |
+| Medium | 0 | ISO-S1-004…009 closed |
+| Low | 0 | ISO-S1-010…012 closed; ISO-S1-013 partial (parked dedupe) |
 
 ---
 
@@ -44,19 +46,19 @@ Slice 1 is **not proven** for the ADR target (dense connected body, ~84k tris, p
 
 | ID | Severity | Issue | Status |
 |----|----------|-------|--------|
-| ISO-S1-001 | **High** | Canonical stroke-bracelet flood is not shown to be cut by fence `EdgeKey`s; blockers alone would pass the integration test | Open |
-| ISO-S1-002 | **High** | `coversAllNonOrphanFaces` is false whenever a stroke tags blocker faces, even if the flood is “whole mesh minus a ribbon” | Open |
-| ISO-S1-003 | **High** | No branched / second-path fixture; cylinder tests cannot catch leak-through-torso | Open |
-| ISO-S1-004 | **Medium** | Stroke fences always paint traversed faces as blockers (ADR says fallback-only); vertex-ring bracelet can eat the adjacent band | Open |
-| ISO-S1-005 | **Medium** | Incomplete bracelet / gapped cycle untested; the product failure mode for two loops | Open |
-| ISO-S1-006 | **Medium** | Non-manifold edges are silent dual walls (`getNeighborAcrossEdge` only pairs `incidents.length === 2`) | Open |
-| ISO-S1-007 | **Medium** | Truncated surface walk / `locate === none` emit a gapped or empty fence with no warning | Open |
-| ISO-S1-008 | **Medium** | Per-segment `WorkingMesh` + brute `locate` will hitch on the 84k-tri asset this epic exists for | Open |
-| ISO-S1-009 | **Medium** | Disjoint-mask extract, empty-mask → `buildTopology` throw, remapped subset `FaceIndex` for Flatten are untested / Slice 3 landmines | Open |
-| ISO-S1-010 | **Low** | Under-specified assertions (`size > 0`, `.not.toBe("inside")`); redundant leak test | Open |
-| ISO-S1-011 | **Low** | Single-point stroke, empty stroke, perfectly overlapping strokes untested | Open |
-| ISO-S1-012 | **Low** | `floodFromFace` is DFS (`queue.pop`), not BFS; fine for the set, wrong for later ring-grow | Open |
-| ISO-S1-013 | **Low** | Fence walk is a fork of `tessellateSurfaceSegment`; drift already possible | Open |
+| ISO-S1-001 | **High** | Canonical stroke-bracelet flood is not shown to be cut by fence `EdgeKey`s; blockers alone would pass the integration test | **Closed** — ring-stroke fenceEdges-only flood test |
+| ISO-S1-002 | **High** | `coversAllNonOrphanFaces` is false whenever a stroke tags blocker faces, even if the flood is “whole mesh minus a ribbon” | **Closed** — scar + incomplete bracelet warn |
+| ISO-S1-003 | **High** | No branched / second-path fixture; cylinder tests cannot catch leak-through-torso | **Closed** — `branchedTube` fixture |
+| ISO-S1-004 | **Medium** | Stroke fences always paint traversed faces as blockers (ADR says fallback-only); vertex-ring bracelet can eat the adjacent band | **Closed** — hybrid + walked-face-only `recordExit` / on-edge ride |
+| ISO-S1-005 | **Medium** | Incomplete bracelet / gapped cycle untested; the product failure mode for two loops | **Closed** |
+| ISO-S1-006 | **Medium** | Non-manifold edges are silent dual walls (`getNeighborAcrossEdge` only pairs `incidents.length === 2`) | **Closed** — flood warnings |
+| ISO-S1-007 | **Medium** | Truncated surface walk / `locate === none` emit a gapped or empty fence with no warning | **Closed** |
+| ISO-S1-008 | **Medium** | Per-segment `WorkingMesh` + brute `locate` will hitch on the 84k-tri asset this epic exists for | **Closed** — one WorkingMesh per call |
+| ISO-S1-009 | **Medium** | Disjoint-mask extract, empty-mask → `buildTopology` throw, remapped subset `FaceIndex` for Flatten are untested / Slice 3 landmines | **Closed** — tests + `assertSubsetHasFaces` |
+| ISO-S1-010 | **Low** | Under-specified assertions (`size > 0`, `.not.toBe("inside")`); redundant leak test | **Closed** |
+| ISO-S1-011 | **Low** | Single-point stroke, empty stroke, perfectly overlapping strokes untested | **Closed** |
+| ISO-S1-012 | **Low** | `floodFromFace` is DFS (`queue.pop`), not BFS; fine for the set, wrong for later ring-grow | **Closed** — BFS head index |
+| ISO-S1-013 | **Low** | Fence walk is a fork of `tessellateSurfaceSegment`; drift already possible | **Partial** — cross-ref comment; full shared hop helper parked (not a Slice 2 blocker) |
 
 ---
 
@@ -187,13 +189,13 @@ Hop cap: `min(2048, 2F+4)` per segment. Bounded, good. Exhaustion is silent (ISO
 
 Resolve before writing tests or code that assume one story.
 
-| # | Question | Option A (ADR as written) | Option B (match current code) |
-|---|----------|---------------------------|-------------------------------|
-| D1 | What is a stroke fence? | Separating `EdgeKey` cycle (virtual seams). Blockers only when the walk has **no** exit edges. | Always opaque walked faces + whatever exit keys fall out. Document the ADR deviation. |
-| D2 | Whole-mesh warn | Flood ≈ all non-orphan faces, **including** treating “all but the stroke ribbon” as whole-mesh. | Keep `faces.length === nonOrphanCount` and accept auto-isolate of mesh-minus-ribbon. |
-| D3 | Vertex-ring bracelet | Must not eat the adjacent isolate band (`recordExit` only the walked face, or fence the ring without dual-side blockers). | Eating one extra ring is accepted v1 thickness. |
+| # | Question | Option A (ADR as written) | Option B (match current code) | **Resolved** |
+|---|----------|---------------------------|-------------------------------|--------------|
+| D1 | What is a stroke fence? | Separating `EdgeKey` cycle (virtual seams). Blockers only when the walk has **no** exit edges. | Always opaque walked faces + whatever exit keys fall out. Document the ADR deviation. | **Hybrid (2026-09-03):** Prefer exit `EdgeKey` fences. `blockerFaces` only when that stroke’s walk has **no** exit edges (ADR fallback). Walked faces kept for classification; not always opaque. |
+| D2 | Whole-mesh warn | Flood ≈ all non-orphan faces, **including** treating “all but the stroke ribbon” as whole-mesh. | Keep `faces.length === nonOrphanCount` and accept auto-isolate of mesh-minus-ribbon. | **Option A (2026-09-03):** `coversAllNonOrphanFaces` when flood + scar (fallback blockers not entered) cover every non-orphan. |
+| D3 | Vertex-ring bracelet | Must not eat the adjacent isolate band (`recordExit` only the walked face, or fence the ring without dual-side blockers). | Eating one extra ring is accepted v1 thickness. | **Follow hybrid (2026-09-03):** No dual-side blockers when exits exist; `recordExit` records only the walked face. |
 
-Until D1 is chosen, a “fix” can fight the tests: tightening fence-only flood will fail the current bracelet integration test if blockers are the real separator.
+Canonical bracelet fixtures use **circumferential vertex-ring** strokes (exit keys ⊇ `tubeCircumferentialLoop`). Midpoint bracelets are characterizing only.
 
 ---
 
@@ -224,13 +226,13 @@ Until D1 is chosen, a “fix” can fight the tests: tightening fence-only flood
 
 | Path | Role |
 |------|------|
-| [`src/logic/isolation/types.ts`](../../../src/logic/isolation/types.ts) | `FaceMask`, `FloodBarriers`, `FenceFromStrokesResult` |
+| [`src/logic/isolation/types.ts`](../../../src/logic/isolation/types.ts) | `FaceMask`, `FloodBarriers`, `FenceFromStrokesResult` (fallback-only blockers + `walkedFaces`) |
 | [`src/logic/isolation/faceMask.ts`](../../../src/logic/isolation/faceMask.ts) | Overlay bits; `combineFloodIntoMask` |
-| [`src/logic/isolation/floodFromFace.ts`](../../../src/logic/isolation/floodFromFace.ts) | Dual DFS; seams / fence keys / blocker faces |
-| [`src/logic/isolation/fenceEdgesFromStrokes.ts`](../../../src/logic/isolation/fenceEdgesFromStrokes.ts) | Read-only walk; always unions `blockerFaces` |
-| [`src/logic/isolation/extractFaceSubset.ts`](../../../src/logic/isolation/extractFaceSubset.ts) | Keep verts; pack masked faces |
-| [`src/logic/isolation/classifyStrokeVsMask.ts`](../../../src/logic/isolation/classifyStrokeVsMask.ts) | inside / outside / crossing via same walk faces |
-| [`src/logic/isolation/testMeshes.ts`](../../../src/logic/isolation/testMeshes.ts) | `openTube`, `tubeBraceletStroke`, circumferential loops |
+| [`src/logic/isolation/floodFromFace.ts`](../../../src/logic/isolation/floodFromFace.ts) | Dual BFS; scar whole-mesh; non-manifold warnings |
+| [`src/logic/isolation/fenceEdgesFromStrokes.ts`](../../../src/logic/isolation/fenceEdgesFromStrokes.ts) | Hybrid fences; one WorkingMesh; on-edge ride + hop walk |
+| [`src/logic/isolation/extractFaceSubset.ts`](../../../src/logic/isolation/extractFaceSubset.ts) | Keep verts; pack masked faces; `assertSubsetHasFaces` |
+| [`src/logic/isolation/classifyStrokeVsMask.ts`](../../../src/logic/isolation/classifyStrokeVsMask.ts) | inside / outside / crossing via walked faces |
+| [`src/logic/isolation/testMeshes.ts`](../../../src/logic/isolation/testMeshes.ts) | `openTube`, ring/midpoint bracelets, `branchedTube`, non-manifold toy |
 | [`src/logic/mesh/partitionIslands.ts`](../../../src/logic/mesh/partitionIslands.ts) | `isTopologyOrphanFace` exported only |
 
 ---
@@ -238,5 +240,5 @@ Until D1 is chosen, a “fix” can fight the tests: tightening fence-only flood
 ## Audit hygiene
 
 - Audit pass did not modify `src/logic/isolation/` or tests.
-- Continue work from **Decision queue** then **Recommended next steps**; mark finding **Status** in the table when a slice lands.
-- Characterizing tests, when added, should live next to the modules (or `*.audit.test.ts` then merge, per [qa-audits.md](qa-audits.md) history).
+- Remediation 2026-09-03 closed High/Medium/Low except ISO-S1-013 full dedupe (parked).
+- Characterizing tests live next to the modules per [qa-audits.md](qa-audits.md) history.
