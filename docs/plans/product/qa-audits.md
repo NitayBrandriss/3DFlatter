@@ -2,6 +2,12 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
+**Mesh isolation (P2-E2)**
+
+| Audit | Topic | Status |
+|-------|-------|--------|
+| [2026-09-03 Slice 1 logic](qa-isolation-slice1.md) | Face mask, flood, stroke fences, subset extract — test quality and logic holes | **Open** — do not start Slice 2 until decided ([decision queue](qa-isolation-slice1.md#decision-queue)) |
+
 **Holistic / post–Phase 1**
 
 | Audit | Topic | Status |
@@ -36,6 +42,39 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-09-03 — P2-E2 Slice 1 isolation logic
+
+**Status:** Open — awaiting remediation decisions  
+**Date:** 2026-09-03  
+**Scope:** `src/logic/isolation/` + Slice 1 Vitest. No production or test edits.  
+**ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
+**Plan:** [epic-mesh-isolation.md](epic-mesh-isolation.md)  
+**Working SSOT (full report):** [qa-isolation-slice1.md](qa-isolation-slice1.md)
+
+**Verdict:** First-try green is unsurprising. Fixtures max out at a 48-triangle open prism. Canonical stroke-bracelet tests would still pass if fence `EdgeKey`s were ignored (`blockerFaces` do the isolation). Do not start epic Slice 2 until the [decision queue](qa-isolation-slice1.md#decision-queue) is resolved or explicitly waived.
+
+### Findings
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| ISO-S1-001 | **High** | Stroke-bracelet flood not shown to be cut by fence edges; blockers alone would pass | Open |
+| ISO-S1-002 | **High** | `coversAllNonOrphanFaces` misses “whole mesh minus stroke ribbon” | Open |
+| ISO-S1-003 | **High** | No branched fixture; cylinder cannot catch torso leak | Open |
+| ISO-S1-004 | **Medium** | Blockers always applied (ADR fallback-only); vertex-ring can eat adjacent band | Open |
+| ISO-S1-005 | **Medium** | Incomplete bracelet / gapped cycle untested | Open |
+| ISO-S1-006 | **Medium** | Non-manifold edges silent dual walls | Open |
+| ISO-S1-007 | **Medium** | Truncated walk / `locate === none` — gapped fence, no warning | Open |
+| ISO-S1-008 | **Medium** | Per-segment `WorkingMesh` + brute `locate` on 84k-tri meshes | Open |
+| ISO-S1-009 | **Medium** | Disjoint extract / empty subset → `buildTopology` / remapped face ids untested | Open |
+| ISO-S1-010 | **Low** | Tautological / under-specified assertions | Open |
+| ISO-S1-011 | **Low** | Single-point, empty, overlapping strokes untested | Open |
+| ISO-S1-012 | **Low** | Flood is DFS not BFS | Open |
+| ISO-S1-013 | **Low** | Fence walk forks `tessellateSurfaceSegment` | Open |
+
+Continue from [qa-isolation-slice1.md](qa-isolation-slice1.md) (decision queue + recommended next steps). IDs are `ISO-S1-*`, not deferred product **ISO-001…004**.
 
 ---
 

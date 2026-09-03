@@ -8,7 +8,7 @@ import { getNeighborAcrossEdge } from "./types";
  * Index check matches topology; remaining edge-map scan is defense if a face
  * somehow has distinct indices but no edge registration.
  */
-function isTopologyOrphanFace(
+export function isTopologyOrphanFace(
   mesh: MeshModel,
   topology: Topology,
   faceId: FaceIndex,
