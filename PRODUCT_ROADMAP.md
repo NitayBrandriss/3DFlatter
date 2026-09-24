@@ -120,7 +120,7 @@ Short list from ADR 0100; full parked inventory is under [Deferred backlog](#def
 | Topic | Decision |
 |-------|----------|
 | **Selection** | Seed-flood + fence `EdgeKey`s from committed stroke surface walks (not materialize); Shift-add / Alt-subtract; no lasso |
-| **Canonical** | Two closed bracelets (shoulder + wrist) → click the arm → isolate that band |
+| **Canonical** | Two closed **vertex-ring** bracelets (shoulder + wrist) → click the arm → isolate that band |
 | **Session** | Face-index mask overlay; base `session.mesh` frozen; load clears mask; `meshLoadVersion` unchanged |
 | **Viewer** | Full-mesh display normalization; two index buffers; **ghost** remainder (not hide); camera frames isolate |
 | **Flatten** | Ephemeral face-filtered mesh (keep verts); inside strokes only; crossing strokes **skip + toast** |
@@ -153,7 +153,7 @@ flowchart TB
 
 ### Implementation slices (execution order)
 
-See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md). Logic → state → Flatten wiring → viewer ghost/frame → sidebar → QA. Do not implement from this roadmap summary alone.
+See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md) (SSOT). Slice 1 logic is complete; **Slice 2 (State) is next**. Order: logic → state → Flatten → viewer → sidebar → manual closeout. Tier B slices need Red Team before the next slice ([AGENTS.md](AGENTS.md#algorithmic--slice-done-criteria)). Do not implement from this roadmap summary alone.
 
 ### Phase 2 remaining (Planned)
 
@@ -163,7 +163,7 @@ See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md). Logic �
 ### Verification (P2-E2)
 
 - Two bracelets + seed between them → ghosted remainder, Flatten unfolds only the band
-- Whole-mesh seed flood → warn, no auto-isolate
+- Whole-mesh seed flood (no fences **or** incomplete bracelet / mesh-minus-scar) → warn, no auto-isolate
 - Crossing stroke → skip + toast; exit isolate restores full mesh with edits persisted
 - `npm test`, `npm run lint`
 

@@ -36,7 +36,7 @@ Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) sta
 |------|--------|
 | [remediation-phase1.md](remediation-phase1.md) | **Complete** (2026-08-23) — UI/UX, load toasts, Vitest hardening |
 | [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; in-scope findings remediations complete ([qa-audits.md](qa-audits.md#audit--2026-08-23--phase-1-holistic-remediation-complete)); logic/viewer regression pass still waiting |
-| [qa-isolation-slice1.md](qa-isolation-slice1.md) | **Open** (2026-09-03) — P2-E2 Slice 1 logic QA; gate Slice 2 until decided |
+| [qa-isolation-slice1.md](qa-isolation-slice1.md) | **Remediated** (2026-09-03) — P2-E2 Slice 1 High closed; Slice 2 unblocked ([epic](epic-mesh-isolation.md)) |
 | [qa-audits.md](qa-audits.md) | Living findings index (P2-E2 Slice 1 + Slices A–E + holistic baseline + remediation complete) |
 
 ---
