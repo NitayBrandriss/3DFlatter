@@ -26,6 +26,7 @@ export default function HomePage() {
     mesh,
     seams,
     cutStrokes,
+    isolationKey,
     meshLoadVersion,
     patternRevision,
     session,
@@ -60,6 +61,7 @@ export default function HomePage() {
     session,
     meshLoadVersion,
     patternRevision,
+    isolationKey,
     cutStrokes,
     notifyToast,
   );

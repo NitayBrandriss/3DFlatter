@@ -1,6 +1,6 @@
 # Phase 2 — P2-E2 Mesh isolation (sub-mesh selection)
 
-**Status:** Active — **Slice 1 complete**; next is **Slice 2 (State)**  
+**Status:** Active — **Slice 1 complete**; **Slice 2 (State) audit filed** ([qa-isolation-slice2.md](qa-isolation-slice2.md): no Critical/High, Medium open). Slice 3 is not blocked by severity. Slice 2 Done checkbox waits on that file’s D1–D2.  
 **ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
 **Roadmap:** [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md) Phase 2 / P2-E2  
 **Depends on:** PoC ADRs [0001](../../decisions/poc/0001-mesh-model-and-topology.md), [0002](../../decisions/poc/0002-unfold-step-1-hinge-island.md); product [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md)  
@@ -59,8 +59,8 @@ Execution order. Do not start a later slice until the previous is **Done** under
 | # | Slice | Tier | Status |
 |---|--------|------|--------|
 | 1 | Logic | B–D | **Complete** — [qa-isolation-slice1.md](qa-isolation-slice1.md) remediated; High closed; Slice 2 unblocked |
-| 2 | State | B–D | **Next** |
-| 3 | Flatten | B–D | Blocked on Slice 2 Done |
+| 2 | State | B–D | **Audit filed** — [qa-isolation-slice2.md](qa-isolation-slice2.md) has no Critical/High; Medium + D1–D2 still open (Done checkbox not checked) |
+| 3 | Flatten | B–D | Unblocked on severity (no open `ISO-S2` High). Do not read `coversAllNonOrphanFaces` as “confirm succeeded” — see [qa-isolation-slice2.md](qa-isolation-slice2.md) D1 |
 | 4 | Viewer | B–D | Blocked on Slice 3 Done |
 | 5 | UI | A (+ B if island-stats math is new) | Blocked on Slice 4 Done |
 | 6 | Epic closeout + manual QA | A | Blocked on Slice 5; **not** a substitute for per-slice Red Team |
@@ -71,7 +71,7 @@ Plans for Slices 2–4 **must** list adversarial fixtures, tests that go red und
 
 `FaceMask`, `fenceEdgesFromStrokes`, `floodFromFace`, `extractFaceSubset` / `assertSubsetHasFaces`, `classifyStrokeVsMask`. Extract-then-`buildTopology` for Flatten (isolation boundary = real boundary). No mask-aware `partitionIslands` (sidebar uses extract-then-partition later).
 
-### 2. State — next
+### 2. State — audit filed, Medium open
 
 **Paths:** `src/state/meshSessionStore.ts`, `src/state/meshEditTool.ts` (`"isolate"`).
 
@@ -92,7 +92,7 @@ Plans for Slices 2–4 **must** list adversarial fixtures, tests that go red und
 
 **Non-goals:** viewer picking, Flatten call, sidebar chrome.
 
-**Red Team:** `docs/plans/product/qa-isolation-slice2.md`, IDs `ISO-S2-*`. Slice 3 blocked until High/Critical closed or waived.
+**Red Team:** [qa-isolation-slice2.md](qa-isolation-slice2.md), IDs `ISO-S2-*`. Filed 2026-09-27 — no Critical/High. Slice 3 is not blocked by severity. D1–D2 in that file stay open (combined-mask flag vs confirm; blocked flood clobber).
 
 **Unproven:** 84k-tri seed-click latency (fence walk + flood).
 
@@ -177,7 +177,7 @@ Match ADR 0101: hide toggle, lasso, brush radius, OBJ groups, destructive sessio
 
 - [x] ADR 0101 accepted
 - [x] Slice 1 logic + [qa-isolation-slice1.md](qa-isolation-slice1.md) High closed (hybrid fence, scar whole-mesh, vertex-ring + branched fixtures)
-- [ ] Slice 2: isolate enter/exit does not bump `meshLoadVersion`; load clears mask; flatten key includes isolation; `ISO-S2` High closed or waived
+- [ ] Slice 2: isolate enter/exit does not bump `meshLoadVersion`; load clears mask; flatten key includes isolation; `ISO-S2` High closed (none filed) — checkbox waits on [D1–D2](qa-isolation-slice2.md#decision-queue)
 - [ ] Slice 3: isolated Flatten + crossing skip; `assertSubsetHasFaces`; `ISO-S3` High closed or waived
 - [ ] Slice 4: ghost remainder, isolate picking/frame; `ISO-S4` High closed or waived
 - [ ] Slice 5: Isolate / Exit + toasts + mask-scoped stats

@@ -153,7 +153,7 @@ flowchart TB
 
 ### Implementation slices (execution order)
 
-See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md) (SSOT). Slice 1 logic is complete; **Slice 2 (State) is next**. Order: logic → state → Flatten → viewer → sidebar → manual closeout. Tier B slices need Red Team before the next slice ([AGENTS.md](AGENTS.md#algorithmic--slice-done-criteria)). Do not implement from this roadmap summary alone.
+See [epic-mesh-isolation.md](docs/plans/product/epic-mesh-isolation.md) (SSOT). Slice 1 logic is complete; **Slice 2 (State) is implemented and waiting on Red Team** before it is Done. Order: logic → state → Flatten → viewer → sidebar → manual closeout. Tier B slices need Red Team before the next slice ([AGENTS.md](AGENTS.md#algorithmic--slice-done-criteria)). Do not implement from this roadmap summary alone.
 
 ### Phase 2 remaining (Planned)
 

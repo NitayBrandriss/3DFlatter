@@ -1,15 +1,29 @@
 import { create } from "zustand";
 import type { CutStroke, Vec3 } from "../logic/cuts/types";
 import {
+  combineFloodIntoMask,
+  countMaskedFaces,
+  createFaceMask,
+} from "../logic/isolation/faceMask";
+import { fenceEdgesFromStrokes } from "../logic/isolation/fenceEdgesFromStrokes";
+import { floodFromFace } from "../logic/isolation/floodFromFace";
+import type { FaceMask, FloodCombineMode } from "../logic/isolation/types";
+import {
   formatByteLimit,
   MAX_MESH_FILE_BYTES,
 } from "../logic/io/loadBudgets";
 import { ObjParseError, parseObj } from "../logic/io/obj/parseObj";
 import { parseStl, StlParseError } from "../logic/io/stl/parseStl";
 import { buildTopology } from "../logic/mesh/buildTopology";
-import { partitionIslands } from "../logic/mesh/partitionIslands";
+import { isTopologyOrphanFace, partitionIslands } from "../logic/mesh/partitionIslands";
 import { summarizeTopology } from "../logic/mesh/topologyStats";
-import type { EdgeKey, MeshModel, SeamRegistry, Topology } from "../logic/mesh/types";
+import type {
+  EdgeKey,
+  FaceIndex,
+  MeshModel,
+  SeamRegistry,
+  Topology,
+} from "../logic/mesh/types";
 import { canSelectAsSeam } from "../logic/seams/edgeEligibility";
 import {
   clearSeams,
@@ -28,6 +42,40 @@ export type MeshSession = {
   fileName: string;
 };
 
+/**
+ * Face-index overlay (ADR 0101). `mask` is keyed by original FaceIndex
+ * (`1` = included). Not a cloned mesh — vertex indices stay session-global.
+ * `warnings` are the latest fence + flood diagnostics for later toasts.
+ */
+export type IsolationOverlay = {
+  active: boolean;
+  mask: FaceMask;
+  warnings: string[];
+  /** Last seed/add/subtract flood, including mesh-minus-scar. */
+  coversAllNonOrphanFaces: boolean;
+};
+
+export function createIsolationOverlay(faceCount: number): IsolationOverlay {
+  return {
+    active: false,
+    mask: createFaceMask(faceCount),
+    warnings: [],
+    coversAllNonOrphanFaces: false,
+  };
+}
+
+/**
+ * Flatten fingerprint of isolation: active flag plus every mask bit.
+ * Mask edits must change this without bumping `patternRevision`.
+ */
+export function isolationContentKey(active: boolean, mask: Uint8Array): string {
+  let bits = "";
+  for (let i = 0; i < mask.length; i++) {
+    bits += mask[i] ? "1" : "0";
+  }
+  return `${active ? "1" : "0"}:${bits}`;
+}
+
 export type ToastMessage = {
   id: number;
   text: string;
@@ -38,7 +86,7 @@ export type ToastMessage = {
 
 type MeshSessionState = {
   session: MeshSession | null;
-  /** Bumps only on mesh load/clear — never on seam toggles or stroke edits. */
+  /** Bumps only on mesh load/clear — never on seams, strokes, or isolation. */
   meshLoadVersion: number;
   /**
    * Freeform cut overlay (ADR 0100). Canonical mesh-space polylines.
@@ -47,11 +95,17 @@ type MeshSessionState = {
    */
   cutStrokes: CutStroke[];
   /**
-   * Bumps on cut-stroke CRUD only. Used with `meshLoadVersion` and
-   * `seamsContentKey` for flatten snapshot identity (ADR 0100).
-   * Seam toggles do not bump this — seams enter the fingerprint via content key.
+   * Bumps on cut-stroke CRUD only. Used with `meshLoadVersion`,
+   * `seamsContentKey`, and isolation identity for flatten snapshot identity
+   * (ADR 0100 / 0101). Seam toggles and mask edits do not bump this.
    */
   patternRevision: number;
+  /**
+   * Isolation overlay (ADR 0101). Cleared on successful file load.
+   * Seed / add / subtract / confirm / exit do not bump `meshLoadVersion`
+   * or `patternRevision`.
+   */
+  isolation: IsolationOverlay;
   isLoading: boolean;
   error: string | null;
   /** Edge-pick seams, freeform draw cut, or orbit-only. */
@@ -66,21 +120,55 @@ type MeshSessionState = {
   updateCutStroke: (id: string, points: readonly Vec3[]) => void;
   deleteCutStroke: (id: string) => void;
   clearCutStrokes: () => void;
+  /**
+   * Seed (`replace`), Shift-add, or Alt-subtract. Uses committed strokes as
+   * hybrid fences (exit edges; blocker faces only when a stroke has no exits).
+   * Does not set `active` — call `confirmIsolation`.
+   */
+  applyIsolationFlood: (seedFace: FaceIndex, mode: FloodCombineMode) => void;
+  /** Sets `active` when the mask is a nonempty proper subset. */
+  confirmIsolation: () => boolean;
+  /** Clears `active`. Mask bits stay so the user can re-enter. */
+  exitIsolation: () => void;
   setMeshEditTool: (tool: MeshEditTool) => void;
   dismissToast: (id: number) => void;
   notifyToast: (text: string, tone?: ToastMessage["tone"]) => void;
 };
 
 /**
- * Flatten snapshot key (ADR 0100): mesh load + stroke revision + seams fingerprint.
- * Seam edits change `seamsKey` without bumping `patternRevision` / `meshLoadVersion`.
+ * Flatten snapshot key (ADR 0100 / 0101): mesh load + stroke revision + seams
+ * fingerprint + isolation identity (mask bits and `active`).
+ * Seam edits and mask edits change the key without bumping
+ * `patternRevision` / `meshLoadVersion`.
  */
 export function flattenSnapshotKey(
   meshLoadVersion: number,
   patternRevision: number,
   seamsKey: string,
+  isolationKey: string,
 ): string {
-  return `${meshLoadVersion}:${patternRevision}:${seamsKey}`;
+  return `${meshLoadVersion}:${patternRevision}:${seamsKey}:${isolationKey}`;
+}
+
+/**
+ * True when confirm must refuse: empty mask, or every non-orphan face is
+ * either selected or a fallback scar blocker (mesh-minus-ribbon).
+ */
+function isolationSelectionBlocksConfirm(
+  mesh: MeshModel,
+  topology: Topology,
+  mask: FaceMask,
+  blockerFaces: ReadonlySet<FaceIndex>,
+): boolean {
+  if (mask.length !== mesh.faceCount) return true;
+  if (countMaskedFaces(mask) === 0) return true;
+  for (let i = 0; i < mesh.faceCount; i++) {
+    if (isTopologyOrphanFace(mesh, topology, i)) continue;
+    if (mask[i]) continue;
+    if (blockerFaces.has(i)) continue;
+    return false;
+  }
+  return true;
 }
 
 function cloneStrokePoints(points: readonly Vec3[]): Vec3[] {
@@ -191,6 +279,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
   meshLoadVersion: 0,
   cutStrokes: [],
   patternRevision: 0,
+  isolation: createIsolationOverlay(0),
   isLoading: false,
   error: null,
   meshEditTool: "seam",
@@ -249,6 +338,7 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
         meshLoadVersion: s.meshLoadVersion + 1,
         cutStrokes: [],
         patternRevision: 0,
+        isolation: createIsolationOverlay(mesh.faceCount),
         isLoading: false,
         error: null,
         ...(hasLoadWarnings
@@ -355,6 +445,75 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
       if (s.cutStrokes.length === 0) return s;
       return { cutStrokes: [], patternRevision: s.patternRevision + 1 };
     });
+  },
+
+  applyIsolationFlood: (seedFace, mode) => {
+    const { session, cutStrokes, isolation } = get();
+    if (!session) return;
+
+    const { mesh, topology, seams } = session;
+    const fence = fenceEdgesFromStrokes(mesh, cutStrokes);
+    const flood = floodFromFace(mesh, topology, seedFace, {
+      seams,
+      fenceEdges: fence.fenceEdges,
+      // Fallback blockers only — walked faces stay paintable (ADR 0101).
+      blockerFaces: fence.blockerFaces,
+    });
+    if (flood.faces.length === 0) return;
+
+    const base =
+      isolation.mask.length === mesh.faceCount
+        ? isolation.mask
+        : createFaceMask(mesh.faceCount);
+    const mask = combineFloodIntoMask(base, flood.faces, mode);
+    const blocked = isolationSelectionBlocksConfirm(
+      mesh,
+      topology,
+      mask,
+      fence.blockerFaces,
+    );
+    set((s) => ({
+      isolation: {
+        active: blocked ? false : s.isolation.active,
+        mask,
+        warnings: [...fence.warnings, ...flood.warnings],
+        coversAllNonOrphanFaces: flood.coversAllNonOrphanFaces,
+      },
+    }));
+  },
+
+  confirmIsolation: () => {
+    const { session, cutStrokes, isolation } = get();
+    if (!session) return false;
+
+    const fence = fenceEdgesFromStrokes(session.mesh, cutStrokes);
+    const mask =
+      isolation.mask.length === session.mesh.faceCount
+        ? isolation.mask
+        : createFaceMask(session.mesh.faceCount);
+    if (
+      isolationSelectionBlocksConfirm(
+        session.mesh,
+        session.topology,
+        mask,
+        fence.blockerFaces,
+      )
+    ) {
+      if (isolation.active) {
+        set({ isolation: { ...isolation, active: false, mask } });
+      }
+      return false;
+    }
+    if (!isolation.active || isolation.mask !== mask) {
+      set({ isolation: { ...isolation, active: true, mask } });
+    }
+    return true;
+  },
+
+  exitIsolation: () => {
+    const { isolation } = get();
+    if (!isolation.active) return;
+    set({ isolation: { ...isolation, active: false } });
   },
 
   setMeshEditTool: (tool: MeshEditTool) => set({ meshEditTool: tool }),

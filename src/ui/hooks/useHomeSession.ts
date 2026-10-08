@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   computeSessionStats,
+  isolationContentKey,
   seamsContentKey,
   useMeshSessionStore,
   type MeshSession,
@@ -22,6 +23,7 @@ export function useHomeSession() {
   );
   const seams = useMeshSessionStore((s) => s.session?.seams ?? null);
   const cutStrokes = useMeshSessionStore((s) => s.cutStrokes);
+  const isolation = useMeshSessionStore((s) => s.isolation);
   const chrome = useMeshSessionStore(
     useShallow((s) => ({
       isLoading: s.isLoading,
@@ -65,6 +67,8 @@ export function useHomeSession() {
     mesh,
     seams,
     cutStrokes,
+    isolation,
+    isolationKey: isolationContentKey(isolation.active, isolation.mask),
     meshLoadVersion,
     patternRevision,
     session,

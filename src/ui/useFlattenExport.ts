@@ -29,10 +29,11 @@ type NotifyToast = (text: string, tone?: "info" | "warning") => void;
  * - **Session (Zustand)** owns mesh, topology, live seams, and `cutStrokes`.
  *   Seam toggles and stroke edits must not bump `meshLoadVersion` (AGENTS.md).
  *   Stroke CRUD bumps `patternRevision` only; seam membership enters the
- *   flatten key via `seamsContentKey` (ADR 0100).
+ *   flatten key via `seamsContentKey` (ADR 0100). Isolation mask bits and
+ *   `active` enter via `isolationKey` (ADR 0101) without a revision bump.
  * - **Flatten snapshot (this hook)** owns the last successful unfold result,
- *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision, seamsKey)`.
- *   Seam or stroke edits stale the snapshot (2D clears until re-Flatten).
+ *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision, seamsKey, isolationKey)`.
+ *   Seam, stroke, or isolation edits stale the snapshot (2D clears until re-Flatten).
  * - On Flatten: `flattenWithCutStrokes` (materialize when strokes exist) then
  *   unfold; materialize warnings collapse to one toast before quality toasts.
  * - No separate flatten Zustand store: the snapshot is page-local UI state.
@@ -41,6 +42,7 @@ export function useFlattenExport(
   session: MeshSession | null,
   meshLoadVersion: number,
   patternRevision: number,
+  isolationKey: string,
   cutStrokes: readonly CutStroke[],
   notifyToast: NotifyToast,
 ) {
@@ -64,6 +66,7 @@ export function useFlattenExport(
     meshLoadVersion,
     patternRevision,
     seamsKey,
+    isolationKey,
   );
   const flattenResult =
     flattenSnapshot &&
@@ -136,6 +139,7 @@ export function useFlattenExport(
           meshLoadVersion,
           patternRevision,
           seamsContentKey(session.seams),
+          isolationKey,
         ),
         result,
       });
@@ -143,7 +147,7 @@ export function useFlattenExport(
     } finally {
       setFlattening(false);
     }
-  }, [session, meshLoadVersion, patternRevision, cutStrokes, notifyToast]);
+  }, [session, meshLoadVersion, patternRevision, isolationKey, cutStrokes, notifyToast]);
 
   const onExportSvg = useCallback(() => {
     if (!flattenResult || flattenResult.error) return;

@@ -6,6 +6,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 | Audit | Topic | Status |
 |-------|-------|--------|
+| [2026-09-27 Slice 2 state](qa-isolation-slice2.md) | Zustand isolation overlay, confirm predicate, flatten snapshot key | **Filed** — no Critical/High; Medium open ([decision queue](qa-isolation-slice2.md#decision-queue)). Slice 3 not blocked by severity |
 | [2026-09-03 Slice 1 logic](qa-isolation-slice1.md) | Face mask, flood, stroke fences, subset extract — test quality and logic holes | **Remediated** — High closed; Slice 2 unblocked ([decision queue](qa-isolation-slice1.md#decision-queue)) |
 
 **Holistic / post–Phase 1**
@@ -42,6 +43,33 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-09-27 — P2-E2 Slice 2 isolation state
+
+**Status:** Filed — no Critical/High. Medium open. Slice 3 is not blocked by severity. Slice 2 Done checkbox waits on [D1–D2](qa-isolation-slice2.md#decision-queue).  
+**Date:** 2026-09-27  
+**Scope:** `src/state/meshSessionStore.ts`, `src/state/meshEditTool.ts`, isolation adversarial Vitest, `useFlattenExport` snapshot key. No production or test edits.  
+**ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
+**Plan:** [epic-mesh-isolation.md](epic-mesh-isolation.md) Slice 2  
+**Working SSOT (full report):** [qa-isolation-slice2.md](qa-isolation-slice2.md)
+
+**Verdict:** Not proven for the full ADR session contract. Proven for the plan’s geometric oracles (exact arm-band mask, scar/incomplete confirm refuse, branched non-leak, version pins, load clear/preserve) at ≤48 triangles. Those tests fail if fences, blockers, combine mode, or confirm are no-ops. They stay green if the whole-mesh flag disagrees with the combined mask, if seams and fences are not used together, if an active isolate is clobbered by a later flood, or if `clearAllSeams` ignores the mask.
+
+### Findings
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| ISO-S2-001 | **Medium** | `coversAllNonOrphanFaces` is the last flood; Shift-add to a full mask still has the flag false while confirm refuses | Open |
+| ISO-S2-002 | **Medium** | Blocked flood replaces the mask and clears `active`; confirm-refuse keeps bits | Open |
+| ISO-S2-003 | **Medium** | No seam+fence flood; each channel dropped when the other is set stays green | Open |
+| ISO-S2-004 | **Medium** | `toggleSeamAt` / `clearAllSeams` ignore the mask (ADR ghost seams). Characterizing test would be red | Open |
+| ISO-S2-005 | **Low** | Fence warning strings not pinned; invalid seed returns before `set` | Open |
+| ISO-S2-006 | **Low** | Snapshot ablation allows a popcount key; hook unwired from Vitest (call sites reviewed) | Open |
+| ISO-S2-007 | **Low** | Confirm re-walks fences; `isolationContentKey` is O(faces). 84k unproven | Open |
+
+**Baseline:** isolation adversarial + `meshSessionStore.test.ts` — 36 passed. Detail, fixture table, and ablations: [qa-isolation-slice2.md](qa-isolation-slice2.md).
 
 ---
 
