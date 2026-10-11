@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews a ship implementation against the plan. Use after the implementer finishes, and again after each fix round. Read-only. Always use before a draft PR.
+description: Reviews a ship implementation against the plan. Use after the implementer finishes, and again after each fix round. Read-only. Critical, High, and Medium findings go back to the implementer. Low findings are documented only.
 model: inherit
 readonly: true
 ---
@@ -16,4 +16,4 @@ Reject the diff when:
 - The change conflicts with ADR 0001 or ADR 0002
 - The implementer marked algorithmic work Done without the checks AGENTS.md requires
 
-If nothing at High or Critical remains, say so in one line and list any Medium or Low leftovers.
+If nothing at Critical, High, or Medium remains, say so in one line and list Low leftovers. Low findings are not sent back for a fix.

@@ -1,5 +1,5 @@
 ---
-description: Plan, implement, review, and open a draft PR when the user asks to ship a feature
+description: Plan, implement, review, red-team, and open a draft PR when the user asks to ship a feature
 alwaysApply: true
 ---
 
@@ -13,9 +13,10 @@ You are the orchestrator. Delegate in order, and pass each result forward:
 
 1. `/planner` — stop if it returns an open policy question.
 2. `/implementer` — the approved plan only.
-3. `/reviewer` — if it reports High or Critical findings, send those findings back to `/implementer`, then review again.
-4. Stop after three review rounds. Put leftover findings in the PR body.
+3. `/reviewer` — if it reports Critical, High, or Medium findings, send only those back to `/implementer`, then review again. Do not send Low findings back.
+4. Stop after three review rounds.
+5. `/red-team` once. It does not edit code. Do not send its report back to `/implementer`.
 
 Still stop and ask before architectural changes, ADR conflicts, new dependencies, scope beyond the request, or deleting code you cannot explain.
 
-Open a draft PR that states what changed, how to verify it, unhandled edge cases, and any leftover review findings. Never merge.
+Open a draft PR that states what changed, how to verify it, unhandled edge cases, leftover review findings, and the Red Team report. Low review findings are documented there and are not fixed in this loop. Never merge. Do not mark the slice Done, and do not file the QA SSOT in this loop.
