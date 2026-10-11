@@ -44,6 +44,7 @@ export function useHomeSession() {
       setMeshEditTool: s.setMeshEditTool,
       confirmIsolation: s.confirmIsolation,
       exitIsolation: s.exitIsolation,
+      applyIsolationFlood: s.applyIsolationFlood,
       dismissToast: s.dismissToast,
       notifyToast: s.notifyToast,
     })),

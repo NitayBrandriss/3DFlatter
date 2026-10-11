@@ -5,8 +5,10 @@ import {
 } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFaceMask, maskFromFaces } from "@/logic/isolation/faceMask";
-import { openTube } from "@/logic/isolation/testMeshes";
+import { fenceEdgesFromStrokes } from "@/logic/isolation/fenceEdgesFromStrokes";
+import { makeMesh, openTube } from "@/logic/isolation/testMeshes";
 import { buildTopology } from "@/logic/mesh/buildTopology";
+import { isTopologyOrphanFace } from "@/logic/mesh/partitionIslands";
 import { createSeamRegistry } from "@/logic/seams/seamRegistry";
 import {
   readIsolationConfirmBlockReason,
@@ -335,5 +337,139 @@ describe("ISO-UI-001 isolate button", () => {
     expect(state.isolation.active).toBe(false);
     expect(toasts).toEqual([{ text: LENGTH_SENTENCE, tone: "warning" }]);
     expectVersionsStay();
+  });
+});
+
+describe("ISO-UI2 isolate confirm toasts", () => {
+  const toasts: { text: string; tone?: "info" | "warning" }[] = [];
+
+  beforeEach(() => {
+    toasts.length = 0;
+    useMeshSessionStore.setState({
+      session: null,
+      meshLoadVersion: 0,
+      cutStrokes: [],
+      patternRevision: 0,
+      isLoading: false,
+      error: null,
+      meshEditTool: "seam",
+      toasts: [],
+      toastSeq: 0,
+      isolation: {
+        active: false,
+        mask: new Uint8Array(0),
+        warnings: [],
+        coversAllNonOrphanFaces: false,
+      },
+    });
+  });
+
+  function installSession(
+    mesh: ReturnType<typeof openTube>,
+    mask: Uint8Array,
+    cutStrokes: { id: string; points: { x: number; y: number; z: number }[] }[],
+  ) {
+    useMeshSessionStore.setState({
+      session: {
+        mesh,
+        topology: buildTopology(mesh),
+        seams: createSeamRegistry(),
+        fileName: "iso-ui2.obj",
+      },
+      meshLoadVersion: 4,
+      patternRevision: 11,
+      cutStrokes,
+      isolation: {
+        active: false,
+        mask,
+        warnings: [],
+        coversAllNonOrphanFaces: false,
+      },
+    });
+  }
+
+  /** Real Isolate button. Records `confirmIsolation`'s return value. */
+  function clickIsolate(): boolean {
+    let returned = false;
+    const state = useMeshSessionStore.getState();
+    const tree = renderSidebar(
+      sidebarProps({
+        session: state.session,
+        isolationActive: state.isolation.active,
+        confirmIsolation: () => {
+          returned = useMeshSessionStore.getState().confirmIsolation();
+          return returned;
+        },
+        exitIsolation: () => useMeshSessionStore.getState().exitIsolation(),
+        notifyToast: (text, tone) => {
+          toasts.push({ text, tone });
+        },
+        isolationBlockReason: () =>
+          readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
+      }),
+    );
+    buttonByLabel(tree, "Isolate").props.onClick?.();
+    return returned;
+  }
+
+  it("ISO-UI2-001 refuses a mesh-minus-scar mask and toasts the whole-mesh sentence", () => {
+    const mesh = openTube(2, 4);
+    expect(mesh.faceCount).toBe(8);
+    const scar = {
+      id: "scar",
+      points: [
+        {
+          x: mesh.vertices[0]!,
+          y: mesh.vertices[1]!,
+          z: mesh.vertices[2]!,
+        },
+      ],
+    };
+    const fence = fenceEdgesFromStrokes(mesh, [scar]);
+    expect(fence.blockerFaces.size).toBeGreaterThan(0);
+    expect(fence.blockerFaces.size).toBeLessThan(mesh.faceCount);
+
+    const mask = new Uint8Array(mesh.faceCount);
+    for (let face = 0; face < mesh.faceCount; face++) {
+      mask[face] = fence.blockerFaces.has(face) ? 0 : 1;
+    }
+    installSession(mesh, mask, [scar]);
+
+    expect(
+      readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
+    ).toBe(WHOLE_SENTENCE);
+
+    const returned = clickIsolate();
+    const state = useMeshSessionStore.getState();
+    expect(returned).toBe(false);
+    expect(state.isolation.active).toBe(false);
+    expect(toasts).toEqual([{ text: WHOLE_SENTENCE, tone: "warning" }]);
+  });
+
+  it("ISO-UI2-002 skips topology orphans and does not add a degenerate check", () => {
+    const mesh = makeMesh(
+      [0, 0, 0, 1, 0, 0, 0, 1, 0],
+      [0, 1, 2, 0, 0, 1],
+    );
+    const topology = buildTopology(mesh);
+    expect(isTopologyOrphanFace(mesh, topology, 0)).toBe(false);
+    expect(isTopologyOrphanFace(mesh, topology, 1)).toBe(true);
+
+    installSession(mesh, new Uint8Array([1, 0]), []);
+    expect(
+      readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
+    ).toBe(WHOLE_SENTENCE);
+    expect(clickIsolate()).toBe(false);
+    expect(useMeshSessionStore.getState().isolation.active).toBe(false);
+    expect(toasts).toEqual([{ text: WHOLE_SENTENCE, tone: "warning" }]);
+
+    toasts.length = 0;
+    installSession(mesh, new Uint8Array([0, 1]), []);
+    expect(
+      readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
+    ).toBeNull();
+    expect(clickIsolate()).toBe(true);
+    expect(useMeshSessionStore.getState().isolation.active).toBe(true);
+    expect(toasts).toEqual([]);
   });
 });

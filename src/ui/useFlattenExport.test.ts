@@ -403,4 +403,36 @@ describe("useFlattenExport", () => {
       ),
     ).toBe(false);
   });
+
+  it("ISO-UI2-003 toasts the seeded non-manifold flood warning only while active", () => {
+    const mesh = nonManifoldTripleEdge();
+    const session = tubeSession(mesh);
+    const flood = floodFromFace(mesh, session.topology, 0);
+    const sentence =
+      "Non-manifold edge 0,1 (3 incidents) treated as flood boundary.";
+    expect(flood.warnings[0]).toBe(sentence);
+    const mask = maskFromFaces(mesh.faceCount, flood.faces);
+    const notifyToast = vi.fn();
+
+    props = {
+      session,
+      meshLoadVersion: 1,
+      patternRevision: 0,
+      isolation: { active: false, mask, warnings: flood.warnings },
+      cutStrokes: [],
+      notifyToast,
+    };
+    useRenderedExport();
+    expect(current.onFlatten()).toBe(true);
+    expect(notifyToast.mock.calls.map((call) => call[0])).not.toContain(sentence);
+
+    notifyToast.mockClear();
+    props = {
+      ...props,
+      isolation: { active: true, mask, warnings: flood.warnings },
+    };
+    useRenderedExport();
+    expect(current.onFlatten()).toBe(true);
+    expect(notifyToast).toHaveBeenCalledWith(sentence, "warning");
+  });
 });

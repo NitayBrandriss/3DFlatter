@@ -235,6 +235,7 @@ export const AppSidebar = memo(function AppSidebar({
                 <option value="none">Orbit only</option>
                 <option value="seam">Edge seam pick</option>
                 <option value="cut">Draw cut polyline</option>
+                <option value="isolate">Isolate region</option>
               </select>
             </label>
 

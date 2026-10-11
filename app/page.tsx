@@ -44,6 +44,7 @@ export default function HomePage() {
     clearAllSeams,
     confirmIsolation,
     exitIsolation,
+    applyIsolationFlood,
     addCutStroke,
     updateCutStroke,
     deleteCutStroke,
@@ -383,9 +384,12 @@ export default function HomePage() {
               showAxes={showAxes}
               modelScale={modelScale}
               editTool={meshEditTool}
+              isolationActive={isolation.active}
+              isolationMask={isolation.mask}
               cutDraftActive={cutDraftActive}
               editingStrokeId={editingStrokeId}
               onEdgePick={onEdgePick}
+              onIsolationFlood={applyIsolationFlood}
               onDraftFinalize={onDraftFinalize}
               onCutDraftUiChange={onCutDraftUiChange}
               cutDraftActionsRef={cutDraftActionsRef}
