@@ -36,6 +36,9 @@ export const AppSidebar = memo(function AppSidebar({
     error,
     meshEditTool,
     setMeshEditTool,
+    isolationActive,
+    onConfirmIsolation,
+    onExitIsolation,
     clearAllSeams,
     cutStrokeCount,
     clearCutStrokes,
@@ -232,6 +235,19 @@ export const AppSidebar = memo(function AppSidebar({
                 <option value="cut">Draw cut polyline</option>
               </select>
             </label>
+
+            <button
+              type="button"
+              className="btn btn--block"
+              aria-pressed={Boolean(session && isolationActive)}
+              disabled={!session}
+              onClick={() => {
+                if (isolationActive) onExitIsolation();
+                else onConfirmIsolation();
+              }}
+            >
+              {session && isolationActive ? "Exit isolation" : "Isolate"}
+            </button>
 
             {meshEditTool === "cut" ? (
               <>

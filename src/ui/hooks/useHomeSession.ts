@@ -42,6 +42,8 @@ export function useHomeSession() {
       deleteCutStroke: s.deleteCutStroke,
       clearCutStrokes: s.clearCutStrokes,
       setMeshEditTool: s.setMeshEditTool,
+      confirmIsolation: s.confirmIsolation,
+      exitIsolation: s.exitIsolation,
       dismissToast: s.dismissToast,
       notifyToast: s.notifyToast,
     })),
