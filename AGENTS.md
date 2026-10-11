@@ -86,7 +86,7 @@ Stop and get user approval before:
 - **ADR conflicts**: anything that changes mesh representation, edge identity, or 2D convention.
 - **Scope expansion**: features from a future README phase not requested in the current task.
 - **Deleting code or files** without understanding why they exist.
-- **Git**: commits, pushes, PRs — only when the user explicitly asks.
+- **Git**: commits, pushes, PRs — only when the user explicitly asks. A ship request is that ask for one branch, its commits, a push, and a draft PR ([.cursor/rules/ship.mdc](.cursor/rules/ship.mdc)). Never merge.
 
 ### Never
 

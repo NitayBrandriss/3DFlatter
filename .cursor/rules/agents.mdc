@@ -10,3 +10,4 @@ alwaysApply: true
 - Plans: PoC [docs/plans/poc/](docs/plans/poc/README.md) · Product [docs/plans/product/](docs/plans/product/README.md) — not `.cursor/plans/`.
 - Prefer minimal diffs; extend existing code in `src/logic/`; ask before architectural changes or new dependencies.
 - Run `npm test` before marking work complete.
+- Ship loop: when the user asks to ship a feature to a draft PR, follow [.cursor/rules/ship.mdc](.cursor/rules/ship.mdc). Otherwise do not commit or open a PR.

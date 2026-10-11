@@ -1,0 +1,21 @@
+---
+description: Plan, implement, review, and open a draft PR when the user asks to ship a feature
+alwaysApply: true
+---
+
+# Ship loop
+
+Apply this rule only when the user asks to ship a feature to a draft pull request. Any other chat still follows AGENTS.md: do not commit, push, or open a PR unless asked.
+
+A ship request authorizes one branch, commits, a push, and a draft PR for that task. It does not authorize merge, auto-merge, or marking the PR ready.
+
+You are the orchestrator. Delegate in order, and pass each result forward:
+
+1. `/planner` — stop if it returns an open policy question.
+2. `/implementer` — the approved plan only.
+3. `/reviewer` — if it reports High or Critical findings, send those findings back to `/implementer`, then review again.
+4. Stop after three review rounds. Put leftover findings in the PR body.
+
+Still stop and ask before architectural changes, ADR conflicts, new dependencies, scope beyond the request, or deleting code you cannot explain.
+
+Open a draft PR that states what changed, how to verify it, unhandled edge cases, and any leftover review findings. Never merge.
