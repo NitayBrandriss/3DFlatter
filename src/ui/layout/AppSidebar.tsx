@@ -39,6 +39,8 @@ export const AppSidebar = memo(function AppSidebar({
     isolationActive,
     confirmIsolation,
     exitIsolation,
+    notifyToast,
+    isolationBlockReason,
     clearAllSeams,
     cutStrokeCount,
     clearCutStrokes,
@@ -242,8 +244,14 @@ export const AppSidebar = memo(function AppSidebar({
               aria-pressed={Boolean(session && isolationActive)}
               disabled={!session}
               onClick={() => {
-                if (isolationActive) exitIsolation();
-                else confirmIsolation();
+                if (isolationActive) {
+                  exitIsolation();
+                  return;
+                }
+                const reason = isolationBlockReason();
+                if (!confirmIsolation() && reason) {
+                  notifyToast(reason, "warning");
+                }
               }}
             >
               {session && isolationActive ? "Exit isolation" : "Isolate"}

@@ -15,6 +15,10 @@ import { useFlattenExport } from "@/ui/useFlattenExport";
 import { useHomeSession } from "@/ui/hooks/useHomeSession";
 import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
 import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
+import {
+  readIsolationConfirmBlockReason,
+  useMeshSessionStore,
+} from "@/state/meshSessionStore";
 import { MeshViewport } from "@/viewer/MeshViewport";
 import type {
   CutPolylineActions,
@@ -49,6 +53,15 @@ export default function HomePage() {
     notifyToast,
   } = useHomeSession();
 
+  const flattenIsolation = useMemo(
+    () => ({
+      active: isolation.active,
+      mask: isolation.mask,
+      warnings: isolation.warnings,
+    }),
+    [isolation.active, isolation.mask, isolation.warnings],
+  );
+
   const {
     flattenResult,
     flattening,
@@ -63,7 +76,7 @@ export default function HomePage() {
     session,
     meshLoadVersion,
     patternRevision,
-    isolation,
+    flattenIsolation,
     cutStrokes,
     notifyToast,
   );
@@ -229,6 +242,9 @@ export default function HomePage() {
       isolationActive: isolation.active,
       confirmIsolation,
       exitIsolation,
+      notifyToast,
+      isolationBlockReason: () =>
+        readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
       clearAllSeams,
       cutStrokeCount: cutStrokes.length,
       clearCutStrokes: onClearCutStrokes,
@@ -250,6 +266,7 @@ export default function HomePage() {
       isolation.active,
       confirmIsolation,
       exitIsolation,
+      notifyToast,
       clearAllSeams,
       cutStrokes.length,
       onClearCutStrokes,

@@ -151,8 +151,54 @@ export function flattenSnapshotKey(
 }
 
 /**
- * True when confirm must refuse: empty mask, or every non-orphan face is
- * either selected or a fallback scar blocker (mesh-minus-ribbon).
+ * Why confirm must refuse, or null when the mask is a nonempty proper subset.
+ * Length is judged on the mask passed in — callers must pass the stored mask,
+ * not a short mask widened to an empty `faceCount` buffer.
+ */
+export function isolationConfirmBlockReason(
+  mesh: MeshModel,
+  topology: Topology,
+  mask: FaceMask,
+  blockerFaces: ReadonlySet<FaceIndex>,
+): string | null {
+  if (mask.length !== mesh.faceCount) {
+    return "Cannot isolate: mask length does not match the mesh.";
+  }
+  if (countMaskedFaces(mask) === 0) {
+    return "Cannot isolate an empty selection.";
+  }
+  for (let i = 0; i < mesh.faceCount; i++) {
+    if (isTopologyOrphanFace(mesh, topology, i)) continue;
+    if (mask[i]) continue;
+    if (blockerFaces.has(i)) continue;
+    return null;
+  }
+  return "Cannot isolate the whole mesh. Add another bracelet or subtract a region.";
+}
+
+/**
+ * Block reason for the current session, using the stored mask and the same
+ * fence blockers as `confirmIsolation`.
+ */
+export function readIsolationConfirmBlockReason(state: {
+  session: MeshSession | null;
+  cutStrokes: readonly CutStroke[];
+  isolation: IsolationOverlay;
+}): string | null {
+  const { session, cutStrokes, isolation } = state;
+  if (!session) return null;
+  const fence = fenceEdgesFromStrokes(session.mesh, cutStrokes);
+  return isolationConfirmBlockReason(
+    session.mesh,
+    session.topology,
+    isolation.mask,
+    fence.blockerFaces,
+  );
+}
+
+/**
+ * True when confirm must refuse: empty mask, length mismatch, or every
+ * non-orphan face is either selected or a fallback scar blocker.
  */
 function isolationSelectionBlocksConfirm(
   mesh: MeshModel,
@@ -160,15 +206,9 @@ function isolationSelectionBlocksConfirm(
   mask: FaceMask,
   blockerFaces: ReadonlySet<FaceIndex>,
 ): boolean {
-  if (mask.length !== mesh.faceCount) return true;
-  if (countMaskedFaces(mask) === 0) return true;
-  for (let i = 0; i < mesh.faceCount; i++) {
-    if (isTopologyOrphanFace(mesh, topology, i)) continue;
-    if (mask[i]) continue;
-    if (blockerFaces.has(i)) continue;
-    return false;
-  }
-  return true;
+  return (
+    isolationConfirmBlockReason(mesh, topology, mask, blockerFaces) !== null
+  );
 }
 
 function cloneStrokePoints(points: readonly Vec3[]): Vec3[] {
@@ -487,18 +527,17 @@ export const useMeshSessionStore = create<MeshSessionState>((set, get) => ({
     if (!session) return false;
 
     const fence = fenceEdgesFromStrokes(session.mesh, cutStrokes);
+    const reason = isolationConfirmBlockReason(
+      session.mesh,
+      session.topology,
+      isolation.mask,
+      fence.blockerFaces,
+    );
     const mask =
       isolation.mask.length === session.mesh.faceCount
         ? isolation.mask
         : createFaceMask(session.mesh.faceCount);
-    if (
-      isolationSelectionBlocksConfirm(
-        session.mesh,
-        session.topology,
-        mask,
-        fence.blockerFaces,
-      )
-    ) {
+    if (reason !== null) {
       if (isolation.active) {
         set({ isolation: { ...isolation, active: false, mask } });
       }

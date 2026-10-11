@@ -38,7 +38,8 @@ type NotifyToast = (text: string, tone?: "info" | "warning") => void;
  *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision, seamsKey, isolationKey)`.
  *   Seam, stroke, or isolation edits stale the snapshot (2D clears until re-Flatten).
  * - On Flatten: `flattenWithCutStrokes` (subset when `isolation.active`) then
- *   unfold. A skip toast, then materialize warnings, then quality toasts.
+ *   unfold. When isolation is active, toast each existing overlay warning,
+ *   then a skip toast, then materialize warnings, then quality toasts.
  *   A throw toasts `error.message`, clears the snapshot, and returns false.
  * - No separate flatten Zustand store: the snapshot is page-local UI state.
  */
@@ -46,7 +47,7 @@ export function useFlattenExport(
   session: MeshSession | null,
   meshLoadVersion: number,
   patternRevision: number,
-  isolation: Pick<IsolationOverlay, "active" | "mask">,
+  isolation: Pick<IsolationOverlay, "active" | "mask" | "warnings">,
   cutStrokes: readonly CutStroke[],
   notifyToast: NotifyToast,
 ) {
@@ -97,6 +98,12 @@ export function useFlattenExport(
     if (!session) return false;
     setFlattening(true);
     try {
+      if (isolation.active) {
+        for (const warning of isolation.warnings) {
+          notifyToast(warning, "warning");
+        }
+      }
+
       const {
         unfold: result,
         materializeWarnings,
