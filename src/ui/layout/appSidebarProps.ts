@@ -26,8 +26,8 @@ export type AppSidebarSessionProps = {
   meshEditTool: MeshEditTool;
   setMeshEditTool: (tool: MeshEditTool) => void;
   isolationActive: boolean;
-  onConfirmIsolation: () => boolean;
-  onExitIsolation: () => void;
+  confirmIsolation: () => boolean;
+  exitIsolation: () => void;
   clearAllSeams: () => void;
   cutStrokeCount: number;
   clearCutStrokes: () => void;

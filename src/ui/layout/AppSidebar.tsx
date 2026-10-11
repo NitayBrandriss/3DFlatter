@@ -37,8 +37,8 @@ export const AppSidebar = memo(function AppSidebar({
     meshEditTool,
     setMeshEditTool,
     isolationActive,
-    onConfirmIsolation,
-    onExitIsolation,
+    confirmIsolation,
+    exitIsolation,
     clearAllSeams,
     cutStrokeCount,
     clearCutStrokes,
@@ -242,8 +242,8 @@ export const AppSidebar = memo(function AppSidebar({
               aria-pressed={Boolean(session && isolationActive)}
               disabled={!session}
               onClick={() => {
-                if (isolationActive) onExitIsolation();
-                else onConfirmIsolation();
+                if (isolationActive) exitIsolation();
+                else confirmIsolation();
               }}
             >
               {session && isolationActive ? "Exit isolation" : "Isolate"}
