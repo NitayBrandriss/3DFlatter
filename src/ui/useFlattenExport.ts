@@ -10,10 +10,13 @@ import {
 } from "@/logic/unfold/qualitySummary";
 import {
   flattenSnapshotKey,
+  isolationContentKey,
   seamsContentKey,
+  type IsolationOverlay,
   type MeshSession,
 } from "@/state/meshSessionStore";
 import { downloadTextFile, svgFileNameFromMesh } from "./download";
+import { formatIsolationSkipToast } from "./formatIsolationSkipToast";
 import { formatMaterializeWarningsToast } from "./formatMaterializeWarningsToast";
 import {
   defaultQualityOverlayState,
@@ -30,19 +33,20 @@ type NotifyToast = (text: string, tone?: "info" | "warning") => void;
  *   Seam toggles and stroke edits must not bump `meshLoadVersion` (AGENTS.md).
  *   Stroke CRUD bumps `patternRevision` only; seam membership enters the
  *   flatten key via `seamsContentKey` (ADR 0100). Isolation mask bits and
- *   `active` enter via `isolationKey` (ADR 0101) without a revision bump.
+ *   `active` enter via `isolationContentKey` (ADR 0101) without a revision bump.
  * - **Flatten snapshot (this hook)** owns the last successful unfold result,
  *   keyed by `flattenSnapshotKey(meshLoadVersion, patternRevision, seamsKey, isolationKey)`.
  *   Seam, stroke, or isolation edits stale the snapshot (2D clears until re-Flatten).
- * - On Flatten: `flattenWithCutStrokes` (materialize when strokes exist) then
- *   unfold; materialize warnings collapse to one toast before quality toasts.
+ * - On Flatten: `flattenWithCutStrokes` (subset when `isolation.active`) then
+ *   unfold. A skip toast, then materialize warnings, then quality toasts.
+ *   A throw toasts `error.message`, clears the snapshot, and returns false.
  * - No separate flatten Zustand store: the snapshot is page-local UI state.
  */
 export function useFlattenExport(
   session: MeshSession | null,
   meshLoadVersion: number,
   patternRevision: number,
-  isolationKey: string,
+  isolation: Pick<IsolationOverlay, "active" | "mask">,
   cutStrokes: readonly CutStroke[],
   notifyToast: NotifyToast,
 ) {
@@ -62,6 +66,7 @@ export function useFlattenExport(
   );
 
   const seamsKey = session ? seamsContentKey(session.seams) : "";
+  const isolationKey = isolationContentKey(isolation.active, isolation.mask);
   const snapshotKey = flattenSnapshotKey(
     meshLoadVersion,
     patternRevision,
@@ -96,12 +101,19 @@ export function useFlattenExport(
         unfold: result,
         materializeWarnings,
         openLoops,
+        skippedStrokes,
       } = flattenWithCutStrokes({
         mesh: session.mesh,
         topology: session.topology,
         seams: session.seams,
         cutStrokes,
+        isolation: { active: isolation.active, mask: isolation.mask },
       });
+
+      const skipToast = formatIsolationSkipToast(skippedStrokes);
+      if (skipToast) {
+        notifyToast(skipToast, "warning");
+      }
 
       const materializeToast = formatMaterializeWarningsToast(
         materializeWarnings,
@@ -139,15 +151,20 @@ export function useFlattenExport(
           meshLoadVersion,
           patternRevision,
           seamsContentKey(session.seams),
-          isolationKey,
+          isolationContentKey(isolation.active, isolation.mask),
         ),
         result,
       });
       return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      notifyToast(message, "warning");
+      setFlattenSnapshot(null);
+      return false;
     } finally {
       setFlattening(false);
     }
-  }, [session, meshLoadVersion, patternRevision, isolationKey, cutStrokes, notifyToast]);
+  }, [session, meshLoadVersion, patternRevision, isolation, cutStrokes, notifyToast]);
 
   const onExportSvg = useCallback(() => {
     if (!flattenResult || flattenResult.error) return;
