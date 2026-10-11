@@ -51,6 +51,10 @@ describe("isolation framing", () => {
     const inactive = frameBoundsForIsolation(false, full!, isolate0);
     expect(inactive).toBe(full);
     applyFitCameraToBounds(camera, controls, inactive);
+    const fovRad = (camera.fov * Math.PI) / 180;
+    const distance = (inactive.radius || 1) / Math.sin(fovRad / 2);
+    expect(camera.near).toBeCloseTo(Math.max(0.01, distance / 100));
+    expect(camera.far).toBeCloseTo(distance * 100);
     expect(target.x).toBeCloseTo(full!.centerX);
     expect(target.y).toBeCloseTo(full!.centerY);
     expect(target.z).toBeCloseTo(full!.centerZ);

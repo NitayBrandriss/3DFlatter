@@ -70,12 +70,12 @@ export function applyFitCameraToBounds(
 
   const dir = new THREE.Vector3(1, 0.7, 1).normalize();
   camera.position.copy(center.clone().add(dir.multiplyScalar(distance * 1.15)));
-  camera.near = Math.max(0.01, distance / 100);
-  camera.far = distance * 100;
   if (
-    "updateProjectionMatrix" in camera &&
-    typeof camera.updateProjectionMatrix === "function"
+    camera instanceof THREE.PerspectiveCamera ||
+    camera instanceof THREE.OrthographicCamera
   ) {
+    camera.near = Math.max(0.01, distance / 100);
+    camera.far = distance * 100;
     camera.updateProjectionMatrix();
   }
 
