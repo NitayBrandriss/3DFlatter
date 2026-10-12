@@ -25,6 +25,16 @@ export type AppSidebarSessionProps = {
   error: string | null;
   meshEditTool: MeshEditTool;
   setMeshEditTool: (tool: MeshEditTool) => void;
+  isolationActive: boolean;
+  confirmIsolation: () => boolean;
+  exitIsolation: () => void;
+  /** Warning toast for a refused Isolate click. Exit does not call this. */
+  notifyToast: (text: string, tone?: "info" | "warning") => void;
+  /**
+   * Block reason for the stored mask, read before `confirmIsolation`.
+   * Null when there is no session or the mask can be confirmed.
+   */
+  isolationBlockReason: () => string | null;
   clearAllSeams: () => void;
   cutStrokeCount: number;
   clearCutStrokes: () => void;

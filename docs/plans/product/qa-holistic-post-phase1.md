@@ -49,8 +49,12 @@ Follow the existing product QA rules in [qa-audits.md](qa-audits.md):
 
 ## Known limits (do not file as new bugs)
 
+Parked product work and debt (SSOT): [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled).
+
+Still treat as known limits during this audit (not new defects unless they newly crash or corrupt `EdgeKey` / soup length):
+
 - **POLYCUT-C-002** — incomplete opposite-face overlay/connect walk; must not tunnel (C-001 is fixed).
-- **CUT-UX-001 / 002 / 003** — no mid-segment insert, no general undo stack, no draw-time snap/weld ([PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint)).
+- **CUT-UX-001 / 002 / 003** — no mid-segment insert, no general undo stack, no draw-time snap/weld.
 - **UI-004** — Flatten stays on the main thread (PoC ADR 0004 deferred).
 - **LOGIC-004** — geometric zero-area with distinct indices is in-scope as a known PoC limit; topology only skips **index** degeneracy.
 - **Intra-island open slits** — `unfoldIsland` does not read seams (ADR 0002). Open darts warn and continue; 2D paper may stay hinged across the cut.
@@ -311,6 +315,8 @@ Run on `npm run dev`. Record Pass / Fail / N/A, browser, and mesh. Use demo **Cu
 ---
 
 ## Out of scope for this plan
+
+Deferred product work (SSOT): [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled).
 
 - Implementing CUT-UX v2, geodesic opposite-face walk, or Web Worker flatten.
 - Adding jsdom / Playwright / R3F component tests (recommend a separate decision if E2E Journey C/D stays flaky).

@@ -5,9 +5,11 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useThree } from "@react-three/fiber";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import type { EdgeKey, MeshModel } from "../logic/mesh/types";
+import { originalFaceIdForHit } from "../logic/isolation/maskGeometry";
+import type { FloodCombineMode } from "../logic/isolation/types";
+import type { EdgeKey, FaceIndex, MeshModel } from "../logic/mesh/types";
 import { resolvePick } from "../logic/seams/resolvePick";
-import type { MeshEditTool } from "../state/meshEditTool";
+import { meshPointerAction, type MeshEditTool } from "../state/meshEditTool";
 import type { DisplayNormalization } from "./displayNormalization";
 import type { CutPolylineDraftApi } from "./cutPolyline/useCutPolylineDraft";
 
@@ -21,6 +23,8 @@ export function PickableMesh({
   editTool,
   normalization,
   onEdgePick,
+  onIsolationFlood,
+  isolateFaceIds,
   cutDraftApiRef,
   meshRef,
 }: {
@@ -32,12 +36,19 @@ export function PickableMesh({
   editTool: MeshEditTool;
   normalization: DisplayNormalization;
   onEdgePick: (edgeKey: EdgeKey) => void;
+  onIsolationFlood: (originalFaceIndex: FaceIndex, mode: FloodCombineMode) => void;
+  /**
+   * While isolation is active, Three.js `faceIndex` is the isolate-buffer
+   * triangle. Null keeps the full-mesh index (Shift-add before confirm).
+   */
+  isolateFaceIds: readonly FaceIndex[] | null;
   cutDraftApiRef: RefObject<CutPolylineDraftApi | null>;
   meshRef: RefObject<THREE.Mesh | null>;
 }) {
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   const displayMeshRef = useRef(displayMesh);
   const normalizationRef = useRef(normalization);
+  const isolateFaceIdsRef = useRef(isolateFaceIds);
   const { controls } = useThree();
 
   useEffect(() => {
@@ -47,6 +58,10 @@ export function PickableMesh({
   useEffect(() => {
     normalizationRef.current = normalization;
   }, [normalization]);
+
+  useEffect(() => {
+    isolateFaceIdsRef.current = isolateFaceIds;
+  }, [isolateFaceIds]);
 
   const clearPointerDown = useCallback(() => {
     pointerDown.current = null;
@@ -107,11 +122,28 @@ export function PickableMesh({
 
       if (e.faceIndex == null || !e.point) return;
 
-      // Alt+click: re-pivot OrbitControls to the hit (local inspection).
-      // Works in any tool mode so users can inspect before drawing.
-      if (e.nativeEvent.altKey) {
+      const gesture = meshPointerAction(
+        editTool,
+        e.nativeEvent.shiftKey,
+        e.nativeEvent.altKey,
+      );
+      if (gesture.type === "none") {
+        e.stopPropagation();
+        return;
+      }
+      if (gesture.type === "pivot") {
         e.stopPropagation();
         pivotToHit(e.point);
+        return;
+      }
+      if (gesture.type === "flood") {
+        e.stopPropagation();
+        const faceId = originalFaceIdForHit(
+          e.faceIndex,
+          isolateFaceIdsRef.current,
+        );
+        if (faceId == null) return;
+        onIsolationFlood(faceId, gesture.mode);
         return;
       }
 
@@ -133,7 +165,12 @@ export function PickableMesh({
       e.stopPropagation();
 
       const local = e.object.worldToLocal(e.point.clone());
-      const resolved = resolvePick(displayMeshRef.current, e.faceIndex, {
+      const faceId = originalFaceIdForHit(
+        e.faceIndex,
+        isolateFaceIdsRef.current,
+      );
+      if (faceId == null) return;
+      const resolved = resolvePick(displayMeshRef.current, faceId, {
         x: local.x,
         y: local.y,
         z: local.z,
@@ -143,7 +180,14 @@ export function PickableMesh({
         onEdgePick(resolved.edgeKey);
       }
     },
-    [clearPointerDown, cutDraftApiRef, editTool, onEdgePick, pivotToHit],
+    [
+      clearPointerDown,
+      cutDraftApiRef,
+      editTool,
+      onEdgePick,
+      onIsolationFlood,
+      pivotToHit,
+    ],
   );
 
   const onDoubleClick = useCallback(

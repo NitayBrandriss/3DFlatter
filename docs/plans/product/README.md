@@ -13,16 +13,18 @@
 | Plan | Phase | Status | ADR |
 |------|-------|--------|-----|
 | [phase-1-freeform-cut-strokes.md](phase-1-freeform-cut-strokes.md) | 1 — Freeform cut strokes | **Complete** | [ADR 0100](../../decisions/product/0100-freeform-cut-strokes.md) |
+| [epic-mesh-isolation.md](epic-mesh-isolation.md) | 2 — P2-E2 Mesh isolation | **Active** | [ADR 0101](../../decisions/product/0101-mesh-isolation.md) |
 
 ---
 
 ## Backlog (not scheduled)
 
+**Source of truth:** [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (phases 2–5, client epics, cut-tool v2, geometry debt, performance, UX polish, test debt).
+
 | Plan | Status |
 |------|--------|
-| [phase2-epics.md](phase2-epics.md) | Client epics (PDF A4, mesh isolation, developability heatmap) — planning only |
-
-**Also:** cut-tool v2 UX — mid-segment insert, undo stack, snap/weld — lives on [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) (do not fold into polyline Slice E).
+| [PRODUCT_ROADMAP.md](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) | Deferred backlog (SSOT) |
+| [phase2-epics.md](phase2-epics.md) | Client epic detail — **P2-E2 promoted** (ADR 0101); P2-E1 / P2-E3 still planning-only |
 
 ---
 
@@ -34,7 +36,9 @@ Findings live in [qa-audits.md](qa-audits.md). Strategies (not yet findings) sta
 |------|--------|
 | [remediation-phase1.md](remediation-phase1.md) | **Complete** (2026-08-23) — UI/UX, load toasts, Vitest hardening |
 | [qa-holistic-post-phase1.md](qa-holistic-post-phase1.md) | Approved — **CI gate + manual E2E recorded**; in-scope findings remediations complete ([qa-audits.md](qa-audits.md#audit--2026-08-23--phase-1-holistic-remediation-complete)); logic/viewer regression pass still waiting |
-| [qa-audits.md](qa-audits.md) | Living findings index (Slices A–E + holistic baseline + remediation complete) |
+| [qa-isolation-slice1.md](qa-isolation-slice1.md) | **Remediated** (2026-09-03) — P2-E2 Slice 1 High closed; Slice 2 unblocked ([epic](epic-mesh-isolation.md)) |
+| qa-isolation-slice2.md | **Not filed** — Slice 2 store code landed; Slice 3 blocked until this audit’s High/Critical are closed or waived |
+| [qa-audits.md](qa-audits.md) | Living findings index (P2-E2 Slice 1 + Slices A–E + holistic baseline + remediation complete) |
 
 ---
 

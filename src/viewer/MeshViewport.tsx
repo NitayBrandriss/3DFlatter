@@ -6,7 +6,9 @@ import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type { CutStroke } from "../logic/cuts/types";
-import type { EdgeKey, MeshModel, SeamRegistry } from "../logic/mesh/types";
+import type { DisplayBounds } from "../logic/isolation/maskGeometry";
+import type { FaceMask, FloodCombineMode } from "../logic/isolation/types";
+import type { EdgeKey, FaceIndex, MeshModel, SeamRegistry } from "../logic/mesh/types";
 import type { MeshEditTool } from "../state/meshEditTool";
 import { CutStrokesOverlay } from "./CutStrokesOverlay";
 import { CommittedStrokePickables } from "./CommittedStrokePickables";
@@ -22,7 +24,17 @@ import {
   canPickCommittedStroke,
   excludeCutStrokeById,
 } from "./cutPolyline/cutPolylineHelpers";
-import { buildDisplayMeshAssets } from "./meshModelToGeometry";
+import {
+  applyFitCameraToBounds,
+  frameBoundsForIsolation,
+  geometryDisplayBounds,
+  isolationFrameKey,
+} from "./fitCameraToBounds";
+import {
+  buildDisplayMeshAssets,
+  ghostMeshRaycast,
+  isolationGeometriesFromDisplay,
+} from "./meshModelToGeometry";
 import { PickableMesh } from "./PickableMesh";
 import { SeamOverlay } from "./SeamOverlay";
 import {
@@ -35,41 +47,31 @@ import { SyncGlToPanel } from "./syncGlToPanel";
 function FitCameraToMesh({
   geometry,
   orbitEnabled,
+  frameKey,
+  isolateBounds,
 }: {
   geometry: THREE.BufferGeometry;
   orbitEnabled: boolean;
+  /** `"full"` while isolation is inactive. Changes with masked faces once active. */
+  frameKey: string;
+  isolateBounds: DisplayBounds | null;
 }) {
   const { camera } = useThree();
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-  // Refit only when geometry identity changes (new file load), not on seam edits.
-  // Three.js PerspectiveCamera is a mutable scene object; R3F's camera is updated in place.
-  /* eslint-disable react-hooks/immutability -- intentional Three.js camera mutation */
+  // Refit on a new file, when isolation becomes active, or when the masked
+  // faces change. Seam edits do not change `geometry` or `frameKey`.
   useEffect(() => {
-    geometry.computeBoundingSphere();
-    const sphere = geometry.boundingSphere;
-    if (!sphere) return;
-
-    const radius = sphere.radius || 1;
-    const center = sphere.center.clone();
-
-    const fov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 50;
-    const fovRad = (fov * Math.PI) / 180;
-    const distance = radius / Math.sin(fovRad / 2);
-
-    const dir = new THREE.Vector3(1, 0.7, 1).normalize();
-    camera.position.copy(center.clone().add(dir.multiplyScalar(distance * 1.15)));
-    camera.near = Math.max(0.01, distance / 100);
-    camera.far = distance * 100;
-    camera.updateProjectionMatrix();
-
     const controls = controlsRef.current as OrbitControlsImpl | null;
-    if (controls) {
-      controls.target.copy(center);
-      controls.update();
-    }
-  }, [camera, geometry]);
-  /* eslint-enable react-hooks/immutability */
+    const full = geometryDisplayBounds(geometry);
+    if (!full) return;
+    const framed = frameBoundsForIsolation(
+      frameKey !== "full",
+      full,
+      isolateBounds,
+    );
+    applyFitCameraToBounds(camera, controls, framed);
+  }, [camera, geometry, frameKey, isolateBounds]);
 
   return (
     <OrbitControls
@@ -96,9 +98,12 @@ export function MeshViewport({
   showAxes,
   modelScale,
   editTool,
+  isolationActive,
+  isolationMask,
   cutDraftActive,
   editingStrokeId,
   onEdgePick,
+  onIsolationFlood,
   onDraftFinalize,
   onCutDraftUiChange,
   cutDraftActionsRef,
@@ -117,9 +122,13 @@ export function MeshViewport({
   showAxes: boolean;
   modelScale: number;
   editTool: MeshEditTool;
+  /** Ghost the remainder only after confirm. Before that the full mesh stays pickable. */
+  isolationActive: boolean;
+  isolationMask: FaceMask;
   cutDraftActive: boolean;
   editingStrokeId: string | null;
   onEdgePick: (edgeKey: EdgeKey) => void;
+  onIsolationFlood: (originalFaceIndex: FaceIndex, mode: FloodCombineMode) => void;
   onDraftFinalize: (result: CutPolylineFinalizeResult) => void;
   onCutDraftUiChange?: (ui: {
     active: boolean;
@@ -135,6 +144,16 @@ export function MeshViewport({
     if (!mesh) return null;
     return buildDisplayMeshAssets(mesh);
   }, [mesh]);
+
+  const frameKey = isolationFrameKey(
+    isolationActive,
+    isolationActive ? isolationMask : null,
+  );
+
+  const isolationView = useMemo(() => {
+    if (!displayAssets || !mesh || frameKey === "full") return null;
+    return isolationGeometriesFromDisplay(displayAssets, mesh, isolationMask);
+  }, [displayAssets, mesh, frameKey, isolationMask]);
 
   const cutDraftApiRef = useRef<CutPolylineDraftApi | null>(null);
   const pickableMeshRef = useRef<THREE.Mesh | null>(null);
@@ -159,6 +178,15 @@ export function MeshViewport({
     return () => geometry?.dispose();
   }, [displayAssets?.geometry]);
 
+  useEffect(() => {
+    const isolateGeometry = isolationView?.isolateGeometry;
+    const ghostGeometry = isolationView?.ghostGeometry;
+    return () => {
+      isolateGeometry?.dispose();
+      ghostGeometry?.dispose();
+    };
+  }, [isolationView]);
+
   const sceneKey = mesh ? `mesh-${meshLoadVersion}` : "empty";
 
   return (
@@ -182,14 +210,35 @@ export function MeshViewport({
 
       {displayAssets && mesh && seams ? (
         <>
+          {isolationView &&
+          isolationView.ghostGeometry.getIndex()?.count ? (
+            <mesh
+              geometry={isolationView.ghostGeometry}
+              scale={modelScale}
+              raycast={ghostMeshRaycast}
+              renderOrder={-1}
+            >
+              <meshStandardMaterial
+                color="#94a3b8"
+                transparent
+                opacity={0.18}
+                depthWrite={false}
+                metalness={0.02}
+                roughness={1}
+                wireframe={wireframe}
+              />
+            </mesh>
+          ) : null}
           <PickableMesh
-            geometry={displayAssets.geometry}
+            geometry={isolationView?.isolateGeometry ?? displayAssets.geometry}
             displayMesh={displayAssets.displayMesh}
             wireframe={wireframe}
             modelScale={modelScale}
             editTool={editTool}
             normalization={displayAssets.normalization}
             onEdgePick={onEdgePick}
+            onIsolationFlood={onIsolationFlood}
+            isolateFaceIds={isolationView?.isolateFaceIds ?? null}
             cutDraftApiRef={cutDraftApiRef}
             meshRef={pickableMeshRef}
           />
@@ -234,6 +283,8 @@ export function MeshViewport({
           <FitCameraToMesh
             geometry={displayAssets.geometry}
             orbitEnabled={orbitEnabled}
+            frameKey={frameKey}
+            isolateBounds={isolationView?.isolateBounds ?? null}
           />
         </>
       ) : (

@@ -2,6 +2,13 @@
 
 Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen): [../poc/qa-audit.md](../poc/qa-audit.md).
 
+**Mesh isolation (P2-E2)**
+
+| Audit | Topic | Status |
+|-------|-------|--------|
+| [2026-09-27 Slice 2 state](qa-isolation-slice2.md) | Zustand isolation overlay, confirm predicate, flatten snapshot key | **Filed** — no Critical/High; Medium open ([decision queue](qa-isolation-slice2.md#decision-queue)). Slice 3 not blocked by severity |
+| [2026-09-03 Slice 1 logic](qa-isolation-slice1.md) | Face mask, flood, stroke fences, subset extract — test quality and logic holes | **Remediated** — High closed; Slice 2 unblocked ([decision queue](qa-isolation-slice1.md#decision-queue)) |
+
 **Holistic / post–Phase 1**
 
 | Audit | Topic | Status |
@@ -36,6 +43,68 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 | **High** | Incorrect subdivision / missed cuts / false accepts that yield wrong derived mesh or seams |
 | **Medium** | Wrong warnings, tolerance/scale bugs, incomplete ADR coverage under common use |
 | **Low** | Style, minor optimization, dead paths, future-proofing notes |
+
+---
+
+## Audit — 2026-09-27 — P2-E2 Slice 2 isolation state
+
+**Status:** Filed — no Critical/High. Medium open. Slice 3 is not blocked by severity. Slice 2 Done checkbox waits on [D1–D2](qa-isolation-slice2.md#decision-queue).  
+**Date:** 2026-09-27  
+**Scope:** `src/state/meshSessionStore.ts`, `src/state/meshEditTool.ts`, isolation adversarial Vitest, `useFlattenExport` snapshot key. No production or test edits.  
+**ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
+**Plan:** [epic-mesh-isolation.md](epic-mesh-isolation.md) Slice 2  
+**Working SSOT (full report):** [qa-isolation-slice2.md](qa-isolation-slice2.md)
+
+**Verdict:** Not proven for the full ADR session contract. Proven for the plan’s geometric oracles (exact arm-band mask, scar/incomplete confirm refuse, branched non-leak, version pins, load clear/preserve) at ≤48 triangles. Those tests fail if fences, blockers, combine mode, or confirm are no-ops. They stay green if the whole-mesh flag disagrees with the combined mask, if seams and fences are not used together, if an active isolate is clobbered by a later flood, or if `clearAllSeams` ignores the mask.
+
+### Findings
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| ISO-S2-001 | **Medium** | `coversAllNonOrphanFaces` is the last flood; Shift-add to a full mask still has the flag false while confirm refuses | Open |
+| ISO-S2-002 | **Medium** | Blocked flood replaces the mask and clears `active`; confirm-refuse keeps bits | Open |
+| ISO-S2-003 | **Medium** | No seam+fence flood; each channel dropped when the other is set stays green | Open |
+| ISO-S2-004 | **Medium** | `toggleSeamAt` / `clearAllSeams` ignore the mask (ADR ghost seams). Characterizing test would be red | Open |
+| ISO-S2-005 | **Low** | Fence warning strings not pinned; invalid seed returns before `set` | Open |
+| ISO-S2-006 | **Low** | Snapshot ablation allows a popcount key; hook unwired from Vitest (call sites reviewed) | Open |
+| ISO-S2-007 | **Low** | Confirm re-walks fences; `isolationContentKey` is O(faces). 84k unproven | Open |
+
+**Baseline:** isolation adversarial + `meshSessionStore.test.ts` — 36 passed. Detail, fixture table, and ablations: [qa-isolation-slice2.md](qa-isolation-slice2.md).
+
+---
+
+## Audit — 2026-09-03 — P2-E2 Slice 1 isolation logic
+
+**Status:** Remediated 2026-09-03 — High findings closed; Slice 2 unblocked  
+**Date:** 2026-09-03  
+**Scope:** `src/logic/isolation/` + Slice 1 Vitest. No production or test edits.  
+**ADR:** [0101 — Mesh isolation](../../decisions/product/0101-mesh-isolation.md)  
+**Plan:** [epic-mesh-isolation.md](epic-mesh-isolation.md)  
+**Working SSOT (full report):** [qa-isolation-slice1.md](qa-isolation-slice1.md)
+
+**Verdict:** First-try green is unsurprising. Fixtures max out at a 48-triangle open prism. Canonical stroke-bracelet tests would still pass if fence `EdgeKey`s were ignored (`blockerFaces` do the isolation). Do not start epic Slice 2 until the [decision queue](qa-isolation-slice1.md#decision-queue) is resolved or explicitly waived.
+
+**Remediation (2026-09-03):** Hybrid D1 (exit fences; blockers fallback-only) + scar whole-mesh (D2) + vertex-ring thickness via hybrid (D3). Ring-bracelet fenceEdges-only flood, branched tube, incomplete bracelet, non-manifold warnings, walk warnings, one WorkingMesh per fence call, `assertSubsetHasFaces`. ISO-S1-013 full tessellate dedupe parked.
+
+### Findings
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| ISO-S1-001 | **High** | Stroke-bracelet flood not shown to be cut by fence edges; blockers alone would pass | **Closed** |
+| ISO-S1-002 | **High** | `coversAllNonOrphanFaces` misses “whole mesh minus stroke ribbon” | **Closed** |
+| ISO-S1-003 | **High** | No branched fixture; cylinder cannot catch torso leak | **Closed** |
+| ISO-S1-004 | **Medium** | Blockers always applied (ADR fallback-only); vertex-ring can eat adjacent band | **Closed** |
+| ISO-S1-005 | **Medium** | Incomplete bracelet / gapped cycle untested | **Closed** |
+| ISO-S1-006 | **Medium** | Non-manifold edges silent dual walls | **Closed** |
+| ISO-S1-007 | **Medium** | Truncated walk / `locate === none` — gapped fence, no warning | **Closed** |
+| ISO-S1-008 | **Medium** | Per-segment `WorkingMesh` + brute `locate` on 84k-tri meshes | **Closed** |
+| ISO-S1-009 | **Medium** | Disjoint extract / empty subset → `buildTopology` / remapped face ids untested | **Closed** |
+| ISO-S1-010 | **Low** | Tautological / under-specified assertions | **Closed** |
+| ISO-S1-011 | **Low** | Single-point, empty, overlapping strokes untested | **Closed** |
+| ISO-S1-012 | **Low** | Flood is DFS not BFS | **Closed** |
+| ISO-S1-013 | **Low** | Fence walk forks `tessellateSurfaceSegment` | **Partial** (parked) |
+
+Continue from [qa-isolation-slice1.md](qa-isolation-slice1.md) (decision queue + recommended next steps). IDs are `ISO-S1-*`, not deferred product **ISO-001…004**.
 
 ---
 
@@ -110,7 +179,7 @@ Living index for **post-PoC / product-phase** QA audits. PoC-era audit (frozen):
 
 ### Still deferred (not failures)
 
-POLYCUT-C-002 geodesic wrap, CUT-UX-001/002/003, UI-004 worker flatten, HOLISTIC-TS-008 / TS-010, `CUBE_OBJ` fixture consolidation.
+See [PRODUCT_ROADMAP.md — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) (POLYCUT-C-002, CUT-UX-001/002/003, UI-004, HOLISTIC-TS residuals, fixture consolidation, etc.).
 
 ---
 
@@ -226,7 +295,7 @@ The suite is **green**. Section 5 of the strategy still holds: passing tests inc
 | POLYCUT-C-002 | Incomplete opposite-face walk (frozen from Slice C) |
 | POLYCUT-008 / 009 | Optional Low: rubber-band buffer prealloc; Esc vs sidebar |
 | POLYCUT-B-007 | Digon close min-3 deferred |
-| CUT-UX-001…003 | v2 backlog on [PRODUCT_ROADMAP](../../../PRODUCT_ROADMAP.md#cut-tool-ux-backlog-v2--after-polyline-blueprint) |
+| CUT-UX-001…003 | v2 backlog on [PRODUCT_ROADMAP — Deferred backlog](../../../PRODUCT_ROADMAP.md#deferred-backlog-not-scheduled) |
 
 ### Recommended next steps
 

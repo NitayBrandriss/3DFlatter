@@ -36,6 +36,11 @@ export const AppSidebar = memo(function AppSidebar({
     error,
     meshEditTool,
     setMeshEditTool,
+    isolationActive,
+    confirmIsolation,
+    exitIsolation,
+    notifyToast,
+    isolationBlockReason,
     clearAllSeams,
     cutStrokeCount,
     clearCutStrokes,
@@ -230,8 +235,28 @@ export const AppSidebar = memo(function AppSidebar({
                 <option value="none">Orbit only</option>
                 <option value="seam">Edge seam pick</option>
                 <option value="cut">Draw cut polyline</option>
+                <option value="isolate">Isolate region</option>
               </select>
             </label>
+
+            <button
+              type="button"
+              className="btn btn--block"
+              aria-pressed={Boolean(session && isolationActive)}
+              disabled={!session}
+              onClick={() => {
+                if (isolationActive) {
+                  exitIsolation();
+                  return;
+                }
+                const reason = isolationBlockReason();
+                if (!confirmIsolation() && reason) {
+                  notifyToast(reason, "warning");
+                }
+              }}
+            >
+              {session && isolationActive ? "Exit isolation" : "Isolate"}
+            </button>
 
             {meshEditTool === "cut" ? (
               <>

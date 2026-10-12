@@ -10,6 +10,7 @@ import {
   computeSessionStats,
   flattenSnapshotKey,
   formatLoadErrorToast,
+  isolationContentKey,
   LOAD_ERROR_TOAST_DURATION_MS,
   seamsContentKey,
   useMeshSessionStore,
@@ -56,6 +57,12 @@ function resetStore() {
     meshEditTool: "seam",
     toasts: [],
     toastSeq: 0,
+    isolation: {
+      active: false,
+      mask: new Uint8Array(0),
+      warnings: [],
+      coversAllNonOrphanFaces: false,
+    },
   });
 }
 
@@ -106,14 +113,22 @@ describe("seamsContentKey", () => {
 });
 
 describe("flattenSnapshotKey", () => {
+  const idle = isolationContentKey(false, new Uint8Array(0));
+
   it("changes when patternRevision, meshLoadVersion, or seamsKey changes", () => {
-    expect(flattenSnapshotKey(1, 0, "")).toBe("1:0:");
-    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(1, 1, ""));
-    expect(flattenSnapshotKey(1, 0, "")).not.toBe(flattenSnapshotKey(2, 0, ""));
-    expect(flattenSnapshotKey(1, 0, "")).not.toBe(
-      flattenSnapshotKey(1, 0, makeEdgeKey(0, 1)),
+    expect(flattenSnapshotKey(1, 0, "", idle)).toBe(`1:0::${idle}`);
+    expect(flattenSnapshotKey(1, 0, "", idle)).not.toBe(
+      flattenSnapshotKey(1, 1, "", idle),
     );
-    expect(flattenSnapshotKey(1, 0, "a")).toBe(flattenSnapshotKey(1, 0, "a"));
+    expect(flattenSnapshotKey(1, 0, "", idle)).not.toBe(
+      flattenSnapshotKey(2, 0, "", idle),
+    );
+    expect(flattenSnapshotKey(1, 0, "", idle)).not.toBe(
+      flattenSnapshotKey(1, 0, makeEdgeKey(0, 1), idle),
+    );
+    expect(flattenSnapshotKey(1, 0, "a", idle)).toBe(
+      flattenSnapshotKey(1, 0, "a", idle),
+    );
   });
 
   it("ADR 0100: seam or stroke revision change stales flatten snapshot", () => {
@@ -124,11 +139,11 @@ describe("flattenSnapshotKey", () => {
       toggleSeam(createSeamRegistry(), makeEdgeKey(0, 1)),
     );
     expect(seamsA).not.toBe(seamsB);
-    expect(flattenSnapshotKey(load, rev, seamsA)).not.toBe(
-      flattenSnapshotKey(load, rev, seamsB),
+    expect(flattenSnapshotKey(load, rev, seamsA, idle)).not.toBe(
+      flattenSnapshotKey(load, rev, seamsB, idle),
     );
-    const keyBefore = flattenSnapshotKey(1, 0, seamsA);
-    expect(flattenSnapshotKey(1, 1, seamsA)).not.toBe(keyBefore);
+    const keyBefore = flattenSnapshotKey(1, 0, seamsA, idle);
+    expect(flattenSnapshotKey(1, 1, seamsA, idle)).not.toBe(keyBefore);
   });
 });
 

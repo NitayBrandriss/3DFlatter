@@ -15,6 +15,10 @@ import { useFlattenExport } from "@/ui/useFlattenExport";
 import { useHomeSession } from "@/ui/hooks/useHomeSession";
 import { useMeshLoadHandlers } from "@/ui/hooks/useMeshLoadHandlers";
 import { useViewportPreferences } from "@/ui/hooks/useViewportPreferences";
+import {
+  readIsolationConfirmBlockReason,
+  useMeshSessionStore,
+} from "@/state/meshSessionStore";
 import { MeshViewport } from "@/viewer/MeshViewport";
 import type {
   CutPolylineActions,
@@ -26,6 +30,7 @@ export default function HomePage() {
     mesh,
     seams,
     cutStrokes,
+    isolation,
     meshLoadVersion,
     patternRevision,
     session,
@@ -37,6 +42,9 @@ export default function HomePage() {
     loadMeshFile,
     toggleSeamAt,
     clearAllSeams,
+    confirmIsolation,
+    exitIsolation,
+    applyIsolationFlood,
     addCutStroke,
     updateCutStroke,
     deleteCutStroke,
@@ -45,6 +53,15 @@ export default function HomePage() {
     dismissToast,
     notifyToast,
   } = useHomeSession();
+
+  const flattenIsolation = useMemo(
+    () => ({
+      active: isolation.active,
+      mask: isolation.mask,
+      warnings: isolation.warnings,
+    }),
+    [isolation.active, isolation.mask, isolation.warnings],
+  );
 
   const {
     flattenResult,
@@ -60,6 +77,7 @@ export default function HomePage() {
     session,
     meshLoadVersion,
     patternRevision,
+    flattenIsolation,
     cutStrokes,
     notifyToast,
   );
@@ -222,6 +240,12 @@ export default function HomePage() {
       error,
       meshEditTool,
       setMeshEditTool,
+      isolationActive: isolation.active,
+      confirmIsolation,
+      exitIsolation,
+      notifyToast,
+      isolationBlockReason: () =>
+        readIsolationConfirmBlockReason(useMeshSessionStore.getState()),
       clearAllSeams,
       cutStrokeCount: cutStrokes.length,
       clearCutStrokes: onClearCutStrokes,
@@ -240,6 +264,10 @@ export default function HomePage() {
       error,
       meshEditTool,
       setMeshEditTool,
+      isolation.active,
+      confirmIsolation,
+      exitIsolation,
+      notifyToast,
       clearAllSeams,
       cutStrokes.length,
       onClearCutStrokes,
@@ -356,9 +384,12 @@ export default function HomePage() {
               showAxes={showAxes}
               modelScale={modelScale}
               editTool={meshEditTool}
+              isolationActive={isolation.active}
+              isolationMask={isolation.mask}
               cutDraftActive={cutDraftActive}
               editingStrokeId={editingStrokeId}
               onEdgePick={onEdgePick}
+              onIsolationFlood={applyIsolationFlood}
               onDraftFinalize={onDraftFinalize}
               onCutDraftUiChange={onCutDraftUiChange}
               cutDraftActionsRef={cutDraftActionsRef}
