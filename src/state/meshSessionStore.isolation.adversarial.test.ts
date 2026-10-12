@@ -20,6 +20,7 @@ import {
 } from "../logic/seams/seamRegistry";
 import {
   flattenSnapshotKey,
+  isolationConfirmBlockReason,
   isolationContentKey,
   seamsContentKey,
   useMeshSessionStore,
@@ -141,7 +142,7 @@ describe("isolation overlay", () => {
     expect(next.patternRevision).toBe(0);
   });
 
-  it("vertex-ring bracelets + seed select the arm band; confirm sets active without bumping versions", () => {
+  it("vertex-ring bracelets + far-triangle seed confirm one side pair without bumping versions", () => {
     const mesh = openTube(RINGS, SIDES);
     const strokes = [
       tubeRingBraceletStroke(mesh, "wrist", 1, SIDES),
@@ -152,12 +153,10 @@ describe("isolation overlay", () => {
 
     useMeshSessionStore
       .getState()
-      .applyIsolationFlood(tubeBandFaces(1, SIDES)[0]!, "replace");
+      .applyIsolationFlood(tubeBandFaces(1, SIDES)[1]!, "replace");
 
-    const expected = [
-      ...tubeBandFaces(1, SIDES),
-      ...tubeBandFaces(2, SIDES),
-    ].sort((a, b) => a - b);
+    // Ring blockers split the interior into per-side pairs (tri1 + next tri0).
+    const expected = [(1 * SIDES) * 2 + 1, (2 * SIDES) * 2];
     const afterSeed = useMeshSessionStore.getState();
     expect(maskedFaces(afterSeed.isolation.mask)).toEqual(expected);
     expect(afterSeed.isolation.coversAllNonOrphanFaces).toBe(false);
@@ -264,32 +263,23 @@ describe("isolation overlay", () => {
     ];
     installSession(mesh, { cutStrokes: strokes });
 
+    const pair = (side: number) =>
+      [(1 * SIDES + side) * 2 + 1, (2 * SIDES + side) * 2].sort((a, b) => a - b);
+
     const store = useMeshSessionStore.getState();
-    store.applyIsolationFlood(tubeBandFaces(0, SIDES)[0]!, "replace");
+    store.applyIsolationFlood(pair(0)[0]!, "replace");
     expect(maskedFaces(useMeshSessionStore.getState().isolation.mask)).toEqual(
-      [...tubeBandFaces(0, SIDES)].sort((a, b) => a - b),
+      pair(0),
     );
 
-    useMeshSessionStore
-      .getState()
-      .applyIsolationFlood(tubeBandFaces(1, SIDES)[0]!, "add");
+    useMeshSessionStore.getState().applyIsolationFlood(pair(1)[0]!, "add");
     expect(maskedFaces(useMeshSessionStore.getState().isolation.mask)).toEqual(
-      [
-        ...tubeBandFaces(0, SIDES),
-        ...tubeBandFaces(1, SIDES),
-        ...tubeBandFaces(2, SIDES),
-      ].sort((a, b) => a - b),
+      [...pair(0), ...pair(1)].sort((a, b) => a - b),
     );
 
-    useMeshSessionStore
-      .getState()
-      .applyIsolationFlood(tubeBandFaces(0, SIDES)[0]!, "subtract");
+    useMeshSessionStore.getState().applyIsolationFlood(pair(0)[0]!, "subtract");
     const next = useMeshSessionStore.getState();
-    expect(maskedFaces(next.isolation.mask)).toEqual(
-      [...tubeBandFaces(1, SIDES), ...tubeBandFaces(2, SIDES)].sort(
-        (a, b) => a - b,
-      ),
-    );
+    expect(maskedFaces(next.isolation.mask)).toEqual(pair(1));
     expect(next.meshLoadVersion).toBe(7);
     expect(next.patternRevision).toBe(4);
     expect(next.isolation.active).toBe(false);
@@ -301,13 +291,13 @@ describe("isolation overlay", () => {
       cutStrokes: [branchedArmRingStroke(branched, "wrist", 1)],
     });
 
-    useMeshSessionStore
-      .getState()
-      .applyIsolationFlood(branched.armBandFaces(1)[0]!, "replace");
+    const seed = branched.armBandFaces(1)[1]!;
+    useMeshSessionStore.getState().applyIsolationFlood(seed, "replace");
 
     const { mask } = useMeshSessionStore.getState().isolation;
+    expect(maskedFaces(mask)).toEqual([seed]);
     for (const f of branched.armBandFaces(1)) {
-      expect(mask[f]).toBe(1);
+      expect(mask[f]).toBe(f === seed ? 1 : 0);
     }
     for (const f of branched.armBandFaces(0)) {
       expect(mask[f]).toBe(0);
@@ -366,7 +356,7 @@ describe("isolation overlay", () => {
     });
     useMeshSessionStore
       .getState()
-      .applyIsolationFlood(tubeBandFaces(1, SIDES)[0]!, "replace");
+      .applyIsolationFlood(tubeBandFaces(1, SIDES)[1]!, "replace");
     expect(useMeshSessionStore.getState().confirmIsolation()).toBe(true);
 
     useMeshSessionStore.getState().setMeshEditTool("isolate");
@@ -374,11 +364,10 @@ describe("isolation overlay", () => {
     const next = useMeshSessionStore.getState();
     expect(next.meshEditTool).toBe("seam");
     expect(next.isolation.active).toBe(true);
-    expect(maskedFaces(next.isolation.mask)).toEqual(
-      [...tubeBandFaces(1, SIDES), ...tubeBandFaces(2, SIDES)].sort(
-        (a, b) => a - b,
-      ),
-    );
+    expect(maskedFaces(next.isolation.mask)).toEqual([
+      (1 * SIDES) * 2 + 1,
+      (2 * SIDES) * 2,
+    ]);
     expect(next.meshLoadVersion).toBe(7);
     expect(next.patternRevision).toBe(4);
   });
@@ -394,7 +383,7 @@ describe("isolation overlay", () => {
       });
       useMeshSessionStore
         .getState()
-        .applyIsolationFlood(tubeBandFaces(1, SIDES)[0]!, "replace");
+        .applyIsolationFlood(tubeBandFaces(1, SIDES)[1]!, "replace");
       expect(useMeshSessionStore.getState().confirmIsolation()).toBe(true);
       const keptMask = new Uint8Array(
         useMeshSessionStore.getState().isolation.mask,
@@ -424,5 +413,49 @@ describe("isolation overlay", () => {
       expect(cleared.meshLoadVersion).toBe(8);
       expect(cleared.patternRevision).toBe(0);
     });
+  });
+
+  it("closed ring confirm isolates the unwalked interior and leaves versions put", () => {
+    const mesh = openTube(4, 4);
+    const stroke = tubeRingBraceletStroke(mesh, "ring", 1, 4);
+    installSession(mesh, { cutStrokes: [stroke] });
+
+    useMeshSessionStore.getState().applyIsolationFlood(9, "replace");
+    const seeded = useMeshSessionStore.getState();
+    const fence = fenceEdgesFromStrokes(mesh, [stroke]);
+    expect(
+      isolationConfirmBlockReason(
+        seeded.session!.mesh,
+        seeded.session!.topology,
+        seeded.isolation.mask,
+        fence.blockerFaces,
+      ),
+    ).toBeNull();
+    expect(useMeshSessionStore.getState().confirmIsolation()).toBe(true);
+
+    const confirmed = useMeshSessionStore.getState();
+    expect(confirmed.isolation.active).toBe(true);
+    expect(maskedFaces(confirmed.isolation.mask)).toEqual([
+      9, 11, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+    ]);
+    expect(confirmed.meshLoadVersion).toBe(7);
+    expect(confirmed.patternRevision).toBe(4);
+  });
+
+  it("open ring ablation confirm stays inactive", () => {
+    const mesh = openTube(4, 4);
+    const closed = tubeRingBraceletStroke(mesh, "ring", 1, 4);
+    installSession(mesh, {
+      cutStrokes: [{ id: "ring", points: closed.points.slice(0, -1) }],
+    });
+
+    useMeshSessionStore.getState().applyIsolationFlood(9, "replace");
+    const next = useMeshSessionStore.getState();
+    expect(next.isolation.coversAllNonOrphanFaces).toBe(true);
+    expect(maskedFaces(next.isolation.mask)).toHaveLength(24);
+    expect(next.confirmIsolation()).toBe(false);
+    expect(useMeshSessionStore.getState().isolation.active).toBe(false);
+    expect(next.meshLoadVersion).toBe(7);
+    expect(next.patternRevision).toBe(4);
   });
 });

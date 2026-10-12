@@ -24,6 +24,16 @@ import {
 const RINGS = 5;
 const SIDES = 6;
 
+/** Faces on vertex ring `ring`: lower-band tri1 and upper-band tri0. */
+function ringIncidentFaces(ring: number, sides: number): number[] {
+  const faces: number[] = [];
+  for (let s = 0; s < sides; s++) {
+    faces.push(((ring - 1) * sides + s) * 2 + 1);
+    faces.push((ring * sides + s) * 2);
+  }
+  return faces;
+}
+
 describe("floodFromFace", () => {
   it("covers the whole open tube with no fences", () => {
     const mesh = openTube(RINGS, SIDES);
@@ -103,7 +113,12 @@ describe("floodFromFace", () => {
       tubeRingBraceletStroke(mesh, "shoulder", 3, SIDES),
     ];
     const fence = fenceEdgesFromStrokes(mesh, strokes);
-    expect(fence.blockerFaces.size).toBe(0);
+    expect(fence.blockerFaces).toEqual(
+      new Set([
+        ...ringIncidentFaces(1, SIDES),
+        ...ringIncidentFaces(3, SIDES),
+      ]),
+    );
 
     const seed = tubeBandFaces(1, SIDES)[0]!;
     const result = floodFromFace(mesh, topo, seed, {
@@ -119,23 +134,34 @@ describe("floodFromFace", () => {
     for (const f of tubeBandFaces(3, SIDES)) expect(flooded.has(f)).toBe(false);
   });
 
-  it("ISO-S1-004: vertex-ring stroke keeps adjacent isolate band", () => {
+  it("ISO-S1-004: closed rings block walked faces and the far-triangle seed stays out of them", () => {
     const mesh = openTube(RINGS, SIDES);
     const topo = buildTopology(mesh);
     const fence = fenceEdgesFromStrokes(mesh, [
       tubeRingBraceletStroke(mesh, "wrist", 1, SIDES),
       tubeRingBraceletStroke(mesh, "shoulder", 3, SIDES),
     ]);
-    expect(fence.blockerFaces.size).toBe(0);
+    expect(fence.blockerFaces).toEqual(
+      new Set([
+        ...ringIncidentFaces(1, SIDES),
+        ...ringIncidentFaces(3, SIDES),
+      ]),
+    );
 
-    const seed = tubeBandFaces(1, SIDES)[0]!;
+    // Band 1 tri0 is walked by ring 1. Seed the far triangle (tri1).
+    // Blocking both rings separates each side into one tri1+tri0 pair.
+    const seed = tubeBandFaces(1, SIDES)[1]!;
+    expect(fence.blockerFaces.has(seed)).toBe(false);
     const result = floodFromFace(mesh, topo, seed, {
       fenceEdges: fence.fenceEdges,
       blockerFaces: fence.blockerFaces,
     });
-    const flooded = new Set(result.faces);
-    expect(flooded.size).toBe(SIDES * 2 * 2);
-    for (const f of tubeBandFaces(1, SIDES)) expect(flooded.has(f)).toBe(true);
+    const sidePair = new Set([seed, (2 * SIDES) * 2]);
+    expect(new Set(result.faces)).toEqual(sidePair);
+    for (const f of fence.blockerFaces) {
+      expect(result.faces).not.toContain(f);
+    }
+    expect(result.coversAllNonOrphanFaces).toBe(false);
   });
 
   it("ISO-S1-002/005: incomplete bracelet wraps → whole-mesh warn", () => {
@@ -175,10 +201,16 @@ describe("floodFromFace", () => {
     const fence = fenceEdgesFromStrokes(mesh, [
       branchedArmRingStroke(branched, "wrist", 1),
     ]);
-    expect(fence.blockerFaces.size).toBe(0);
+    expect(fence.blockerFaces).toEqual(
+      new Set([
+        ...branched.armBandFaces(0).filter((_, i) => i % 2 === 1),
+        ...branched.armBandFaces(1).filter((_, i) => i % 2 === 0),
+      ]),
+    );
     expect(fence.fenceEdges.size).toBeGreaterThan(0);
+    expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(false);
 
-    const seed = branched.armBandFaces(1)[0]!;
+    const seed = branched.armBandFaces(1)[1]!;
     const result = floodFromFace(mesh, topo, seed, {
       fenceEdges: fence.fenceEdges,
     });
@@ -233,6 +265,53 @@ describe("floodFromFace", () => {
     for (const f of tubeBandFaces(1, SIDES)) expect(flooded.has(f)).toBe(true);
     for (const f of tubeBandFaces(2, SIDES)) expect(flooded.has(f)).toBe(true);
     for (const f of tubeBandFaces(3, SIDES)) expect(flooded.has(f)).toBe(false);
+  });
+
+  it("fails unless a closed ring's walked faces are blockers (interior flood excludes face 8)", () => {
+    const mesh = openTube(4, 4);
+    const topo = buildTopology(mesh);
+    const stroke = tubeRingBraceletStroke(mesh, "ring", 1, 4);
+    const fence = fenceEdgesFromStrokes(mesh, [stroke]);
+
+    for (const key of tubeCircumferentialLoop(1, 4)) {
+      expect(fence.fenceEdges.has(key), key).toBe(true);
+    }
+    expect(fence.blockerFaces).toEqual(
+      new Set([1, 3, 5, 7, 8, 10, 12, 14]),
+    );
+    expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(false);
+    expect(fence.blockerFaces.has(9)).toBe(false);
+
+    const result = floodFromFace(mesh, topo, 9, {
+      fenceEdges: fence.fenceEdges,
+      blockerFaces: fence.blockerFaces,
+    });
+    expect(new Set(result.faces)).toEqual(
+      new Set([9, 11, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+    );
+    expect(result.faces).not.toContain(8);
+    for (const low of [0, 2, 4, 6]) {
+      expect(result.faces).not.toContain(low);
+    }
+    expect(result.coversAllNonOrphanFaces).toBe(false);
+  });
+
+  it("open ring ablation does not block walked faces and floods the whole tube", () => {
+    const mesh = openTube(4, 4);
+    const topo = buildTopology(mesh);
+    const closed = tubeRingBraceletStroke(mesh, "ring", 1, 4);
+    const open = { id: closed.id, points: closed.points.slice(0, -1) };
+    const fence = fenceEdgesFromStrokes(mesh, [open]);
+
+    expect(fence.blockerFaces.size).toBe(0);
+    expect(fence.blockerFaces.has(8)).toBe(false);
+
+    const result = floodFromFace(mesh, topo, 9, {
+      fenceEdges: fence.fenceEdges,
+      blockerFaces: fence.blockerFaces,
+    });
+    expect(result.faces).toHaveLength(24);
+    expect(result.coversAllNonOrphanFaces).toBe(true);
   });
 });
 

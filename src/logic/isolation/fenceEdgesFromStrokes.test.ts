@@ -13,12 +13,21 @@ import {
 } from "./fenceEdgesFromStrokes";
 import {
   openTube,
-  tubeBandFaces,
   tubeBraceletStroke,
   tubeCircumferentialLoop,
   tubeIncompleteRingStroke,
   tubeRingBraceletStroke,
 } from "./testMeshes";
+
+/** Faces on vertex ring `ring`: lower-band tri1 and upper-band tri0. */
+function ringIncidentFaces(ring: number, sides: number): number[] {
+  const faces: number[] = [];
+  for (let s = 0; s < sides; s++) {
+    faces.push(((ring - 1) * sides + s) * 2 + 1);
+    faces.push((ring * sides + s) * 2);
+  }
+  return faces;
+}
 
 describe("fenceEdgesFromStrokes", () => {
   it("collects the shared diagonal when a stroke crosses a unit quad", () => {
@@ -40,7 +49,9 @@ describe("fenceEdgesFromStrokes", () => {
     expect(fence.fenceEdges.size).toBe(0);
     expect(fence.blockerFaces.has(0)).toBe(true);
     expect(fence.walkedFaces.has(0)).toBe(true);
-    expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(true);
+    expect(fence.warnings.filter((w) => /no exit edges/i.test(w))).toHaveLength(
+      1,
+    );
   });
 
   it("records a dihedral exit edge without dual-side blockers", () => {
@@ -67,19 +78,23 @@ describe("fenceEdgesFromStrokes", () => {
     for (const key of tubeCircumferentialLoop(3, sides)) {
       expect(fence.fenceEdges.has(key), key).toBe(true);
     }
-    expect(fence.blockerFaces.size).toBe(0);
+    expect(fence.blockerFaces).toEqual(
+      new Set([...ringIncidentFaces(1, sides), ...ringIncidentFaces(3, sides)]),
+    );
+    expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(false);
   });
 
-  it("vertex-ring bracelet does not paint adjacent band as blockers", () => {
+  it("vertex-ring bracelet blocks walked faces, not the far half of the adjacent band", () => {
     const sides = 6;
     const mesh = openTube(5, sides);
     const fence = fenceEdgesFromStrokes(mesh, [
       tubeRingBraceletStroke(mesh, "ring1", 1, sides),
     ]);
-    expect(fence.blockerFaces.size).toBe(0);
-    for (const f of tubeBandFaces(1, sides)) {
-      expect(fence.blockerFaces.has(f)).toBe(false);
+    expect(fence.blockerFaces).toEqual(new Set(ringIncidentFaces(1, sides)));
+    for (let s = 0; s < sides; s++) {
+      expect(fence.blockerFaces.has((1 * sides + s) * 2 + 1)).toBe(false);
     }
+    expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(false);
   });
 
   it("single-point stroke falls back to approximate blockers", () => {
@@ -111,7 +126,8 @@ describe("fenceEdgesFromStrokes", () => {
     const once = fenceEdgesFromStrokes(mesh, [a]);
     const twice = fenceEdgesFromStrokes(mesh, [a, b]);
     expect(twice.fenceEdges).toEqual(once.fenceEdges);
-    expect(twice.blockerFaces.size).toBe(0);
+    expect(twice.blockerFaces).toEqual(once.blockerFaces);
+    expect(once.blockerFaces).toEqual(new Set(ringIncidentFaces(2, sides)));
   });
 
   it("off-surface segment endpoint warns", () => {
@@ -130,11 +146,13 @@ describe("fenceEdgesFromStrokes", () => {
     const fence = fenceEdgesFromStrokes(mesh, [
       tubeBraceletStroke(mesh, "mid", 1, sides),
     ]);
-    // May produce exits and/or walked faces; blockers only if no exits.
+    // Closed midpoint loop: walked faces are blockers even when exits exist.
+    expect(fence.walkedFaces.size).toBeGreaterThan(0);
+    expect(fence.blockerFaces).toEqual(fence.walkedFaces);
     if (fence.fenceEdges.size > 0) {
-      expect(fence.blockerFaces.size).toBe(0);
+      expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(false);
     } else {
-      expect(fence.blockerFaces.size).toBeGreaterThan(0);
+      expect(fence.warnings.some((w) => /no exit edges/i.test(w))).toBe(true);
     }
     const wrist = traceStrokeFences(mesh, tubeBraceletStroke(mesh, "w", 0, sides));
     expect(wrist.faces.size + wrist.exitEdges.size).toBeGreaterThan(0);

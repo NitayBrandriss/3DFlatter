@@ -96,8 +96,8 @@ function recordOnEdgeSegment(
 
   edges.add(makeEdgeKey(a, b));
   for (const fi of working.faceIndicesWithEdge(a, b)) {
-    // Walked-face set for classify — only the faces of this edge; hybrid
-    // still does not put them in blockerFaces when exits exist.
+    // Incident faces of this edge. fenceEdgesFromStrokes decides which
+    // walked faces become blockers.
     faces.add(fi);
   }
   return true;
@@ -253,7 +253,8 @@ export function traceStrokeFences(
 /**
  * Virtual flood seams from committed overlay strokes (ADR 0101).
  * Does not call `materializeCutStrokes`.
- * Hybrid: blockers only when a stroke has no exit edges (fallback).
+ * Closed strokes block every walked face. Open strokes block walked faces
+ * only when that stroke has no exit edges.
  */
 export function fenceEdgesFromStrokes(
   mesh: MeshModel,
@@ -273,18 +274,28 @@ export function fenceEdgesFromStrokes(
           surfaceEpsilonForMesh(mesh),
         )
       : null;
+  if (!working) {
+    return { fenceEdges, blockerFaces, walkedFaces, warnings };
+  }
 
   for (const stroke of strokes) {
-    const trace = traceStrokeFences(mesh, stroke, working ?? undefined);
+    const trace = traceStrokeFences(mesh, stroke, working);
     for (const key of trace.exitEdges) fenceEdges.add(key);
     for (const fi of trace.faces) walkedFaces.add(fi);
     for (const w of trace.warnings) warnings.push(w);
+
+    const closed =
+      stroke.points.length >= 2 &&
+      distSq(stroke.points[0]!, stroke.points[stroke.points.length - 1]!) <=
+        working.epsSq;
 
     if (trace.exitEdges.size === 0 && trace.faces.size > 0) {
       for (const fi of trace.faces) blockerFaces.add(fi);
       warnings.push(
         `Cut stroke "${stroke.id}" has no exit edges; fence is approximate (blocked faces only).`,
       );
+    } else if (closed && trace.faces.size > 0) {
+      for (const fi of trace.faces) blockerFaces.add(fi);
     } else if (
       stroke.points.length > 0 &&
       trace.exitEdges.size === 0 &&

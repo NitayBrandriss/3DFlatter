@@ -33,9 +33,10 @@ export type FloodFromFaceResult = {
 export type FenceFromStrokesResult = {
   fenceEdges: Set<EdgeKey>;
   /**
-   * Opaque faces for flood — ADR 0101 **fallback only**: unioned when a
-   * stroke walk produces no exit edges. Walked faces with exits are not
-   * blockers (thin virtual seams).
+   * Opaque faces for flood. Closed strokes also contribute walked faces
+   * when exit edges exist. Open strokes stay exit-edges only, and
+   * contribute walked faces only when the walk has no exit edges
+   * (ADR 0101 fallback).
    */
   blockerFaces: Set<FaceIndex>;
   /** Walked faces for classify / diagnostics (may exceed blockerFaces). */
